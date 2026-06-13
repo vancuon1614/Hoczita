@@ -33,11 +33,7 @@ Chạy lệnh sau để tải các package:
 flutter pub get
 ```
 
-### 3. Chạy Demo Offline (Offline Mode)
-*   **Không cần kết nối internet hay tài khoản Supabase:** Ứng dụng đã được tích hợp cơ chế **Demo Offline** thông minh. 
-*   Nếu bạn chưa điền thông tin ở file `supabase_constants.dart`, ứng dụng sẽ tự động chạy ở chế độ Demo. Khi màn hình Đăng nhập hiện ra, bạn chỉ cần nhấn nút **"Chế độ Demo Offline (Không cần mạng)"** màu cam ở bên dưới để trải nghiệm đầy đủ các tính năng giả lập (Đăng nhập mẫu, chơi lưu điểm, bảng xếp hạng) mà không bị crash hay báo lỗi.
-
-### 4. Chạy trên thiết bị/máy ảo
+### 3. Chạy trên thiết bị/máy ảo
 Kết nối thiết bị thật (bật USB Debugging) hoặc mở máy ảo (Emulator/Simulator), sau đó chạy lệnh:
 ```bash
 flutter run
