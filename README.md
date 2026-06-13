@@ -2,7 +2,7 @@
 
 Ứng dụng di động đa nền tảng (iOS & Android) được xây dựng bằng **Flutter Framework** và hỗ trợ kết nối backend **Supabase**. Dự án phục vụ rèn luyện tư duy và ôn tập kiến thức cho học sinh lớp 1 thông qua cơ chế trò chơi thú vị (Gamification).
 
-## 🚀 Tính Năng Chính
+## git  Tính Năng Chính
 1.  **Phân hệ Học Tập (Learn):**
     *   Ôn luyện kiến thức không giới hạn thời gian.
     *   Học đếm số thông minh & Phép tính cộng/trừ trong phạm vi 100.
@@ -18,7 +18,7 @@
 
 ---
 
-## 🛠️ Hướng Dẫn Thiết Lập Backend (Supabase)
+## Hướng Dẫn Thiết Lập Backend (Supabase)
 
 Để thiết lập cơ sở dữ liệu cho dự án, vui lòng thực hiện các bước sau:
 
@@ -35,7 +35,7 @@
 
 ---
 
-## 📱 Hướng Dẫn Chạy Ứng Dụng (Flutter)
+## Hướng Dẫn Chạy Ứng Dụng (Flutter)
 
 ### 1. Chuẩn bị môi trường
 Yêu cầu máy tính đã cài đặt **Flutter SDK (v3.38.5 trở lên)** và **Dart SDK**.
@@ -80,4 +80,3 @@ lib/
 
 ---
 
-*Hệ thống được thiết kế và tối ưu bởi Antigravity Chuyên gia Mobile Tech*
