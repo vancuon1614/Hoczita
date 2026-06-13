@@ -1,0 +1,521 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/services/supabase_service.dart';
+import '../constants/game_content.dart';
+
+class MemoryCard {
+  final int id;
+  final int pairId;
+  final String text;
+  bool isFlipped;
+  bool isMatched;
+
+  MemoryCard({
+    required this.id,
+    required this.pairId,
+    required this.text,
+    this.isFlipped = false,
+    this.isMatched = false,
+  });
+}
+
+class MemoryMatchGameScreen extends StatefulWidget {
+  const MemoryMatchGameScreen({super.key});
+
+  @override
+  State<MemoryMatchGameScreen> createState() => _MemoryMatchGameScreenState();
+}
+
+class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
+  late List<MemoryCard> _cards;
+  int? _firstCardIndex;
+  int? _secondCardIndex;
+  bool _isBusy = false;
+
+  final Stopwatch _stopwatch = Stopwatch();
+  late Timer _timer;
+  String _elapsedTimeString = '0.0';
+
+  int _matchedPairsCount = 0;
+  int _score = 0;
+  bool _isGameOver = false;
+  bool _isSavingScore = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _setupGame();
+    _startTimer();
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    _stopwatch.stop();
+    super.dispose();
+  }
+
+  void _setupGame() {
+    _matchedPairsCount = 0;
+    _score = 0;
+    _firstCardIndex = null;
+    _secondCardIndex = null;
+    _isGameOver = false;
+    _isSavingScore = false;
+    
+    // Pick 8 random pairs from the global 120 vocabulary pool
+    final vocabPool = GameContent.allVocab.map((item) => {'en': item.en, 'vi': item.vi}).toList();
+    vocabPool.shuffle();
+    final selectedPairs = vocabPool.take(8).toList();
+
+    final List<MemoryCard> cardList = [];
+    for (int i = 0; i < selectedPairs.length; i++) {
+      final pair = selectedPairs[i];
+      // English card
+      cardList.add(MemoryCard(
+        id: i * 2,
+        pairId: i,
+        text: pair['en']!,
+      ));
+      // Vietnamese card
+      cardList.add(MemoryCard(
+        id: (i * 2) + 1,
+        pairId: i,
+        text: pair['vi']!,
+      ));
+    }
+
+    cardList.shuffle();
+    _cards = cardList;
+
+    _stopwatch.reset();
+    _stopwatch.start();
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      if (_stopwatch.isRunning) {
+        setState(() {
+          _elapsedTimeString = (_stopwatch.elapsedMilliseconds / 1000).toStringAsFixed(1);
+        });
+      }
+    });
+  }
+
+  void _handleCardTap(int index) {
+    if (_isBusy || _cards[index].isFlipped || _cards[index].isMatched) return;
+
+    setState(() {
+      _cards[index].isFlipped = true;
+    });
+
+    if (_firstCardIndex == null) {
+      _firstCardIndex = index;
+    } else {
+      _secondCardIndex = index;
+      _checkMatch();
+    }
+  }
+
+  void _checkMatch() {
+    _isBusy = true;
+    final firstCard = _cards[_firstCardIndex!];
+    final secondCard = _cards[_secondCardIndex!];
+
+    if (firstCard.pairId == secondCard.pairId) {
+      // It's a match!
+      setState(() {
+        firstCard.isMatched = true;
+        secondCard.isMatched = true;
+        _matchedPairsCount++;
+        _score += 10;
+        
+        _firstCardIndex = null;
+        _secondCardIndex = null;
+        _isBusy = false;
+      });
+
+      if (_matchedPairsCount == 8) {
+        _endGameAndSaveScore();
+      }
+    } else {
+      // Not a match, flip back after 1 second
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        if (!mounted) return;
+        setState(() {
+          firstCard.isFlipped = false;
+          secondCard.isFlipped = false;
+          _firstCardIndex = null;
+          _secondCardIndex = null;
+          _isBusy = false;
+        });
+      });
+    }
+  }
+
+  void _endGameAndSaveScore() async {
+    _stopwatch.stop();
+
+    final elapsedSeconds = _stopwatch.elapsedMilliseconds / 1000;
+    int stars = 0;
+    if (elapsedSeconds < 25) {
+      stars = 3;
+    } else if (elapsedSeconds < 45) {
+      stars = 2;
+    } else {
+      stars = 1;
+    }
+
+    int finalScore = 0;
+    if (stars == 3) {
+      finalScore = 30;
+    } else if (stars == 2) {
+      finalScore = 20;
+    } else if (stars == 1) {
+      finalScore = 10;
+    }
+
+    setState(() {
+      _score = finalScore;
+      _isGameOver = true;
+      _isSavingScore = true;
+    });
+
+    try {
+      await SupabaseService.instance.saveScore(
+        gameName: 'memory_match',
+        stars: stars,
+        score: _score,
+      );
+    } catch (e) {
+      debugPrint('Error saving score: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSavingScore = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isGameOver) {
+      return _buildSummaryView();
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Memory Match 🇬🇧',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded),
+          onPressed: () => _showQuitConfirmation(),
+        ),
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.timer_outlined, size: 16, color: AppColors.primary),
+                const SizedBox(width: 6),
+                Text(
+                  '${_elapsedTimeString}s',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Lật ghép các cặp từ tiếng Anh tương ứng với nghĩa tiếng Việt:',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 24),
+              // 4x4 Grid
+              Expanded(
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 4,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 0.8, // Rectangular card feel
+                  ),
+                  itemCount: 16,
+                  itemBuilder: (context, index) {
+                    return _buildCardItem(index);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCardItem(int index) {
+    final card = _cards[index];
+    final showContent = card.isFlipped || card.isMatched;
+
+    return GestureDetector(
+      onTap: () => _handleCardTap(index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        decoration: BoxDecoration(
+          color: showContent 
+              ? (card.isMatched ? AppColors.success.withValues(alpha: 0.12) : Colors.white)
+              : AppColors.primary,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: showContent 
+                ? (card.isMatched ? AppColors.success : AppColors.primary)
+                : Colors.white.withValues(alpha: 0.2), 
+            width: 2.5
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: showContent
+            ? Text(
+                card.text,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: card.text.length > 8 ? 12 : 14,
+                  fontWeight: FontWeight.bold,
+                  color: card.isMatched ? AppColors.success : AppColors.primary,
+                ),
+              )
+            : const Icon(
+                Icons.help_outline_rounded,
+                color: Colors.white,
+                size: 28,
+              ),
+      ),
+    );
+  }
+
+  void _showQuitConfirmation() {
+    _stopwatch.stop();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Thoát Trò Chơi?'),
+        content: const Text('Tiến trình chơi hiện tại của bạn sẽ không được lưu lại.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Đóng dialog
+              _stopwatch.start(); // Tiếp tục bấm giờ
+            },
+            child: const Text('Chơi tiếp'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Đóng dialog
+              Navigator.pop(context); // Thoát game
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Thoát'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryView() {
+    final elapsedSeconds = _stopwatch.elapsedMilliseconds / 1000;
+    int stars = 0;
+    if (elapsedSeconds < 25) {
+      stars = 3;
+    } else if (elapsedSeconds < 45) {
+      stars = 2;
+    } else {
+      stars = 1;
+    }
+
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Spacer(),
+              // Trophy Icon
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFFF9E6),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.emoji_events_rounded,
+                    color: Colors.amber,
+                    size: 80,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              const Text(
+                'Xuất Sắc! 🎉',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              
+              Text(
+                'Bé đã ghép hoàn tất 8 cặp từ trong $_elapsedTimeString giây.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              // Stars Display
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(3, (index) {
+                  final active = index < stars;
+                  return AnimatedScale(
+                    scale: active ? 1.3 : 1.0,
+                    duration: Duration(milliseconds: 300 + (index * 150)),
+                    curve: Curves.elasticOut,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Icon(
+                        Icons.star_rounded,
+                        size: 48,
+                        color: active ? Colors.amber : AppColors.border,
+                      ),
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 40),
+
+              // Time & Score Cards
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'Thời gian',
+                            style: TextStyle(fontSize: 13, color: AppColors.primary),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${_elapsedTimeString}s',
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F8F5),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'Điểm cộng',
+                            style: TextStyle(fontSize: 13, color: AppColors.success),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '+$_score',
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.success),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const Spacer(),
+              
+              // End game action button
+              ElevatedButton(
+                onPressed: _isSavingScore
+                    ? null
+                    : () {
+                        Navigator.pop(context); // Quay về GameTab
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: _isSavingScore
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Text(
+                        'Quay lại danh mục',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
