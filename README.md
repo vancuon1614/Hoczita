@@ -1,61 +1,47 @@
-# HocZiTa - Hệ Thống Game & Học Tập Giáo Dục (Toán Lớp 1 & Tiếng Anh)
+# HocZiTa - Ứng dụng Học tập & Trò chơi cho Học sinh Lớp 1
 
-Ứng dụng di động đa nền tảng (iOS & Android) được xây dựng bằng **Flutter Framework** và hỗ trợ kết nối backend **Supabase**. Dự án phục vụ rèn luyện tư duy và ôn tập kiến thức cho học sinh lớp 1 thông qua cơ chế trò chơi thú vị (Gamification).
-
-## git  Tính Năng Chính
-1.  **Phân hệ Học Tập (Learn):**
-    *   Ôn luyện kiến thức không giới hạn thời gian.
-    *   Học đếm số thông minh & Phép tính cộng/trừ trong phạm vi 100.
-2.  **Hệ Thống Trò Chơi (Mini-Games):**
-    *   *Ngoại ngữ (Tiếng Anh):* Flashcard Speed Run (Chọn nghĩa nhanh trong 6s), Memory Match (Lật 16 thẻ ghép Anh-Việt), Picture Guess (Đoán từ qua hình).
-    *   *Toán học:* Đếm Số Nhanh (Game), Tàu Hỏa Thêm Bớt (Game), So Sánh Trái/Phải (Game).
-    *   Cơ chế đếm ngược 6 giây kích thích tư duy nhạy bén và tính điểm xếp hạng sao (⭐, ⭐⭐, ⭐⭐⭐) theo thời gian hoàn thành.
-3.  **Hệ Thống Thành Viên:**
-    *   Đăng ký / Đăng nhập tài khoản bảo mật.
-    *   Quản lý thông tin cá nhân & Đổi ảnh đại diện (Avatar).
-    *   Lưu lịch sử chơi và tự động cộng dồn điểm tích lũy.
-    *   Xem bảng xếp hạng Top 10 thành viên có điểm số cao nhất trong tháng.
+HocZiTa là ứng dụng di động được viết bằng Flutter, giúp các bé học sinh lớp 1 vừa chơi vừa học môn Toán và Tiếng Anh thông qua các trò chơi tương tác thú vị.
 
 ---
 
-## Hướng Dẫn Chạy Ứng Dụng (Flutter)
+## Các chức năng chính
 
-### 1. Chuẩn bị môi trường
-Yêu cầu máy tính đã cài đặt **Flutter SDK (v3.38.5 trở lên)** và **Dart SDK**.
-Chạy lệnh sau trong thư mục dự án để kiểm tra:
-```bash
-flutter doctor
-```
+### 1. Đăng nhập & Đăng ký nhanh
+* Bé hoặc phụ huynh có thể đăng ký tài khoản nhanh chóng.
+* Có tính năng ghi nhớ tài khoản trên thiết bị, bé có thể dễ dàng chuyển đổi qua lại giữa các tài khoản khác nhau chỉ bằng một cú chạm (không cần gõ lại email).
 
-### 2. Cài đặt các thư viện (Dependencies)
-Chạy lệnh sau để tải các package:
+### 2. Học tập & Trò chơi (Gamification)
+* **Phần Học tập:** Các bài học đếm số và phép tính cộng trừ cơ bản không giới hạn thời gian để bé luyện tập thoải mái.
+* **Phần Trò chơi (Mini-games):**
+  * *Tiếng Anh:* Đoán chữ qua hình (tải ảnh 3D Clay trực tiếp từ server), Lật thẻ ghi nhớ (Memory Match), Chạy tốc độ từ vựng.
+  * *Toán học:* So sánh lớn bé / Trái phải, Đếm số nhanh, Tàu hỏa thêm bớt.
+  * Có hệ thống tính điểm, đếm ngược thời gian và xếp hạng sao (1-3 sao) sinh động để tạo động lực cho bé.
+
+### 3. Hồ sơ học sinh cá nhân hóa
+* **Đổi ảnh đại diện:** Cho phép chụp ảnh mới hoặc chọn từ thư viện, sau đó di chuyển, co giãn vòng tròn cắt và xoay ảnh trước khi lưu.
+* **Địa chỉ thông minh:** Các ô Tỉnh/Thành phố, Quận/Huyện, Phường/Xã được tải tự động từ API địa lý trực tuyến giúp tránh việc gõ sai.
+* **Đổi mật khẩu & Tạo mật khẩu ngẫu nhiên:** Hỗ trợ đổi mật khẩu mới hoặc tự động tạo mật khẩu ngẫu nhiên cực kỳ bảo mật (tùy chọn số ký tự, chữ hoa, chữ thường, ký tự đặc biệt).
+
+---
+
+## Backend kết nối
+Ứng dụng sử dụng song song hai hệ thống:
+1. **Supabase:** Dùng để quản lý tài khoản người dùng, đồng bộ bảng xếp hạng và lưu trữ hình ảnh 3D cho trò chơi.
+2. **NKS API:** Kết nối API địa lý trực tuyến để tải danh mục địa chỉ và đồng bộ hóa thông tin cá nhân/ảnh đại diện của học sinh lên máy chủ NKS.
+
+---
+
+## Hướng dẫn cài đặt & Chạy ứng dụng
+
+### Bước 1: Tải các thư viện cần thiết
+Mở terminal tại thư mục dự án và chạy:
 ```bash
 flutter pub get
 ```
 
-### 3. Chạy trên thiết bị/máy ảo
-Kết nối thiết bị thật (bật USB Debugging) hoặc mở máy ảo (Emulator/Simulator), sau đó chạy lệnh:
+### Bước 2: Chạy ứng dụng
+Kết nối điện thoại hoặc mở máy ảo lên, sau đó chạy:
 ```bash
 flutter run
 ```
-
----
-
-## 📂 Cấu Trúc Mã Nguồn (Clean Architecture - Feature-First)
-```text
-lib/
-├── core/
-│   ├── theme/          # Cấu hình màu sắc (#0077bb), font Outfit và Style nút bấm.
-│   ├── constants/      # Khai báo hằng số hệ thống và key kết nối.
-│   └── services/       # Lớp kết nối API Supabase & logic Demo Offline.
-└── features/
-    ├── auth/           # Module Đăng nhập, Đăng ký & Riverpod Provider quản lý Session.
-    ├── onboarding/     # Splash Screen & 3 trang giới thiệu (Onboarding slides).
-    ├── home/           # Khung điều hướng chính (BottomNavigationBar).
-    ├── learn/          # Tab học tập Toán lớp 1.
-    ├── game/           # Tab hệ thống trò chơi trắc nghiệm & game lật thẻ.
-    └── profile/        # Tab Hồ sơ cá nhân và truy vấn Bảng xếp hạng.
-```
-
----
-
+*(Nếu muốn chạy trên trình duyệt web, bạn có thể chạy `flutter run -d chrome` hoặc chọn Edge).*
