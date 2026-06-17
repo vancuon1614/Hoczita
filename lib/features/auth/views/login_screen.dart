@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,10 +27,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _showSavedMode = false;
   List<String> _savedEmails = [];
   Map<String, String> _emailToUsername = {};
+  Map<String, String> _emailToAvatarPath = {};
 
   @override
   void initState() {
     super.initState();
+    _loadSavedEmails();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reload avatar mỗi khi quay lại màn hình login (ví dụ: sau khi đổi ảnh ở profile)
     _loadSavedEmails();
   }
 
@@ -45,14 +56,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final emails = prefs.getStringList('saved_user_emails_list') ?? [];
       
       final Map<String, String> mappings = {};
+      final Map<String, String> avatars = {};
       for (final email in emails) {
         final username = prefs.getString('username_$email') ?? email.split('@')[0];
         mappings[email] = username;
+        final avatar = prefs.getString('profile_avatar_path_$email');
+        if (avatar != null && avatar.isNotEmpty) {
+          avatars[email] = avatar;
+        }
       }
       
       setState(() {
         _savedEmails = emails;
         _emailToUsername = mappings;
+        _emailToAvatarPath = avatars;
         if (lastEmail != null && emails.contains(lastEmail)) {
           _savedEmail = lastEmail;
           _showSavedMode = true;
@@ -179,6 +196,52 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
+  /// Trả về [ImageProvider] phù hợp với định dạng lưu trữ avatar.
+  /// - Data URL (base64): dùng MemoryImage
+  /// - File path (mobile): dùng FileImage
+  ImageProvider? _resolveAvatarImageProvider(String avatarPath) {
+    if (avatarPath.isEmpty) return null;
+    if (avatarPath.startsWith('data:image/')) {
+      // Lấy phần base64 sau dấu phẩy
+      final commaIndex = avatarPath.indexOf(',');
+      if (commaIndex == -1) return null;
+      try {
+        final base64Str = avatarPath.substring(commaIndex + 1);
+        final bytes = base64Decode(base64Str);
+        return MemoryImage(bytes);
+      } catch (e) {
+        debugPrint('Error decoding avatar base64: $e');
+        return null;
+      }
+    }
+    if (kIsWeb) {
+      // blob: URL hoặc http URL trên web
+      return NetworkImage(avatarPath);
+    }
+    // Đường dẫn file trên mobile/desktop
+    return FileImage(File(avatarPath));
+  }
+
+  Widget _buildAvatarWidget(String email, double radius, double iconSize) {
+    final avatarPath = _emailToAvatarPath[email];
+    final hasAvatar = avatarPath != null && avatarPath.isNotEmpty;
+    final imageProvider = hasAvatar ? _resolveAvatarImageProvider(avatarPath) : null;
+    final showAvatar = imageProvider != null;
+
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: AppColors.primaryLight,
+      backgroundImage: showAvatar ? imageProvider : null,
+      child: showAvatar
+          ? null
+          : Icon(
+              Icons.person_rounded,
+              color: AppColors.primary,
+              size: iconSize,
+            ),
+    );
+  }
+
   void _showAccountSelectorBottomSheet() {
     showModalBottomSheet(
       context: context,
@@ -230,15 +293,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   shape: BoxShape.circle,
                                   border: Border.all(color: AppColors.primary, width: 1.5),
                                 ),
-                                child: const CircleAvatar(
-                                  radius: 18,
-                                  backgroundColor: AppColors.primaryLight,
-                                  child: Icon(
-                                    Icons.person_rounded,
-                                    color: AppColors.primary,
-                                    size: 20,
-                                  ),
-                                ),
+                                child: _buildAvatarWidget(email, 18, 20),
                               ),
                               title: Text(
                                 username,
@@ -328,15 +383,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               shape: BoxShape.circle,
               border: Border.all(color: AppColors.primary, width: 2),
             ),
-            child: const CircleAvatar(
-              radius: 20,
-              backgroundColor: AppColors.primaryLight,
-              child: Icon(
-                Icons.person_rounded,
-                color: AppColors.primary,
-                size: 24,
-              ),
-            ),
+            child: _buildAvatarWidget(email, 20, 24),
           ),
           const SizedBox(width: 12),
           Expanded(

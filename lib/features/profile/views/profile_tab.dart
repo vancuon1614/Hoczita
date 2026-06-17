@@ -1,8 +1,13 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/services/api_service.dart';
 import '../../auth/providers/auth_provider.dart';
+import 'profile_detail_screen.dart';
 
 class ProfileTab extends ConsumerStatefulWidget {
   const ProfileTab({super.key});
@@ -15,6 +20,12 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   final SupabaseService _db = SupabaseService.instance;
   late Future<List<Map<String, dynamic>>> _leaderboardFuture;
   late Future<int> _totalScoreFuture;
+  String? _avatarPath;
+
+  // Local caching variables
+  String? _cachedName;
+  String? _cachedAvatar;
+  int? _cachedPoint;
 
   @override
   void initState() {
@@ -23,10 +34,91 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   }
 
   void _refreshData() {
+    _loadCachedUserData();
     setState(() {
       _leaderboardFuture = _db.getLeaderboard();
-      _totalScoreFuture = _db.getTotalScore();
+      _totalScoreFuture = _db.getTotalScore().then((score) {
+        // Sync point back to cache
+        final email = ref.read(authProvider).email?.trim().toLowerCase() ?? '';
+        if (email.isNotEmpty) {
+          SharedPreferences.getInstance().then((prefs) {
+            prefs.setInt('cached_user_point_$email', score);
+          });
+          setState(() {
+            _cachedPoint = score;
+          });
+        }
+        return score;
+      });
     });
+    _loadAvatarPath();
+    _fetchLatestUserDataFromServer();
+  }
+
+  Future<void> _loadCachedUserData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final email = ref.read(authProvider).email?.trim().toLowerCase() ?? '';
+      if (email.isNotEmpty) {
+        setState(() {
+          _cachedName = prefs.getString('cached_user_name_$email');
+          _cachedAvatar = prefs.getString('cached_user_avatar_$email');
+          _cachedPoint = prefs.getInt('cached_user_point_$email');
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading cached user data: $e');
+    }
+  }
+
+  Future<void> _fetchLatestUserDataFromServer() async {
+    try {
+      final apiService = ApiService.instance;
+      if (apiService.hasToken) {
+        final response = await apiService.getUserInfo();
+        final bool isSuccess = response['success'] ?? (response['error'] == null);
+        if (isSuccess && response['data'] != null) {
+          final data = response['data'];
+          final email = data['email'] ?? '';
+          final name = data['name'] ?? data['username'] ?? email.split('@')[0];
+          final avatar = data['avatar'] ?? '';
+          final point = data['point'] ?? 0;
+          
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('cached_user_name_$email', name);
+          await prefs.setString('cached_user_avatar_$email', avatar);
+          await prefs.setInt('cached_user_point_$email', point);
+
+          if (mounted) {
+            setState(() {
+              _cachedName = name;
+              _cachedAvatar = avatar;
+              _cachedPoint = point;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching latest user data from server: $e');
+    }
+  }
+
+  Future<void> _loadAvatarPath() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final email = ref.read(authProvider).email?.trim().toLowerCase();
+      String? avatarPath;
+      if (email != null && email.isNotEmpty) {
+        avatarPath = prefs.getString('profile_avatar_path_$email');
+      }
+      avatarPath ??= prefs.getString('profile_avatar_path');
+      
+      setState(() {
+        _avatarPath = avatarPath;
+      });
+    } catch (e) {
+      debugPrint('Error loading avatar path: $e');
+    }
   }
 
   @override
@@ -197,104 +289,137 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     );
   }
 
-  Widget _buildUserCard(String username, String email) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: AppColors.primaryGradient,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.2),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Avatar
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 3),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            alignment: Alignment.center,
-            child: const Icon(
-              Icons.person_rounded,
-              size: 40,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(width: 20),
+  ImageProvider? _getAvatarImageProvider(String path) {
+    if (path.isEmpty) return null;
+    if (path.startsWith('data:image/') || 
+        path.startsWith('blob:') || 
+        path.startsWith('http://') || 
+        path.startsWith('https://') || 
+        kIsWeb) {
+      return NetworkImage(path);
+    }
+    return FileImage(File(path));
+  }
 
-          // User details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  username,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  email,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white.withValues(alpha: 0.8),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Score info
-                FutureBuilder<int>(
-                  future: _totalScoreFuture,
-                  builder: (context, snapshot) {
-                    final points = snapshot.data ?? 0;
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.stars_rounded, color: AppColors.accent, size: 16),
-                          const SizedBox(width: 6),
-                          Text(
-                            '$points điểm tích lũy',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ],
+  Widget _buildUserCard(String username, String email) {
+    final String displayName = _cachedName ?? username;
+    final String activeAvatar = _cachedAvatar ?? _avatarPath ?? '';
+    final ImageProvider? avatarImage = _getAvatarImageProvider(activeAvatar);
+
+    return GestureDetector(
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ProfileDetailScreen()),
+        );
+        _refreshData();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: AppColors.primaryGradient,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.2),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
             ),
-          ),
-        ],
+          ],
+        ),
+        child: Row(
+          children: [
+            // Avatar
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 3),
+                image: avatarImage != null
+                    ? DecorationImage(
+                        image: avatarImage,
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              alignment: Alignment.center,
+              child: avatarImage != null
+                  ? null
+                  : const Icon(
+                      Icons.person_rounded,
+                      size: 40,
+                      color: AppColors.primary,
+                    ),
+            ),
+            const SizedBox(width: 20),
+  
+            // User details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    displayName,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    email,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white.withValues(alpha: 0.8),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Score info
+                  FutureBuilder<int>(
+                    future: _totalScoreFuture,
+                    builder: (context, snapshot) {
+                      final points = snapshot.hasData ? snapshot.data! : (_cachedPoint ?? 0);
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.stars_rounded, color: AppColors.accent, size: 16),
+                            const SizedBox(width: 6),
+                            Text(
+                              '$points điểm tích lũy',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -213,4 +213,30 @@ class SupabaseService {
       return [];
     }
   }
+
+  Future<bool> updatePassword({required String oldPassword, required String newPassword}) async {
+    final email = currentUserEmail;
+    if (isOfflineDemoMode) {
+      await Future.delayed(const Duration(milliseconds: 800));
+      return true;
+    }
+    try {
+      if (email != null) {
+        // Thử đăng nhập lại bằng mật khẩu cũ để xác thực mật khẩu cũ có đúng không
+        await client.auth.signInWithPassword(
+          email: email,
+          password: oldPassword.trim(),
+        );
+      }
+      
+      // Nếu đăng nhập thành công (không ném lỗi), thực hiện đổi mật khẩu mới
+      await client.auth.updateUser(
+        UserAttributes(password: newPassword.trim()),
+      );
+      return true;
+    } catch (e) {
+      debugPrint('Update password error: $e');
+      rethrow;
+    }
+  }
 }
