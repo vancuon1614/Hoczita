@@ -18,23 +18,6 @@
 
 ---
 
-## Hướng Dẫn Thiết Lập Backend (Supabase)
-
-Để thiết lập cơ sở dữ liệu cho dự án, vui lòng thực hiện các bước sau:
-
-1.  Truy cập [Supabase](https://supabase.com) và tạo một Project mới.
-2.  Mở mục **SQL Editor** trong trang quản trị Supabase.
-3.  Mở tệp [supabase/schema.sql](supabase/schema.sql) trong dự án này, copy toàn bộ nội dung và paste vào SQL Editor, sau đó nhấn **Run**.
-    *   *Mã SQL này sẽ tự động tạo cấu trúc bảng `profiles`, `game_scores`, cài đặt bảo mật RLS và cấu hình các Trigger tự động tạo profile khi đăng ký hoặc tự động cộng dồn điểm số khi có điểm game mới.*
-4.  Copy **Project URL** và **Anon Key** từ mục *Project Settings -> API* của Supabase.
-5.  Mở tệp `lib/core/constants/supabase_constants.dart` trong mã nguồn Flutter của bạn và điền thông tin vào:
-    ```dart
-    static const String url = 'ĐIỀN_PROJECT_URL_CỦA_BẠN';
-    static const String anonKey = 'ĐIỀN_ANON_KEY_CỦA_BẠN';
-    ```
-
----
-
 ## Hướng Dẫn Chạy Ứng Dụng (Flutter)
 
 ### 1. Chuẩn bị môi trường
@@ -50,11 +33,7 @@ Chạy lệnh sau để tải các package:
 flutter pub get
 ```
 
-### 3. Chạy Demo Offline (Offline Mode)
-*   **Không cần kết nối internet hay tài khoản Supabase:** Ứng dụng đã được tích hợp cơ chế **Demo Offline** thông minh. 
-*   Nếu bạn chưa điền thông tin ở file `supabase_constants.dart`, ứng dụng sẽ tự động chạy ở chế độ Demo. Khi màn hình Đăng nhập hiện ra, bạn chỉ cần nhấn nút **"Chế độ Demo Offline (Không cần mạng)"** màu cam ở bên dưới để trải nghiệm đầy đủ các tính năng giả lập (Đăng nhập mẫu, chơi lưu điểm, bảng xếp hạng) mà không bị crash hay báo lỗi.
-
-### 4. Chạy trên thiết bị/máy ảo
+### 3. Chạy trên thiết bị/máy ảo
 Kết nối thiết bị thật (bật USB Debugging) hoặc mở máy ảo (Emulator/Simulator), sau đó chạy lệnh:
 ```bash
 flutter run
