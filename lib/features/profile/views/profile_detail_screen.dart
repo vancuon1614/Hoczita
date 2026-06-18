@@ -201,34 +201,56 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
             _isLoading = true;
           });
 
-          // Convert to Base64 for the server API
-          String base64Image;
-          if (kIsWeb) {
-            base64Image = croppedPath;
-          } else {
-            final bytes = await File(croppedPath).readAsBytes();
-            final base64Str = base64Encode(bytes);
-            base64Image = 'data:image/png;base64,$base64Str';
-          }
-
-          // Call API if NKS token exists, otherwise skip and save locally/Supabase
-          final apiService = ApiService.instance;
+          // 1. Prioritize uploading to Supabase Storage
           String finalPath = croppedPath;
-          if (apiService.hasToken) {
-            final response = await apiService.updateAvatar(base64Image: base64Image);
-            final bool isSuccess = response['success'] ?? (response['error'] == null);
-
-            if (isSuccess) {
-              if (response['data'] != null && response['data']['avatar'] != null) {
-                finalPath = response['data']['avatar'].toString();
+          if (_db.hasSession) {
+            try {
+              final uploadedUrl = await _db.uploadAvatar(croppedPath);
+              if (uploadedUrl != null) {
+                finalPath = uploadedUrl;
+                
+                // Sync to Supabase profiles table
+                final userId = _db.client.auth.currentUser?.id;
+                if (userId != null) {
+                  await _db.client
+                      .from(SupabaseConstants.tableProfiles)
+                      .update({'avatar_url': finalPath})
+                      .eq('id', userId);
+                }
               }
-            } else {
-              final errorMsg = response['error']?.toString() ?? 'Lỗi không xác định từ máy chủ NKS.';
-              throw Exception(errorMsg);
+            } catch (se) {
+              debugPrint('Error uploading/syncing to Supabase: $se');
             }
           }
 
-          // Save locally
+          // 2. Call NKS API if token exists (Secondary sync)
+          final apiService = ApiService.instance;
+          if (apiService.hasToken) {
+            try {
+              // Convert to Base64 for NKS API
+              String base64Image;
+              if (kIsWeb) {
+                base64Image = croppedPath;
+              } else {
+                final bytes = await File(croppedPath).readAsBytes();
+                final base64Str = base64Encode(bytes);
+                base64Image = 'data:image/png;base64,$base64Str';
+              }
+              
+              final response = await apiService.updateAvatar(base64Image: base64Image);
+              final bool isSuccess = response['success'] ?? (response['error'] == null);
+              if (isSuccess) {
+                // If NKS returned a URL, and we failed to upload to Supabase, use NKS URL as fallback
+                if (finalPath == croppedPath && response['data'] != null && response['data']['avatar'] != null) {
+                  finalPath = response['data']['avatar'].toString();
+                }
+              }
+            } catch (ne) {
+              debugPrint('Error syncing avatar to NKS: $ne');
+            }
+          }
+
+          // 3. Save locally to SharedPreferences
           final prefs = await SharedPreferences.getInstance();
           final email = ref.read(authProvider).email?.trim().toLowerCase();
           await prefs.setString('profile_avatar_path', finalPath);
@@ -238,21 +260,6 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
             await prefs.setString('cached_user_avatar_$email', finalPath);
           }
 
-          // Sync to Supabase profiles table
-          if (_db.hasSession) {
-            try {
-              final userId = _db.client.auth.currentUser?.id;
-              if (userId != null) {
-                await _db.client
-                    .from(SupabaseConstants.tableProfiles)
-                    .update({'avatar_url': finalPath})
-                    .eq('id', userId);
-              }
-            } catch (se) {
-              debugPrint('Sync avatar to Supabase error: $se');
-            }
-          }
-
           setState(() {
             _avatarPath = finalPath;
             _isLoading = false;
@@ -260,13 +267,7 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  apiService.hasToken 
-                      ? 'Cập nhật ảnh đại diện thành công! 🎉' 
-                      : 'Đã cập nhật ảnh đại diện cục bộ & Supabase! 🎉'
-                )
-              ),
+              const SnackBar(content: Text('Cập nhật ảnh đại diện thành công! 🎉')),
             );
           }
         }

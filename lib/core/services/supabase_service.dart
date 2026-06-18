@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../constants/supabase_constants.dart';
@@ -237,6 +240,47 @@ class SupabaseService {
     } catch (e) {
       debugPrint('Update password error: $e');
       rethrow;
+    }
+  }
+
+  Future<String?> uploadAvatar(String imagePathOrBase64) async {
+    if (isOfflineDemoMode) return null;
+    try {
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) return null;
+      
+      Uint8List bytes;
+      if (imagePathOrBase64.startsWith('data:image/') || 
+          imagePathOrBase64.startsWith('blob:') ||
+          imagePathOrBase64.length > 500) {
+        // Base64 or Data URL (Web)
+        final commaIndex = imagePathOrBase64.indexOf(',');
+        final base64Data = commaIndex != -1 ? imagePathOrBase64.substring(commaIndex + 1) : imagePathOrBase64;
+        bytes = base64Decode(base64Data);
+      } else {
+        // Local file path (Mobile)
+        final file = File(imagePathOrBase64);
+        bytes = await file.readAsBytes();
+      }
+      
+      final fileName = 'avatar_$userId.png';
+      
+      // Upload to bucket 'avatars'
+      await client.storage.from('avatars').uploadBinary(
+        fileName,
+        bytes,
+        fileOptions: const FileOptions(
+          contentType: 'image/png',
+          upsert: true,
+        ),
+      );
+      
+      // Get public URL
+      final publicUrl = client.storage.from('avatars').getPublicUrl(fileName);
+      return publicUrl;
+    } catch (e) {
+      debugPrint('Error uploading avatar to Supabase Storage: $e');
+      return null;
     }
   }
 }
