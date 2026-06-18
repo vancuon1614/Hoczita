@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/services/supabase_service.dart';
-import '../../../core/constants/supabase_constants.dart';
 import '../../auth/providers/auth_provider.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
@@ -316,84 +315,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       try {
         final prefs = await SharedPreferences.getInstance();
         final email = ref.read(authProvider).email?.trim().toLowerCase() ?? '';
-        
-        // 1. Prepare fields for API call
-        final fullName = _fullNameController.text.trim();
-        final nameParts = fullName.split(' ');
-        String firstname = '';
-        String lastname = '';
-        if (nameParts.isNotEmpty) {
-          firstname = nameParts.last;
-          if (nameParts.length > 1) {
-            lastname = nameParts.sublist(0, nameParts.length - 1).join(' ');
-          }
-        }
-        
-        final phone = _phoneController.text.trim();
-        final genderStr = _genderController.text.trim().toLowerCase();
-        final genderVal = (genderStr == 'nữ' || genderStr == 'female' || genderStr == 'nu') ? 1 : 0;
-        
-        // Parse dates to yyyy-mm-dd
-        String dobVal = '';
-        final dobText = _dobController.text.trim();
-        if (dobText.isNotEmpty) {
-          final parts = dobText.split('/');
-          if (parts.length == 3) {
-            final day = parts[0].padLeft(2, '0');
-            final month = parts[1].padLeft(2, '0');
-            final year = parts[2];
-            dobVal = '$year-$month-$day';
-          } else {
-            dobVal = dobText;
-          }
-        }
-        
-        final pob = _pobController.text.trim();
-        final idNumber = _idCardController.text.trim();
-        
-        String idDateVal = '';
-        final idDateText = _idCardDateController.text.trim();
-        if (idDateText.isNotEmpty) {
-          final parts = idDateText.split('/');
-          if (parts.length == 3) {
-            final day = parts[0].padLeft(2, '0');
-            final month = parts[1].padLeft(2, '0');
-            final year = parts[2];
-            idDateVal = '$year-$month-$day';
-          } else {
-            idDateVal = idDateText;
-          }
-        }
-        
-        final idPlace = _idCardPlaceController.text.trim();
-        
-        // Use ID if available, otherwise fallback to name
-        final provinceVal = _selectedProvinceId ?? _provinceController.text.trim();
-        
-        // 2. Call API Service
-        final apiService = ApiService.instance;
-        if (apiService.hasToken) {
-          final response = await apiService.updateUserInfo(
-            firstname: firstname,
-            lastname: lastname,
-            phone: phone,
-            gender: genderVal,
-            dob: dobVal,
-            pob: pob,
-            idNumber: idNumber,
-            idDate: idDateVal,
-            idPlace: idPlace,
-            province: provinceVal,
-          );
-          
-          final bool isSuccess = response['success'] ?? (response['error'] == null);
-          if (!isSuccess) {
-            final errorMsg = response['error']?.toString() ?? 'Lỗi không xác định từ máy chủ.';
-            throw Exception(errorMsg);
-          }
-        }
-        
-        // 3. Save to local cache (SharedPreferences)
+        // 1. Save to local cache (SharedPreferences)
         // User-scoped keys
         await prefs.setString('profile_fullName_$email', _fullNameController.text.trim());
         await prefs.setString('profile_phone_$email', _phoneController.text.trim());
@@ -412,19 +334,27 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         // Cache name for ProfileTab to update instantly
         await prefs.setString('cached_user_name_$email', _fullNameController.text.trim());
         
-        // Sync to Supabase profiles table
+        // 2. Sync to Supabase profiles table
         final supabaseService = SupabaseService.instance;
         if (supabaseService.hasSession) {
           try {
-            final userId = supabaseService.client.auth.currentUser?.id;
-            if (userId != null) {
-              await supabaseService.client
-                  .from(SupabaseConstants.tableProfiles)
-                  .update({'username': _fullNameController.text.trim()})
-                  .eq('id', userId);
-            }
+            await supabaseService.updateProfile(
+              fullName: _fullNameController.text.trim(),
+              phone: _phoneController.text.trim(),
+              gender: _genderController.text.trim(),
+              dob: _dobController.text.trim(),
+              pob: _pobController.text.trim(),
+              idNumber: _idCardController.text.trim(),
+              idCardDate: _idCardDateController.text.trim(),
+              idCardPlace: _idCardPlaceController.text.trim(),
+              address: _addressController.text.trim(),
+              street: _streetController.text.trim(),
+              ward: _wardController.text.trim(),
+              district: _districtController.text.trim(),
+              province: _provinceController.text.trim(),
+            );
           } catch (se) {
-            debugPrint('Sync username to Supabase error: $se');
+            debugPrint('Sync profile to Supabase error: $se');
           }
         }
         
@@ -506,7 +436,24 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _buildTextField(_pobController, 'Place Of Birth (Nơi sinh)', 'Ví dụ: TP. HCM'),
+                      _buildTextField(
+                        _pobController, 
+                        'Place Of Birth (Nơi sinh)', 
+                        'Chọn Tỉnh / Thành phố',
+                        readOnly: true,
+                        onTap: () {
+                          _showSelectionBottomSheet(
+                            title: 'Chọn Nơi sinh',
+                            items: _provinceList,
+                            onSelected: (item) {
+                              setState(() {
+                                _pobController.text = item['title'].toString();
+                              });
+                            },
+                          );
+                        },
+                        suffixIcon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
+                      ),
                       const SizedBox(height: 16),
                       
                       const Divider(height: 32),

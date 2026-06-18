@@ -111,7 +111,33 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
       if (email != null && email.isNotEmpty) {
         avatarPath = prefs.getString('profile_avatar_path_$email');
       }
-      avatarPath ??= prefs.getString('profile_avatar_path');
+      
+      // Fallback: lấy avatar_url từ Supabase profiles nếu local chưa có
+      if (avatarPath == null || avatarPath.isEmpty) {
+        try {
+          final supabaseService = SupabaseService.instance;
+          if (supabaseService.hasSession) {
+            final userId = supabaseService.client.auth.currentUser?.id;
+            if (userId != null) {
+              final row = await supabaseService.client
+                  .from('profiles')
+                  .select('avatar_url')
+                  .eq('id', userId)
+                  .maybeSingle();
+              final url = row?['avatar_url']?.toString();
+              if (url != null && url.isNotEmpty) {
+                avatarPath = url;
+                // Cache lại cho lần sau
+                if (email != null && email.isNotEmpty) {
+                  await prefs.setString('profile_avatar_path_$email', url);
+                }
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('Error fetching avatar from Supabase: $e');
+        }
+      }
       
       setState(() {
         _avatarPath = avatarPath;

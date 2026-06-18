@@ -287,4 +287,55 @@ class SupabaseService {
       return null;
     }
   }
+
+  /// Cập nhật thông tin hồ sơ người dùng lên bảng profiles trên Supabase.
+  Future<bool> updateProfile({
+    required String fullName,
+    String? phone,
+    String? gender,
+    String? dob,
+    String? pob,
+    String? idNumber,
+    String? idCardDate,
+    String? idCardPlace,
+    String? address,
+    String? street,
+    String? ward,
+    String? district,
+    String? province,
+  }) async {
+    if (isOfflineDemoMode) return true;
+    try {
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) return false;
+
+      final Map<String, dynamic> updates = {
+        'username': fullName,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      if (phone != null) updates['phone'] = phone;
+      if (gender != null) updates['gender'] = gender;
+      if (dob != null) updates['dob'] = dob;
+      if (pob != null) updates['pob'] = pob;
+      if (idNumber != null) updates['id_number'] = idNumber;
+      if (idCardDate != null) updates['id_card_date'] = idCardDate;
+      if (idCardPlace != null) updates['id_card_place'] = idCardPlace;
+      if (address != null) updates['address'] = address;
+      if (street != null) updates['street'] = street;
+      if (ward != null) updates['ward'] = ward;
+      if (district != null) updates['district'] = district;
+      if (province != null) updates['province'] = province;
+
+      await client
+          .from(SupabaseConstants.tableProfiles)
+          .update(updates)
+          .eq('id', userId);
+
+      return true;
+    } catch (e) {
+      debugPrint('Error updating profile on Supabase: $e');
+      return false;
+    }
+  }
 }

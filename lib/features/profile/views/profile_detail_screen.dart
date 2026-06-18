@@ -1,4 +1,4 @@
-import 'dart:convert';
+
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
-import '../../../core/services/api_service.dart';
+
 import '../../../core/constants/supabase_constants.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'edit_profile_screen.dart';
@@ -86,7 +86,33 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
       if (email.isNotEmpty) {
         avatarPath = prefs.getString('profile_avatar_path_$email');
       }
-      avatarPath ??= prefs.getString('profile_avatar_path');
+      
+      // Fallback: lấy avatar_url từ Supabase profiles nếu local chưa có
+      if (avatarPath == null || avatarPath.isEmpty) {
+        try {
+          final supabaseService = SupabaseService.instance;
+          if (supabaseService.hasSession) {
+            final userId = supabaseService.client.auth.currentUser?.id;
+            if (userId != null) {
+              final row = await supabaseService.client
+                  .from(SupabaseConstants.tableProfiles)
+                  .select('avatar_url')
+                  .eq('id', userId)
+                  .maybeSingle();
+              final url = row?['avatar_url']?.toString();
+              if (url != null && url.isNotEmpty) {
+                avatarPath = url;
+                // Cache lại vào SharedPreferences cho lần sau
+                if (email.isNotEmpty) {
+                  await prefs.setString('profile_avatar_path_$email', url);
+                }
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('Error fetching avatar from Supabase: $e');
+        }
+      }
       
       final String street = prefs.getString('profile_street_$email') ?? prefs.getString('profile_street') ?? '';
       final String ward = prefs.getString('profile_ward_$email') ?? prefs.getString('profile_ward') ?? '';
@@ -223,37 +249,9 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
             }
           }
 
-          // 2. Call NKS API if token exists (Secondary sync)
-          final apiService = ApiService.instance;
-          if (apiService.hasToken) {
-            try {
-              // Convert to Base64 for NKS API
-              String base64Image;
-              if (kIsWeb) {
-                base64Image = croppedPath;
-              } else {
-                final bytes = await File(croppedPath).readAsBytes();
-                final base64Str = base64Encode(bytes);
-                base64Image = 'data:image/png;base64,$base64Str';
-              }
-              
-              final response = await apiService.updateAvatar(base64Image: base64Image);
-              final bool isSuccess = response['success'] ?? (response['error'] == null);
-              if (isSuccess) {
-                // If NKS returned a URL, and we failed to upload to Supabase, use NKS URL as fallback
-                if (finalPath == croppedPath && response['data'] != null && response['data']['avatar'] != null) {
-                  finalPath = response['data']['avatar'].toString();
-                }
-              }
-            } catch (ne) {
-              debugPrint('Error syncing avatar to NKS: $ne');
-            }
-          }
-
-          // 3. Save locally to SharedPreferences
+          // 2. Save locally to SharedPreferences (email-scoped only)
           final prefs = await SharedPreferences.getInstance();
           final email = ref.read(authProvider).email?.trim().toLowerCase();
-          await prefs.setString('profile_avatar_path', finalPath);
           if (email != null && email.isNotEmpty) {
             await prefs.setString('profile_avatar_path_$email', finalPath);
             // Also sync with the cached_user_avatar key to update ProfileTab instantly
