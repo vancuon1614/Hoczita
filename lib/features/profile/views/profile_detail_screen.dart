@@ -211,55 +211,63 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
             base64Image = 'data:image/png;base64,$base64Str';
           }
 
-          // Call API
+          // Call API if NKS token exists, otherwise skip and save locally/Supabase
           final apiService = ApiService.instance;
-          final response = await apiService.updateAvatar(base64Image: base64Image);
-          final bool isSuccess = response['success'] ?? (response['error'] == null);
+          String finalPath = croppedPath;
+          if (apiService.hasToken) {
+            final response = await apiService.updateAvatar(base64Image: base64Image);
+            final bool isSuccess = response['success'] ?? (response['error'] == null);
 
-          if (isSuccess) {
-            // Get updated URL if returned, otherwise fallback to local/base64 path
-            String finalPath = croppedPath;
-            if (response['data'] != null && response['data']['avatar'] != null) {
-              finalPath = response['data']['avatar'].toString();
-            }
-
-            final prefs = await SharedPreferences.getInstance();
-            final email = ref.read(authProvider).email?.trim().toLowerCase();
-            await prefs.setString('profile_avatar_path', finalPath);
-            if (email != null && email.isNotEmpty) {
-              await prefs.setString('profile_avatar_path_$email', finalPath);
-              // Also sync with the cached_user_avatar key to update ProfileTab instantly
-              await prefs.setString('cached_user_avatar_$email', finalPath);
-            }
-
-            // Sync to Supabase profiles table
-            if (_db.hasSession) {
-              try {
-                final userId = _db.client.auth.currentUser?.id;
-                if (userId != null) {
-                  await _db.client
-                      .from(SupabaseConstants.tableProfiles)
-                      .update({'avatar_url': finalPath})
-                      .eq('id', userId);
-                }
-              } catch (se) {
-                debugPrint('Sync avatar to Supabase error: $se');
+            if (isSuccess) {
+              if (response['data'] != null && response['data']['avatar'] != null) {
+                finalPath = response['data']['avatar'].toString();
               }
+            } else {
+              final errorMsg = response['error']?.toString() ?? 'Lỗi không xác định từ máy chủ NKS.';
+              throw Exception(errorMsg);
             }
+          }
 
-            setState(() {
-              _avatarPath = finalPath;
-              _isLoading = false;
-            });
+          // Save locally
+          final prefs = await SharedPreferences.getInstance();
+          final email = ref.read(authProvider).email?.trim().toLowerCase();
+          await prefs.setString('profile_avatar_path', finalPath);
+          if (email != null && email.isNotEmpty) {
+            await prefs.setString('profile_avatar_path_$email', finalPath);
+            // Also sync with the cached_user_avatar key to update ProfileTab instantly
+            await prefs.setString('cached_user_avatar_$email', finalPath);
+          }
 
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Cập nhật ảnh đại diện thành công! 🎉')),
-              );
+          // Sync to Supabase profiles table
+          if (_db.hasSession) {
+            try {
+              final userId = _db.client.auth.currentUser?.id;
+              if (userId != null) {
+                await _db.client
+                    .from(SupabaseConstants.tableProfiles)
+                    .update({'avatar_url': finalPath})
+                    .eq('id', userId);
+              }
+            } catch (se) {
+              debugPrint('Sync avatar to Supabase error: $se');
             }
-          } else {
-            final errorMsg = response['error']?.toString() ?? 'Lỗi không xác định từ máy chủ.';
-            throw Exception(errorMsg);
+          }
+
+          setState(() {
+            _avatarPath = finalPath;
+            _isLoading = false;
+          });
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  apiService.hasToken 
+                      ? 'Cập nhật ảnh đại diện thành công! 🎉' 
+                      : 'Đã cập nhật ảnh đại diện cục bộ & Supabase! 🎉'
+                )
+              ),
+            );
           }
         }
       }
