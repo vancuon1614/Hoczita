@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../constants/supabase_constants.dart';
 
@@ -250,9 +251,12 @@ class SupabaseService {
       if (userId == null) return null;
       
       Uint8List bytes;
-      if (imagePathOrBase64.startsWith('data:image/') || 
-          imagePathOrBase64.startsWith('blob:') ||
-          imagePathOrBase64.length > 500) {
+      if (imagePathOrBase64.startsWith('blob:')) {
+        // Blob URL (Web) - Fetch bytes via HTTP
+        final response = await http.get(Uri.parse(imagePathOrBase64));
+        bytes = response.bodyBytes;
+      } else if (imagePathOrBase64.startsWith('data:image/') || 
+                 imagePathOrBase64.length > 500) {
         // Base64 or Data URL (Web)
         final commaIndex = imagePathOrBase64.indexOf(',');
         final base64Data = commaIndex != -1 ? imagePathOrBase64.substring(commaIndex + 1) : imagePathOrBase64;
