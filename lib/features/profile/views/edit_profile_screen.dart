@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
+import '../../../core/services/supabase_service.dart';
+import '../../../core/constants/supabase_constants.dart';
 import '../../auth/providers/auth_provider.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
@@ -409,6 +411,22 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         
         // Cache name for ProfileTab to update instantly
         await prefs.setString('cached_user_name_$email', _fullNameController.text.trim());
+        
+        // Sync to Supabase profiles table
+        final supabaseService = SupabaseService.instance;
+        if (supabaseService.hasSession) {
+          try {
+            final userId = supabaseService.client.auth.currentUser?.id;
+            if (userId != null) {
+              await supabaseService.client
+                  .from(SupabaseConstants.tableProfiles)
+                  .update({'username': _fullNameController.text.trim()})
+                  .eq('id', userId);
+            }
+          } catch (se) {
+            debugPrint('Sync username to Supabase error: $se');
+          }
+        }
         
         // Global keys as fallback
         await prefs.setString('profile_fullName', _fullNameController.text.trim());

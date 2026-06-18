@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/services/api_service.dart';
+import '../../../core/constants/supabase_constants.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'edit_profile_screen.dart';
 import 'crop_avatar_screen.dart';
@@ -229,6 +230,21 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
               await prefs.setString('profile_avatar_path_$email', finalPath);
               // Also sync with the cached_user_avatar key to update ProfileTab instantly
               await prefs.setString('cached_user_avatar_$email', finalPath);
+            }
+
+            // Sync to Supabase profiles table
+            if (_db.hasSession) {
+              try {
+                final userId = _db.client.auth.currentUser?.id;
+                if (userId != null) {
+                  await _db.client
+                      .from(SupabaseConstants.tableProfiles)
+                      .update({'avatar_url': finalPath})
+                      .eq('id', userId);
+                }
+              } catch (se) {
+                debugPrint('Sync avatar to Supabase error: $se');
+              }
             }
 
             setState(() {
