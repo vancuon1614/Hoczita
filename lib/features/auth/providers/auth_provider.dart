@@ -137,6 +137,19 @@ class AuthNotifier extends Notifier<AuthState> {
             point: userInfo?['point'] ?? 0,
             email: userEmail,
           );
+
+          // Đồng bộ đăng nhập sang Supabase trong nền để có session
+          try {
+            await _service.signIn(email: userEmail, password: password);
+          } catch (supabaseError) {
+            debugPrint('Failed to sign in to Supabase in background: $supabaseError');
+            try {
+              await _service.signUp(email: userEmail, password: password, username: username);
+              await _service.signIn(email: userEmail, password: password);
+            } catch (signUpError) {
+              debugPrint('Failed to sign up/in to Supabase in background: $signUpError');
+            }
+          }
           
           return true;
         }
