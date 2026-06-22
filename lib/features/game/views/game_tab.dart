@@ -7,6 +7,8 @@ import '../../../core/services/supabase_service.dart';
 import '../constants/game_content.dart';
 import 'multiple_choice_game_screen.dart';
 import 'memory_match_game_screen.dart';
+import 'math_crossword_game_screen.dart';
+
 
 class GameTab extends ConsumerStatefulWidget {
   const GameTab({super.key});
@@ -24,6 +26,7 @@ class _GameTabState extends ConsumerState<GameTab> {
     'counting': 0,
     'math_ops': 0,
     'comparison': 0,
+    'math_crossword': 0,
   };
   bool _isLoading = true;
 
@@ -48,6 +51,7 @@ class _GameTabState extends ConsumerState<GameTab> {
         'counting': 0,
         'math_ops': 0,
         'comparison': 0,
+        'math_crossword': 0,
       };
 
       for (final scoreEntry in scores) {
@@ -255,6 +259,19 @@ class _GameTabState extends ConsumerState<GameTab> {
                 gameTitle: 'So Sánh Trái Phải',
                 questions: GameContent.getComparisonQuestions(),
               ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          _buildGameCard(
+            context: context,
+            title: 'Ô Chữ Toán Học',
+            subtitle: 'Giải ô chữ bằng các con số sao cho các phép tính ngang dọc đều đúng.',
+            icon: Icons.grid_on_rounded,
+            color: Colors.purple,
+            stars: _highestStars['math_crossword'] ?? 0,
+            animationType: GameAnimationType.swing,
+            onTap: () => _playGame(
+              const MathCrosswordGameScreen(),
             ),
           ),
           const SizedBox(height: 40), // Avoid floating nav bar overlap

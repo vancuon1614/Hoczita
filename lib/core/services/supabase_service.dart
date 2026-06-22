@@ -187,6 +187,13 @@ class SupabaseService {
         'stars': stars,
         'score': score,
       });
+
+      // Sync and increment total_score in profiles table
+      final currentScore = await getTotalScore();
+      await client.from(SupabaseConstants.tableProfiles).update({
+        'total_score': currentScore + score,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', userId);
     } catch (e) {
       debugPrint('Save score error: $e');
       rethrow;
@@ -336,6 +343,118 @@ class SupabaseService {
     } catch (e) {
       debugPrint('Error updating profile on Supabase: $e');
       return false;
+    }
+  }
+
+  /// Lấy danh sách bảng xếp hạng có lọc theo game và thời gian
+  Future<List<Map<String, dynamic>>> getFilteredLeaderboard({
+    String? gameName,
+    String timePeriod = 'all', // 'all', 'month', 'year'
+  }) async {
+    if (isOfflineDemoMode) {
+      final myUser = _mockUsername ?? 'Bạn';
+      final myScore = gameName == null 
+          ? _mockTotalScore 
+          : _mockScores
+              .where((s) => s['game_name'] == gameName)
+              .fold<int>(0, (sum, item) => sum + (item['score'] as int? ?? 0));
+
+      final List<Map<String, dynamic>> baseList = [
+        {'username': '$myUser (Bạn)', 'total_score': myScore},
+        {'username': 'Minh Anh', 'total_score': gameName == null ? 180 : 40},
+        {'username': 'Bảo Nam', 'total_score': gameName == null ? 150 : 30},
+        {'username': 'Lan Chi', 'total_score': gameName == null ? 90 : 20},
+        {'username': 'Gia Bách', 'total_score': gameName == null ? 80 : 10},
+      ];
+      
+      baseList.sort((a, b) => (b['total_score'] as int).compareTo(a['total_score'] as int));
+      return baseList;
+    }
+
+    try {
+      if (gameName == null && timePeriod == 'all') {
+        final response = await client
+            .from(SupabaseConstants.tableProfiles)
+            .select('username, total_score')
+            .order('total_score', ascending: false)
+            .limit(10);
+        return List<Map<String, dynamic>>.from(response);
+      }
+
+      var query = client
+          .from('game_scores')
+          .select('score, game_name, created_at, profiles(username)');
+
+      if (gameName != null) {
+        query = query.eq('game_name', gameName);
+      }
+
+      final DateTime now = DateTime.now();
+      DateTime? startDate;
+      if (timePeriod == 'month') {
+        startDate = DateTime(now.year, now.month, 1);
+      } else if (timePeriod == 'year') {
+        startDate = DateTime(now.year, 1, 1);
+      }
+
+      if (startDate != null) {
+        query = query.gte('created_at', startDate.toIso8601String());
+      }
+
+      final response = await query;
+      final List<dynamic> rows = response as List<dynamic>;
+
+      final Map<String, int> userScores = {};
+      for (final row in rows) {
+        final profile = row['profiles'] as Map<String, dynamic>?;
+        final String username = profile?['username']?.toString() ?? 'Ẩn danh';
+        final int score = row['score'] as int? ?? 0;
+        userScores[username] = (userScores[username] ?? 0) + score;
+      }
+
+      final List<Map<String, dynamic>> leaderboard = userScores.entries.map((entry) {
+        return {
+          'username': entry.key,
+          'total_score': entry.value,
+        };
+      }).toList();
+
+      leaderboard.sort((a, b) => (b['total_score'] as int).compareTo(a['total_score'] as int));
+      return leaderboard.take(10).toList();
+    } catch (e) {
+      debugPrint('Get filtered leaderboard error: $e');
+      return [];
+    }
+  }
+
+  /// Đặt lịch tư vấn 1:1
+  Future<bool> saveBooking({
+    required String course,
+    required DateTime dateTime,
+    required String fullName,
+    required String phone,
+    required String email,
+    required String notes,
+  }) async {
+    if (isOfflineDemoMode) {
+      await Future.delayed(const Duration(milliseconds: 1000));
+      return true;
+    }
+    try {
+      final userId = client.auth.currentUser?.id;
+      await client.from('bookings').insert({
+        'profile_id': userId, // Có thể null nếu đặt lịch vãng lai
+        'course': course,
+        'booking_time': dateTime.toIso8601String(),
+        'full_name': fullName,
+        'phone': phone,
+        'email': email,
+        'notes': notes,
+      });
+      return true;
+    } catch (e) {
+      debugPrint('Error saving booking: $e');
+      rethrow;
     }
   }
 }

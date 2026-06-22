@@ -22,6 +22,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   late Future<int> _totalScoreFuture;
   String? _avatarPath;
 
+  String? _selectedGameFilter;
+  String _selectedTimeFilter = 'month'; // default matches the monthly leaderboard
+
   // Local caching variables
   String? _cachedName;
   String? _cachedAvatar;
@@ -36,7 +39,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   void _refreshData() {
     _loadCachedUserData();
     setState(() {
-      _leaderboardFuture = _db.getLeaderboard();
+      _leaderboardFuture = _db.getFilteredLeaderboard(
+        gameName: _selectedGameFilter,
+        timePeriod: _selectedTimeFilter,
+      );
       _totalScoreFuture = _db.getTotalScore().then((score) {
         // Sync point back to cache
         final email = ref.read(authProvider).email?.trim().toLowerCase() ?? '';
@@ -53,6 +59,15 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     });
     _loadAvatarPath();
     _fetchLatestUserDataFromServer();
+  }
+
+  void _updateLeaderboard() {
+    setState(() {
+      _leaderboardFuture = _db.getFilteredLeaderboard(
+        gameName: _selectedGameFilter,
+        timePeriod: _selectedTimeFilter,
+      );
+    });
   }
 
   Future<void> _loadCachedUserData() async {
@@ -183,14 +198,125 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
               _buildUserCard(username, email),
               const SizedBox(height: 32),
 
-              // Leaderboard header
-              const Row(
+              // Filter Dropdowns Row
+              Row(
                 children: [
-                  Icon(Icons.emoji_events_rounded, color: AppColors.accent, size: 24),
-                  SizedBox(width: 8),
+                  // Game Filter
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String?>(
+                          value: _selectedGameFilter,
+                          hint: const Text('Tất cả trò chơi', style: TextStyle(fontSize: 13)),
+                          isExpanded: true,
+                          style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+                          borderRadius: BorderRadius.circular(12),
+                          items: const [
+                            DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text('Tất cả trò chơi'),
+                            ),
+                            DropdownMenuItem<String?>(
+                              value: 'flashcard_speed',
+                              child: Text('Flashcard Speed Run'),
+                            ),
+                            DropdownMenuItem<String?>(
+                              value: 'memory_match',
+                              child: Text('Memory Match'),
+                            ),
+                            DropdownMenuItem<String?>(
+                              value: 'picture_guess',
+                              child: Text('Picture Guess'),
+                            ),
+                            DropdownMenuItem<String?>(
+                              value: 'counting',
+                              child: Text('Đếm Số Nhanh'),
+                            ),
+                            DropdownMenuItem<String?>(
+                              value: 'math_ops',
+                              child: Text('Thêm Bớt Vui Nhộn'),
+                            ),
+                            DropdownMenuItem<String?>(
+                              value: 'comparison',
+                              child: Text('So Sánh Trái Phải'),
+                            ),
+                            DropdownMenuItem<String?>(
+                              value: 'math_crossword',
+                              child: Text('Ô Chữ Toán Học'),
+                            ),
+                          ],
+                          onChanged: (val) {
+                            setState(() {
+                              _selectedGameFilter = val;
+                              _updateLeaderboard();
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Time Filter
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedTimeFilter,
+                          isExpanded: true,
+                          style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+                          borderRadius: BorderRadius.circular(12),
+                          items: const [
+                            DropdownMenuItem<String>(
+                              value: 'all',
+                              child: Text('Tất cả thời gian'),
+                            ),
+                            DropdownMenuItem<String>(
+                              value: 'month',
+                              child: Text('Tháng này'),
+                            ),
+                            DropdownMenuItem<String>(
+                              value: 'year',
+                              child: Text('Năm nay'),
+                            ),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() {
+                                _selectedTimeFilter = val;
+                                _updateLeaderboard();
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Leaderboard header
+              Row(
+                children: [
+                  const Icon(Icons.emoji_events_rounded, color: AppColors.accent, size: 24),
+                  const SizedBox(width: 8),
                   Text(
-                    'Bảng Xếp Hạng Tháng 🏆',
-                    style: TextStyle(
+                    _selectedTimeFilter == 'month'
+                        ? 'Bảng Xếp Hạng Tháng 🏆'
+                        : (_selectedTimeFilter == 'year' ? 'Bảng Xếp Hạng Năm 🏆' : 'Bảng Xếp Hạng Tổng Hợp 🏆'),
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
