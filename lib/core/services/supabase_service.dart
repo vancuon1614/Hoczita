@@ -383,7 +383,7 @@ class SupabaseService {
 
       var query = client
           .from('game_scores')
-          .select('score, game_name, created_at, profiles(username)');
+          .select('score, game_name, completed_at, profiles(username)');
 
       if (gameName != null) {
         query = query.eq('game_name', gameName);
@@ -398,7 +398,7 @@ class SupabaseService {
       }
 
       if (startDate != null) {
-        query = query.gte('created_at', startDate.toIso8601String());
+        query = query.gte('completed_at', startDate.toIso8601String());
       }
 
       final response = await query;
