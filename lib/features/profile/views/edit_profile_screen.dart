@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../auth/providers/auth_provider.dart';
+import 'cccd_qr_scanner_dialog.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -397,6 +398,171 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     }
   }
 
+  void _startCccdQrScan() async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => const CccdQrScannerDialog(),
+    );
+
+    if (result != null && result.isNotEmpty) {
+      _parseCccdData(result);
+    }
+  }
+
+  void _parseCccdData(String data) {
+    try {
+      // Định dạng mã QR CCCD: Số_CCCD|Số_CMND_cũ|Họ_tên|Ngày_sinh|Giới_tính|Địa_chỉ_thường_trú|Ngày_cấp
+      final parts = data.split('|');
+      if (parts.length >= 7) {
+        setState(() {
+          // 1. Số CCCD
+          _idCardController.text = parts[0].trim();
+          
+          // 2. Họ và tên
+          _fullNameController.text = parts[2].trim();
+          
+          // 3. Ngày sinh (DDMMYYYY -> DD/MM/YYYY)
+          final dobRaw = parts[3].trim();
+          if (dobRaw.length == 8) {
+            _dobController.text = '${dobRaw.substring(0, 2)}/${dobRaw.substring(2, 4)}/${dobRaw.substring(4, 8)}';
+          }
+          
+          // 4. Giới tính (Nam/Nữ)
+          final genderRaw = parts[4].trim();
+          if (genderRaw.toLowerCase() == 'nam') {
+            _genderController.text = 'NAM';
+          } else if (genderRaw.toLowerCase() == 'nữ') {
+            _genderController.text = 'NỮ';
+          } else {
+            _genderController.text = genderRaw;
+          }
+          
+          // 5. Ngày cấp CCCD (DDMMYYYY -> DD/MM/YYYY)
+          final issueDateRaw = parts[6].trim();
+          if (issueDateRaw.length == 8) {
+            _idCardDateController.text = '${issueDateRaw.substring(0, 2)}/${issueDateRaw.substring(2, 4)}/${issueDateRaw.substring(4, 8)}';
+          }
+          
+          // 6. Nơi cấp CCCD
+          _idCardPlaceController.text = 'Cục Cảnh sát QLHC về TTXH';
+          
+          // 7. Địa chỉ thường trú
+          final fullAddress = parts[5].trim();
+          _parseAddress(fullAddress);
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đọc mã CCCD thành công và tự động điền thông tin! 🎉'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      } else {
+        throw Exception('Định dạng mã QR CCCD không hợp lệ');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Không thể phân tích dữ liệu CCCD: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  void _parseAddress(String fullAddress) async {
+    final addressParts = fullAddress.split(',').map((e) => e.trim()).toList();
+    if (addressParts.length >= 3) {
+      final provinceName = addressParts.last;
+      final districtName = addressParts[addressParts.length - 2];
+      final wardName = addressParts[addressParts.length - 3];
+      
+      // Số nhà và tên đường
+      final remainingParts = addressParts.sublist(0, addressParts.length - 3);
+      String streetDetail = remainingParts.join(', ');
+      
+      _addressController.text = streetDetail;
+      _streetController.text = ''; // Để trống hoặc gộp chung vào địa chỉ chi tiết
+      
+      // Tìm kiếm Tỉnh/Thành phố tương ứng
+      final matchedProvince = _provinceList.firstWhere(
+        (p) => p['title'].toString().toLowerCase().contains(provinceName.toLowerCase()) || 
+               provinceName.toLowerCase().contains(p['title'].toString().toLowerCase()),
+        orElse: () => {},
+      );
+
+      if (matchedProvince.isNotEmpty) {
+        final provinceId = matchedProvince['id'].toString();
+        setState(() {
+          _provinceController.text = matchedProvince['title'].toString();
+          _selectedProvinceId = provinceId;
+          _districtController.clear();
+          _selectedDistrictId = null;
+          _districtList = [];
+          _wardController.clear();
+          _wardList = [];
+        });
+
+        // Load Quận/Huyện từ API
+        final districts = await ApiService.instance.getAdministratives(provinceId: provinceId);
+        setState(() {
+          _districtList = districts;
+        });
+
+        // Tìm Quận/Huyện tương ứng
+        final matchedDistrict = _districtList.firstWhere(
+          (d) => d['title'].toString().toLowerCase().contains(districtName.toLowerCase()) ||
+                 districtName.toLowerCase().contains(d['title'].toString().toLowerCase()),
+          orElse: () => {},
+        );
+
+        if (matchedDistrict.isNotEmpty) {
+          final districtId = matchedDistrict['id'].toString();
+          setState(() {
+            _districtController.text = matchedDistrict['title'].toString();
+            _selectedDistrictId = districtId;
+          });
+
+          // Load Phường/Xã từ API
+          final wards = await ApiService.instance.getAdministratives(districtId: districtId);
+          setState(() {
+            _wardList = wards;
+          });
+
+          // Tìm Phường/Xã tương ứng
+          final matchedWard = _wardList.firstWhere(
+            (w) => w['title'].toString().toLowerCase().contains(wardName.toLowerCase()) ||
+                   wardName.toLowerCase().contains(w['title'].toString().toLowerCase()),
+            orElse: () => {},
+          );
+
+          if (matchedWard.isNotEmpty) {
+            setState(() {
+              _wardController.text = matchedWard['title'].toString();
+            });
+          } else {
+            setState(() {
+              _wardController.text = wardName;
+            });
+          }
+        } else {
+          setState(() {
+            _districtController.text = districtName;
+            _wardController.text = wardName;
+          });
+        }
+      } else {
+        setState(() {
+          _provinceController.text = provinceName;
+          _districtController.text = districtName;
+          _wardController.text = wardName;
+        });
+      }
+    } else {
+      _addressController.text = fullAddress;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -457,9 +623,30 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       const SizedBox(height: 16),
                       
                       const Divider(height: 32),
-                      const Text(
-                        'Chứng minh nhân dân (CMND)',
-                        style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Chứng minh nhân dân (CMND/CCCD)',
+                            style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 16),
+                          ),
+                          TextButton.icon(
+                            onPressed: _startCccdQrScan,
+                            icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                            label: const Text(
+                              'Quét QR CCCD',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.success,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                side: const BorderSide(color: AppColors.success),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 12),
                       _buildTextField(_idCardController, 'Số CMND', 'Nhập số CMND'),

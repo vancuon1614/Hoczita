@@ -52,7 +52,7 @@ class ApiService {
   }
 
   // 1. Đăng nhập hệ thống (nks/user/login)
-  // URL: https://account.nks.vn/api/user/login
+  // URL: https://account.nks.vn/api/nks/user/login
   // Method: POST
   Future<Map<String, dynamic>> login({
     required String username,
@@ -63,7 +63,7 @@ class ApiService {
     String ipAddress = '127.0.0.1',
     String location = '10.7789,106.6880',
   }) async {
-    final url = Uri.parse('$_accountBaseUrl/user/login');
+    final url = Uri.parse('$_accountBaseUrl/nks/user/login');
     try {
       final response = await http.post(
         url,

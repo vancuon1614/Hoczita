@@ -182,7 +182,7 @@ class _AdvisingBookingScreenState extends State<AdvisingBookingScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              '📧 Email thông báo đã được gửi cho Admin (system@nks.vn) và Khách hàng (${_emailController.text}).',
+              '📧 Email thông báo đã được gửi cho Admin (vanncuong1614@gmail.com) và Khách hàng (${_emailController.text}).',
               style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
           ],
