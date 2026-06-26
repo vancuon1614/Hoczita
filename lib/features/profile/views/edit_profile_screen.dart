@@ -5,7 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../auth/providers/auth_provider.dart';
-import 'cccd_qr_scanner_dialog.dart';
+import 'cccd_ocr_dialog.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -398,68 +398,49 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     }
   }
 
-  void _startCccdQrScan() async {
-    final result = await showDialog<String>(
+  void _startCccdOcr() async {
+    final result = await showDialog<Map<String, String>>(
       context: context,
-      builder: (context) => const CccdQrScannerDialog(),
+      builder: (context) => const CccdOcrDialog(),
     );
 
-    if (result != null && result.isNotEmpty) {
-      _parseCccdData(result);
+    if (result != null) {
+      _fillCccdFromOcr(result);
     }
   }
 
-  void _parseCccdData(String data) {
+  void _fillCccdFromOcr(Map<String, String> ocrData) {
     try {
-      // Định dạng mã QR CCCD: Số_CCCD|Số_CMND_cũ|Họ_tên|Ngày_sinh|Giới_tính|Địa_chỉ_thường_trú|Ngày_cấp
-      final parts = data.split('|');
-      if (parts.length >= 7) {
-        setState(() {
-          // 1. Số CCCD
-          _idCardController.text = parts[0].trim();
-          
-          // 2. Họ và tên
-          _fullNameController.text = parts[2].trim();
-          
-          // 3. Ngày sinh (DDMMYYYY -> DD/MM/YYYY)
-          final dobRaw = parts[3].trim();
-          if (dobRaw.length == 8) {
-            _dobController.text = '${dobRaw.substring(0, 2)}/${dobRaw.substring(2, 4)}/${dobRaw.substring(4, 8)}';
-          }
-          
-          // 4. Giới tính (Nam/Nữ)
-          final genderRaw = parts[4].trim();
-          if (genderRaw.toLowerCase() == 'nam') {
-            _genderController.text = 'NAM';
-          } else if (genderRaw.toLowerCase() == 'nữ') {
-            _genderController.text = 'NỮ';
-          } else {
-            _genderController.text = genderRaw;
-          }
-          
-          // 5. Ngày cấp CCCD (DDMMYYYY -> DD/MM/YYYY)
-          final issueDateRaw = parts[6].trim();
-          if (issueDateRaw.length == 8) {
-            _idCardDateController.text = '${issueDateRaw.substring(0, 2)}/${issueDateRaw.substring(2, 4)}/${issueDateRaw.substring(4, 8)}';
-          }
-          
-          // 6. Nơi cấp CCCD
-          _idCardPlaceController.text = 'Cục Cảnh sát QLHC về TTXH';
-          
-          // 7. Địa chỉ thường trú
-          final fullAddress = parts[5].trim();
-          _parseAddress(fullAddress);
-        });
+      setState(() {
+        if (ocrData['idNumber'] != null && ocrData['idNumber']!.isNotEmpty) {
+          _idCardController.text = ocrData['idNumber']!;
+        }
+        if (ocrData['fullName'] != null && ocrData['fullName']!.isNotEmpty) {
+          _fullNameController.text = ocrData['fullName']!;
+        }
+        if (ocrData['dob'] != null && ocrData['dob']!.isNotEmpty) {
+          _dobController.text = ocrData['dob']!;
+        }
+        if (ocrData['gender'] != null && ocrData['gender']!.isNotEmpty) {
+          _genderController.text = ocrData['gender']!;
+        }
+        if (ocrData['issueDate'] != null && ocrData['issueDate']!.isNotEmpty) {
+          _idCardDateController.text = ocrData['issueDate']!;
+        }
+        if (ocrData['issuePlace'] != null && ocrData['issuePlace']!.isNotEmpty) {
+          _idCardPlaceController.text = ocrData['issuePlace']!;
+        }
+        if (ocrData['address'] != null && ocrData['address']!.isNotEmpty) {
+          _parseAddress(ocrData['address']!);
+        }
+      });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đọc mã CCCD thành công và tự động điền thông tin! 🎉'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-      } else {
-        throw Exception('Định dạng mã QR CCCD không hợp lệ');
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đọc thông tin CCCD từ ảnh thành công! 🎉'),
+          backgroundColor: AppColors.success,
+        ),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -631,19 +612,18 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                             style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 16),
                           ),
                           TextButton.icon(
-                            onPressed: _startCccdQrScan,
-                            icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                            onPressed: _startCccdOcr,
+                            icon: const Icon(Icons.document_scanner_rounded, size: 18),
                             label: const Text(
-                              'Quét QR CCCD',
+                              'Đọc từ ảnh CCCD',
                               style: TextStyle(fontWeight: FontWeight.bold),
                             ),
                             style: TextButton.styleFrom(
                               foregroundColor: AppColors.success,
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                side: const BorderSide(color: AppColors.success),
-                              ),
+                                  borderRadius: BorderRadius.circular(8),
+                                  side: const BorderSide(color: AppColors.success)),
                             ),
                           ),
                         ],

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 
@@ -13,6 +14,7 @@ class CrosswordCell {
   final String correctVal; // e.g., "5", "+", "="
   String userVal; // empty string initially for input numbers
   bool isHint; // true if pre-filled, false if input needed
+  late final TextEditingController controller;
 
   CrosswordCell({
     required this.row,
@@ -21,7 +23,9 @@ class CrosswordCell {
     required this.correctVal,
     this.userVal = '',
     this.isHint = false,
-  });
+  }) {
+    controller = TextEditingController(text: userVal);
+  }
 
   bool get isCorrect => type != CellType.number || isHint || userVal == correctVal;
 }
@@ -80,9 +84,6 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
   int _gridCols = 0;
   List<List<CrosswordCell>> _grid = [];
   final List<CrosswordEquation> _equations = [];
-  
-  int? _selectedCellRow;
-  int? _selectedCellCol;
 
   final Stopwatch _stopwatch = Stopwatch();
   late Timer _timer;
@@ -92,21 +93,41 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
 
   @override
   void dispose() {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
     if (_isPlaying) {
       _timer.cancel();
     }
     _stopwatch.stop();
+    
+    // Dispose cell controllers
+    for (var row in _grid) {
+      for (var cell in row) {
+        if (cell.type == CellType.number && !cell.isHint) {
+          cell.controller.dispose();
+        }
+      }
+    }
     super.dispose();
   }
 
   void _selectDifficulty(int difficulty) {
+    if (difficulty == 10 || difficulty == 20) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    } else {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+      ]);
+    }
     setState(() {
       _selectedDifficulty = difficulty;
       _isPlaying = true;
       _isGameOver = false;
       _isSavingScore = false;
-      _selectedCellRow = null;
-      _selectedCellCol = null;
     });
     _generatePuzzle(difficulty);
     _stopwatch.reset();
@@ -412,31 +433,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
     }
   }
 
-  void _selectCell(int r, int c) {
-    if (_grid[r][c].type != CellType.number || _grid[r][c].isHint) return;
-    setState(() {
-      _selectedCellRow = r;
-      _selectedCellCol = c;
-    });
-  }
 
-  void _inputDigit(String digit) {
-    if (_selectedCellRow == null || _selectedCellCol == null) return;
-    final cell = _grid[_selectedCellRow!][_selectedCellCol!];
-    
-    setState(() {
-      if (digit == 'X') {
-        cell.userVal = '';
-      } else {
-        // limit to 3 digits maximum
-        if (cell.userVal.length < 3) {
-          cell.userVal += digit;
-        }
-      }
-    });
-
-    _checkWinState();
-  }
 
   bool _checkAllEquationsSatisfied() {
     // 1. Check if all number cells are filled
@@ -467,58 +464,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
     }
   }
 
-  void _handleSubmit() {
-    // Clear selection
-    setState(() {
-      _selectedCellRow = null;
-      _selectedCellCol = null;
-    });
 
-    // Check if there are empty number cells
-    bool hasEmpty = false;
-    for (int r = 0; r < _gridRows; r++) {
-      for (int c = 0; c < _gridCols; c++) {
-        final cell = _grid[r][c];
-        if (cell.type == CellType.number && !cell.isHint && cell.userVal.isEmpty) {
-          hasEmpty = true;
-          break;
-        }
-      }
-    }
-
-    if (hasEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bé hãy điền đầy đủ các ô số còn thiếu nhé! 🔢'),
-          backgroundColor: AppColors.error,
-          duration: Duration(seconds: 2),
-        ),
-      );
-      return;
-    }
-
-    // Check if all equations are satisfied
-    bool allSatisfied = true;
-    for (final eq in _equations) {
-      if (!eq.isSatisfied) {
-        allSatisfied = false;
-        break;
-      }
-    }
-
-    if (!allSatisfied) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Có một số ô chưa chính xác, bé hãy kiểm tra lại nhé! ❌'),
-          backgroundColor: AppColors.error,
-          duration: Duration(seconds: 2),
-        ),
-      );
-    } else {
-      // All correct!
-      _endGameAndSaveScore();
-    }
-  }
 
   void _endGameAndSaveScore() async {
     _stopwatch.stop();
@@ -642,13 +588,15 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
         ),
         actions: [
           Container(
+            width: 85, // Fixed width to prevent shifting layout
             margin: const EdgeInsets.only(right: 20),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            padding: const EdgeInsets.symmetric(vertical: 6),
             decoration: BoxDecoration(
               color: AppColors.primaryLight,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(Icons.timer_outlined, size: 16, color: AppColors.primary),
                 const SizedBox(width: 6),
@@ -701,9 +649,6 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
                 ),
               ),
             ),
-
-            // Numeric Keypad
-            _buildNumericKeypad(),
           ],
         ),
       ),
@@ -860,9 +805,6 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
       }
     }
 
-    // Style logic
-    final isSelected = cell.row == _selectedCellRow && cell.col == _selectedCellCol;
-    
     Color backColor = Colors.white;
     Color borderColor = AppColors.border;
     Color textColor = AppColors.textPrimary;
@@ -878,11 +820,6 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
           borderColor = AppColors.success;
           textColor = AppColors.success;
           borderWidth = 2.0;
-        } else if (isSelected) {
-          backColor = AppColors.primaryLight;
-          borderColor = AppColors.primary;
-          textColor = AppColors.primary;
-          borderWidth = 2.5;
         }
       }
     } else {
@@ -893,16 +830,8 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
       }
     }
 
-    String displayText = '';
-    if (cell.type == CellType.number) {
-      displayText = cell.isHint ? cell.correctVal : cell.userVal;
-    } else {
-      displayText = cell.correctVal;
-    }
-
-    return GestureDetector(
-      onTap: () => _selectCell(cell.row, cell.col),
-      child: AnimatedContainer(
+    if (cell.type == CellType.number && !cell.isHint) {
+      return AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         width: 42,
         height: 42,
@@ -910,98 +839,79 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
         decoration: BoxDecoration(
           color: backColor,
           borderRadius: BorderRadius.circular(10),
-          border: cell.type == CellType.number ? Border.all(color: borderColor, width: borderWidth) : null,
-          boxShadow: (cell.type == CellType.number && !cell.isHint)
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  )
-                ]
-              : null,
+          border: Border.all(color: borderColor, width: borderWidth),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            )
+          ],
         ),
         alignment: Alignment.center,
-        child: Text(
-          displayText,
+        child: TextField(
+          controller: cell.controller,
+          keyboardType: const TextInputType.numberWithOptions(signed: true),
+          inputFormatters: [
+            TextInputFormatter.withFunction((oldValue, newValue) {
+              final text = newValue.text;
+              if (text.isEmpty) return newValue;
+              if (RegExp(r'^-?\d*$').hasMatch(text)) {
+                return newValue;
+              }
+              return oldValue;
+            }),
+          ],
+          textAlign: TextAlign.center,
+          maxLength: 3,
           style: TextStyle(
-            fontSize: cell.type == CellType.number ? 16 : 18,
-            fontWeight: cell.type == CellType.number ? FontWeight.bold : FontWeight.w900,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
             color: textColor,
           ),
+          decoration: const InputDecoration(
+            border: InputBorder.none,
+            counterText: '',
+            contentPadding: EdgeInsets.zero,
+          ),
+          onChanged: (val) {
+            cell.userVal = val;
+            _checkWinState();
+          },
+        ),
+      );
+    }
+
+    String displayText = '';
+    if (cell.type == CellType.number) {
+      displayText = cell.correctVal;
+    } else {
+      displayText = cell.correctVal;
+    }
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: 42,
+      height: 42,
+      margin: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: backColor,
+        borderRadius: BorderRadius.circular(10),
+        border: cell.type == CellType.number ? Border.all(color: borderColor, width: borderWidth) : null,
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        displayText,
+        style: TextStyle(
+          fontSize: cell.type == CellType.number ? 16 : 18,
+          fontWeight: cell.type == CellType.number ? FontWeight.bold : FontWeight.w900,
+          color: textColor,
         ),
       ),
     );
   }
 
-  Widget _buildNumericKeypad() {
-    final keys = [
-      ['1', '2', '3'],
-      ['4', '5', '6'],
-      ['7', '8', '9'],
-      ['X', '0', '✓'],
-    ];
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: AppColors.border, width: 1.5)),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(32),
-          topRight: Radius.circular(32),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: keys.map((rowKeys) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              children: rowKeys.map((key) {
-                final isSpecial = key == 'X' || key == '✓';
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: InkWell(
-                      onTap: () {
-                        if (key == '✓') {
-                          _handleSubmit();
-                        } else {
-                          _inputDigit(key);
-                        }
-                      },
-                      borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          color: isSpecial 
-                              ? (key == 'X' ? Colors.red.shade50 : Colors.green.shade50) 
-                              : AppColors.background,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          key,
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: isSpecial 
-                                ? (key == 'X' ? Colors.red.shade700 : Colors.green.shade700) 
-                                : AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
+  // Removed unused keypad method
 
   Widget _buildSummaryView() {
     return Scaffold(

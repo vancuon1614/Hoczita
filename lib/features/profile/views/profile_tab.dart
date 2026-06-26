@@ -7,6 +7,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/services/api_service.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../learn/views/advising_booking_screen.dart';
 import 'profile_detail_screen.dart';
 
 class ProfileTab extends ConsumerStatefulWidget {
@@ -196,7 +197,74 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             children: [
               // User info card
               _buildUserCard(username, email),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
+
+              // 1:1 Advising Booking Banner
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.15),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AdvisingBookingScreen(),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(24),
+                    child: const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Tư Vấn 1:1 Với Giáo Viên 🧑‍🏫',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Đặt lịch hẹn trực tiếp để nhận lộ trình học tập tối ưu riêng biệt cho bé.',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
 
               // Filter Dropdowns Row
               Row(

@@ -335,52 +335,51 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
   Widget _buildQuestionPrompt(GameQuestion question) {
     // If it's a Left-Right Comparison question
     if (question.comparisonLeft != null && question.comparisonRight != null) {
-      return Expanded(
-        child: Column(
-          children: [
-            Text(
-              question.prompt,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            question.prompt,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
             ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: Row(
-                children: [
-                  // Left panel
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      alignment: Alignment.center,
-                      child: _buildVisualAsset(question.comparisonLeft!, height: 100.0, fontSize: 48.0),
-                    ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              // Left panel
+              Expanded(
+                child: Container(
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.border),
                   ),
-                  const SizedBox(width: 16),
-                  // Right panel
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      alignment: Alignment.center,
-                      child: _buildVisualAsset(question.comparisonRight!, height: 100.0, fontSize: 48.0),
-                    ),
-                  ),
-                ],
+                  alignment: Alignment.center,
+                  child: _buildVisualAsset(question.comparisonLeft!, height: 100.0, fontSize: 48.0),
+                ),
               ),
-            ),
-          ],
-        ),
+              const SizedBox(width: 16),
+              // Right panel
+              Expanded(
+                child: Container(
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  alignment: Alignment.center,
+                  child: _buildVisualAsset(question.comparisonRight!, height: 100.0, fontSize: 48.0),
+                ),
+              ),
+            ],
+          ),
+        ],
       );
     }
 
@@ -407,6 +406,31 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
   }
 
   Widget _buildChoicesGrid(GameQuestion question) {
+    if (widget.gameName == 'comparison') {
+      final choices = ['Bên trái', 'Bên phải', 'Bằng nhau'];
+      return Column(
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                _buildChoiceButton(0, question, choices[0]),
+                const SizedBox(width: 16),
+                _buildChoiceButton(1, question, choices[1]),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: Row(
+              children: [
+                _buildChoiceButton(2, question, choices[2]),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
     final choicesCount = question.choices.length;
     if (choicesCount == 4) {
       return Column(
@@ -478,8 +502,8 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
     }
   }
 
-  Widget _buildChoiceButton(int index, GameQuestion question) {
-    final choiceValue = question.choices[index];
+  Widget _buildChoiceButton(int index, GameQuestion question, [String? customValue]) {
+    final choiceValue = customValue ?? question.choices[index];
     final isCorrectAnswer = choiceValue == question.correctAnswer;
     
     Color buttonColor = Colors.white;
@@ -513,7 +537,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
             color: buttonColor,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: borderColor, width: 2.5),
-            boxShadow: (_selectedChoiceIndex == index || (_hasAnswered && isCorrectAnswer))
+            boxShadow: (_selectedChoiceIndex == index || (_hasAnswered && isCorrectAnswer && _selectedChoiceIndex != -1))
                 ? [
                     BoxShadow(
                       color: borderColor.withValues(alpha: 0.15),

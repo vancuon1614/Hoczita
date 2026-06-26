@@ -217,13 +217,15 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
         ),
         actions: [
           Container(
+            width: 85, // Fixed width to prevent shifting layout
             margin: const EdgeInsets.only(right: 20),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            padding: const EdgeInsets.symmetric(vertical: 6),
             decoration: BoxDecoration(
               color: AppColors.primaryLight,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(Icons.timer_outlined, size: 16, color: AppColors.primary),
                 const SizedBox(width: 6),
