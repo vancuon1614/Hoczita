@@ -34,10 +34,14 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
   bool _hasAnswered = false;
   bool _isGameOver = false;
   bool _isSavingScore = false;
+  late List<String?> _userAnswers;
 
   @override
   void initState() {
     super.initState();
+    
+    // Initialize user answers list
+    _userAnswers = List.filled(widget.questions.length, null);
     
     // Initialize 6-second timer controller
     _timerController = AnimationController(
@@ -83,8 +87,12 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
       _hasAnswered = true;
       _selectedChoiceIndex = choiceIndex;
       
+      if (choiceIndex != -1) {
+        _userAnswers[_currentQuestionIndex] = answerValue;
+      }
+      
       final currentQuestion = widget.questions[_currentQuestionIndex];
-      final isCorrect = answerValue == currentQuestion.correctAnswer;
+      final isCorrect = choiceIndex != -1 && answerValue == currentQuestion.correctAnswer;
       
       if (isCorrect) {
         _correctAnswersCount++;
@@ -252,11 +260,15 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                       ),
                     ],
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildQuestionPrompt(currentQuestion),
-                    ],
+                  child: Center(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildQuestionPrompt(currentQuestion),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -474,7 +486,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
     Color borderColor = AppColors.border;
     Color textColor = AppColors.textPrimary;
 
-    if (_hasAnswered) {
+    if (_hasAnswered && _selectedChoiceIndex != -1) {
       if (isCorrectAnswer) {
         // Correct answer always turns green
         buttonColor = AppColors.success.withValues(alpha: 0.12);
@@ -569,13 +581,11 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
 
     return Scaffold(
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Spacer(),
               // Trophy Icon
               Center(
                 child: Container(
@@ -687,7 +697,19 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                 ],
               ),
 
-              const Spacer(),
+              // Detailed results table
+              const SizedBox(height: 32),
+              const Text(
+                'Chi Tiết Kết Quả 📊',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildResultsTable(),
+              const SizedBox(height: 32),
               
               // End game action button
               ElevatedButton(
@@ -718,6 +740,103 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildResultsTable() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: List.generate(widget.questions.length, (index) {
+          final question = widget.questions[index];
+          final userAnswer = _userAnswers[index];
+          final isCorrect = userAnswer == question.correctAnswer;
+          
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: index < widget.questions.length - 1
+                  ? const Border(bottom: BorderSide(color: AppColors.border))
+                  : null,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Question index and icon
+                CircleAvatar(
+                  radius: 14,
+                  backgroundColor: isCorrect 
+                      ? AppColors.success.withValues(alpha: 0.1) 
+                      : AppColors.error.withValues(alpha: 0.1),
+                  child: Icon(
+                    isCorrect ? Icons.check_rounded : Icons.close_rounded,
+                    color: isCorrect ? AppColors.success : AppColors.error,
+                    size: 16,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                
+                // Question content and answers
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Câu ${index + 1}: ${question.prompt}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Text(
+                            'Đáp án đúng: ',
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                          Text(
+                            question.correctAnswer,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.success,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          const Text(
+                            'Bé chọn: ',
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                          Text(
+                            userAnswer ?? 'Hết giờ ⏳',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: isCorrect 
+                                  ? AppColors.success 
+                                  : (userAnswer == null ? Colors.orange : AppColors.error),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
       ),
     );
   }

@@ -19,29 +19,25 @@ class LearnTab extends ConsumerWidget {
     final isLoggedIn = authState.status == AuthStatus.authenticated;
 
     return Scaffold(
-      body: Stack(
-        children: [
-          // Background blue header gradient
-          Container(
-            height: 100,
-            decoration: const BoxDecoration(
-              gradient: AppColors.primaryGradient,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(36),
-                bottomRight: Radius.circular(36),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with blue gradient
+            Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(36),
+                  bottomRight: Radius.circular(36),
+                ),
               ),
-            ),
-          ),
-
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
-                  // Welcome Header
-                  Row(
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Column(
@@ -103,9 +99,17 @@ class LearnTab extends ConsumerWidget {
                         ),
                     ],
                   ),
-                  const SizedBox(
-                    height: 40,
-                  ), // Spacing to push below the header curve
+                ),
+              ),
+            ),
+
+            // Content below header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 24),
                   // Main Title
                   const Text(
                     'Toán Lớp 1 📚',
@@ -238,8 +242,8 @@ class LearnTab extends ConsumerWidget {
                 ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
