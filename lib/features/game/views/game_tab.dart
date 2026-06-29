@@ -8,6 +8,7 @@ import '../constants/game_content.dart';
 import 'multiple_choice_game_screen.dart';
 import 'memory_match_game_screen.dart';
 import 'math_crossword_game_screen.dart';
+import 'english_crossword_game_screen.dart';
 
 
 class GameTab extends ConsumerStatefulWidget {
@@ -27,6 +28,7 @@ class _GameTabState extends ConsumerState<GameTab> {
     'math_ops': 0,
     'comparison': 0,
     'math_crossword': 0,
+    'english_crossword': 0,
   };
   bool _isLoading = true;
 
@@ -52,6 +54,7 @@ class _GameTabState extends ConsumerState<GameTab> {
         'math_ops': 0,
         'comparison': 0,
         'math_crossword': 0,
+        'english_crossword': 0,
       };
 
       for (final scoreEntry in scores) {
@@ -195,7 +198,21 @@ class _GameTabState extends ConsumerState<GameTab> {
               ),
             ),
           ),
-          const SizedBox(height: 40), // Avoid floating nav bar overlap
+          const SizedBox(height: 20),
+          _buildGameCard(
+            context: context,
+            title: 'Ô Chữ Tiếng Anh',
+            subtitle: 'Giải ô chữ bằng từ vựng Tiếng Anh theo các gợi ý tiếng Việt sinh động.',
+            icon: Icons.grid_on_rounded,
+            color: Colors.pink,
+            stars: _highestStars['english_crossword'] ?? 0,
+            animationType: GameAnimationType.swing,
+            imagePath: 'ImageFolder/crossword.gif',
+            onTap: () => _playGame(
+              const EnglishCrosswordGameScreen(),
+            ),
+          ),
+          const SizedBox(height: 100), // Avoid floating nav bar overlap
         ],
       ),
     );
@@ -270,11 +287,12 @@ class _GameTabState extends ConsumerState<GameTab> {
             color: Colors.purple,
             stars: _highestStars['math_crossword'] ?? 0,
             animationType: GameAnimationType.swing,
+            imagePath: 'ImageFolder/crossword.gif',
             onTap: () => _playGame(
               const MathCrosswordGameScreen(),
             ),
           ),
-          const SizedBox(height: 40), // Avoid floating nav bar overlap
+          const SizedBox(height: 100), // Avoid floating nav bar overlap
         ],
       ),
     );

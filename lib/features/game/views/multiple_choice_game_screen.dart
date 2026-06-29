@@ -29,6 +29,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
   int _currentQuestionIndex = 0;
   int _correctAnswersCount = 0;
   int _score = 0;
+  int _stars = 0;
   
   int? _selectedChoiceIndex;
   bool _hasAnswered = false;
@@ -99,8 +100,8 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
       }
     });
 
-    // Pause for 1.2s to show correct/incorrect state, then advance
-    Future.delayed(const Duration(milliseconds: 1200), () {
+    // Pause for 300ms to show selected state, then advance
+    Future.delayed(const Duration(milliseconds: 300), () {
       if (!mounted) return;
       if (_currentQuestionIndex < widget.questions.length - 1) {
         setState(() {
@@ -123,32 +124,26 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
       _isSavingScore = true;
     });
 
-    int stars = 0;
-    if (_correctAnswersCount > 0) {
-      if (totalElapsedSeconds <= 20) {
-        stars = 3;
-      } else if (totalElapsedSeconds <= 40) {
-        stars = 2;
-      } else {
-        stars = 1;
-      }
+    final totalQuestions = widget.questions.length;
+    final accuracyPct = totalQuestions > 0 ? _correctAnswersCount / totalQuestions : 0.0;
+
+    if (accuracyPct == 1.0) {
+      _stars = 3;
+    } else if (accuracyPct >= 0.7) {
+      _stars = 2;
+    } else if (accuracyPct >= 0.4) {
+      _stars = 1;
+    } else {
+      _stars = 0;
     }
 
-    int basePoints = 0;
-    if (stars == 3) {
-      basePoints = 30;
-    } else if (stars == 2) {
-      basePoints = 20;
-    } else if (stars == 1) {
-      basePoints = 10;
-    }
-
-    _score = (basePoints * _correctAnswersCount) ~/ 10;
+    // Mỗi câu trả lời đúng được cộng 3 điểm để khích lệ bé học tập
+    _score = _correctAnswersCount * 3;
 
     try {
       await SupabaseService.instance.saveScore(
         gameName: widget.gameName,
-        stars: stars,
+        stars: _stars,
         score: _score,
       );
     } catch (e) {
@@ -504,25 +499,12 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
 
   Widget _buildChoiceButton(int index, GameQuestion question, [String? customValue]) {
     final choiceValue = customValue ?? question.choices[index];
-    final isCorrectAnswer = choiceValue == question.correctAnswer;
     
     Color buttonColor = Colors.white;
     Color borderColor = AppColors.border;
     Color textColor = AppColors.textPrimary;
 
-    if (_hasAnswered && _selectedChoiceIndex != -1) {
-      if (isCorrectAnswer) {
-        // Correct answer always turns green
-        buttonColor = AppColors.success.withValues(alpha: 0.12);
-        borderColor = AppColors.success;
-        textColor = AppColors.success;
-      } else if (_selectedChoiceIndex == index) {
-        // Selected incorrect answer turns red
-        buttonColor = AppColors.error.withValues(alpha: 0.12);
-        borderColor = AppColors.error;
-        textColor = AppColors.error;
-      }
-    } else if (_selectedChoiceIndex == index) {
+    if (_selectedChoiceIndex == index) {
       buttonColor = AppColors.primaryLight;
       borderColor = AppColors.primary;
       textColor = AppColors.primary;
@@ -537,7 +519,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
             color: buttonColor,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: borderColor, width: 2.5),
-            boxShadow: (_selectedChoiceIndex == index || (_hasAnswered && isCorrectAnswer && _selectedChoiceIndex != -1))
+            boxShadow: _selectedChoiceIndex == index
                 ? [
                     BoxShadow(
                       color: borderColor.withValues(alpha: 0.15),
@@ -591,29 +573,19 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
   }
 
   Widget _buildSummaryView() {
-    final totalElapsedSeconds = double.tryParse(_elapsedTimeString) ?? 0.0;
-    int stars = 0;
-    if (_correctAnswersCount > 0) {
-      if (totalElapsedSeconds <= 20) {
-        stars = 3;
-      } else if (totalElapsedSeconds <= 40) {
-        stars = 2;
-      } else {
-        stars = 1;
-      }
-    }
+    final stars = _stars;
 
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Trophy Icon
               Center(
                 child: Container(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: stars > 0 ? const Color(0xFFFFF9E6) : AppColors.primaryLight,
                     shape: BoxShape.circle,
@@ -621,32 +593,32 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                   child: Icon(
                     stars > 0 ? Icons.emoji_events_rounded : Icons.sentiment_dissatisfied_rounded,
                     color: stars > 0 ? Colors.amber : AppColors.primary,
-                    size: 80,
+                    size: 56,
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               
               Text(
                 stars > 0 ? 'Tuyệt Vời! 🎉' : 'Cố Gắng Lên Bé Ơi!',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 28,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               
               Text(
                 'Bé đã trả lời đúng $_correctAnswersCount/${widget.questions.length} câu đố trong ${_elapsedTimeString}s.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
                   color: AppColors.textSecondary,
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 12),
 
               // Animated Star Rating
               Row(
@@ -654,42 +626,42 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                 children: List.generate(3, (index) {
                   final active = index < stars;
                   return AnimatedScale(
-                    scale: active ? 1.3 : 1.0,
+                    scale: active ? 1.2 : 1.0,
                     duration: Duration(milliseconds: 300 + (index * 150)),
                     curve: Curves.elasticOut,
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
                       child: Icon(
                         Icons.star_rounded,
-                        size: 48,
+                        size: 36,
                         color: active ? Colors.amber : AppColors.border,
                       ),
                     ),
                   );
                 }),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 16),
 
               // Time & Score Cards
               Row(
                 children: [
                   Expanded(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
                         color: AppColors.primaryLight,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: Column(
                         children: [
                           const Text(
                             'Thời gian',
-                            style: TextStyle(fontSize: 13, color: AppColors.primary),
+                            style: TextStyle(fontSize: 12, color: AppColors.primary),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 2),
                           Text(
                             '${_elapsedTimeString}s',
-                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primary),
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
                           ),
                         ],
                       ),
@@ -698,21 +670,21 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                   const SizedBox(width: 16),
                   Expanded(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
                         color: const Color(0xFFE8F8F5),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: Column(
                         children: [
                           const Text(
                             'Điểm cộng',
-                            style: TextStyle(fontSize: 13, color: AppColors.success),
+                            style: TextStyle(fontSize: 12, color: AppColors.success),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 2),
                           Text(
                             '+$_score',
-                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.success),
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.success),
                           ),
                         ],
                       ),
@@ -722,18 +694,18 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
               ),
 
               // Detailed results table
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
               const Text(
                 'Chi Tiết Kết Quả 📊',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               _buildResultsTable(),
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
               
               // End game action button
               ElevatedButton(
@@ -745,7 +717,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -769,99 +741,239 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
   }
 
   Widget _buildResultsTable() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 5,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 1.15,
       ),
-      child: Column(
-        children: List.generate(widget.questions.length, (index) {
-          final question = widget.questions[index];
-          final userAnswer = _userAnswers[index];
-          final isCorrect = userAnswer == question.correctAnswer;
-          
-          return Container(
-            padding: const EdgeInsets.all(16),
+      itemCount: widget.questions.length,
+      itemBuilder: (context, index) {
+        final question = widget.questions[index];
+        final userAnswer = _userAnswers[index];
+        final isCorrect = userAnswer == question.correctAnswer;
+
+        final Color color = isCorrect ? AppColors.success : AppColors.error;
+
+        return InkWell(
+          onTap: () => _showQuestionDetailDialog(index),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
             decoration: BoxDecoration(
-              border: index < widget.questions.length - 1
-                  ? const Border(bottom: BorderSide(color: AppColors.border))
-                  : null,
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Question index and icon
-                CircleAvatar(
-                  radius: 14,
-                  backgroundColor: isCorrect 
-                      ? AppColors.success.withValues(alpha: 0.1) 
-                      : AppColors.error.withValues(alpha: 0.1),
-                  child: Icon(
-                    isCorrect ? Icons.check_rounded : Icons.close_rounded,
-                    color: isCorrect ? AppColors.success : AppColors.error,
-                    size: 16,
-                  ),
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: color, width: 2.0),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
                 ),
-                const SizedBox(width: 12),
-                
-                // Question content and answers
-                Expanded(
+              ],
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '${index + 1}',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showQuestionDetailDialog(int index) {
+    final question = widget.questions[index];
+    final userAnswer = _userAnswers[index];
+    final List<String> choices = widget.gameName == 'comparison'
+        ? ['Bên trái', 'Bên phải', 'Bằng nhau']
+        : question.choices;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 400),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Câu hỏi ${index + 1}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
+                  ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (question.visualAsset != null) ...[
+                        _buildVisualAsset(question.visualAsset!, height: 80.0, fontSize: 36.0),
+                        const SizedBox(height: 12),
+                      ],
+                      if (question.comparisonLeft != null && question.comparisonRight != null) ...[
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                alignment: Alignment.center,
+                                child: _buildVisualAsset(question.comparisonLeft!, height: 60.0, fontSize: 32.0),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Container(
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                alignment: Alignment.center,
+                                child: _buildVisualAsset(question.comparisonRight!, height: 60.0, fontSize: 32.0),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                       Text(
-                        'Câu ${index + 1}: ${question.prompt}',
+                        question.prompt,
+                        textAlign: TextAlign.center,
                         style: const TextStyle(
-                          fontSize: 14,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          const Text(
-                            'Đáp án đúng: ',
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                          ),
-                          Text(
-                            question.correctAnswer,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.success,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          const Text(
-                            'Bé chọn: ',
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                          ),
-                          Text(
-                            userAnswer ?? 'Hết giờ ⏳',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: isCorrect 
-                                  ? AppColors.success 
-                                  : (userAnswer == null ? Colors.orange : AppColors.error),
-                            ),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Các đáp án:',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Column(
+                  children: choices.map((choice) {
+                    final isCorrectAnswer = choice == question.correctAnswer;
+                    final isUserSelection = choice == userAnswer;
+                    
+                    Color itemBgColor = AppColors.background;
+                    Color itemBorderColor = AppColors.border.withValues(alpha: 0.5);
+                    Color itemTextColor = AppColors.textPrimary;
+                    Widget? suffixIcon;
+
+                    if (isCorrectAnswer) {
+                      itemBgColor = AppColors.success.withValues(alpha: 0.12);
+                      itemBorderColor = AppColors.success;
+                      itemTextColor = AppColors.success;
+                      suffixIcon = const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20);
+                    } else if (isUserSelection) {
+                      itemBgColor = AppColors.error.withValues(alpha: 0.12);
+                      itemBorderColor = AppColors.error;
+                      itemTextColor = AppColors.error;
+                      suffixIcon = const Icon(Icons.cancel_rounded, color: AppColors.error, size: 20);
+                    }
+
+                    return Container(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: itemBgColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: itemBorderColor, width: 1.5),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              choice,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: (isCorrectAnswer || isUserSelection)
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: itemTextColor,
+                              ),
+                            ),
+                          ),
+                          suffixIcon ?? const SizedBox.shrink(),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+                if (userAnswer == null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.timer_outlined, color: Colors.orange, size: 16),
+                        SizedBox(width: 8),
+                        Text(
+                          'Bé đã không chọn đáp án (Hết giờ ⏳)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
-          );
-        }),
-      ),
+          ),
+        );
+      },
     );
   }
 }

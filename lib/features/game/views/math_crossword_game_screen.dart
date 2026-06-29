@@ -14,7 +14,6 @@ class CrosswordCell {
   final String correctVal; // e.g., "5", "+", "="
   String userVal; // empty string initially for input numbers
   bool isHint; // true if pre-filled, false if input needed
-  late final TextEditingController controller;
 
   CrosswordCell({
     required this.row,
@@ -23,9 +22,7 @@ class CrosswordCell {
     required this.correctVal,
     this.userVal = '',
     this.isHint = false,
-  }) {
-    controller = TextEditingController(text: userVal);
-  }
+  });
 
   bool get isCorrect => type != CellType.number || isHint || userVal == correctVal;
 }
@@ -85,6 +82,9 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
   List<List<CrosswordCell>> _grid = [];
   final List<CrosswordEquation> _equations = [];
 
+  int? _selectedCellRow;
+  int? _selectedCellCol;
+
   final Stopwatch _stopwatch = Stopwatch();
   late Timer _timer;
   String _elapsedTimeString = '0.0';
@@ -100,15 +100,6 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
       _timer.cancel();
     }
     _stopwatch.stop();
-    
-    // Dispose cell controllers
-    for (var row in _grid) {
-      for (var cell in row) {
-        if (cell.type == CellType.number && !cell.isHint) {
-          cell.controller.dispose();
-        }
-      }
-    }
     super.dispose();
   }
 
@@ -128,6 +119,8 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
       _isPlaying = true;
       _isGameOver = false;
       _isSavingScore = false;
+      _selectedCellRow = null;
+      _selectedCellCol = null;
     });
     _generatePuzzle(difficulty);
     _stopwatch.reset();
@@ -464,7 +457,37 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
     }
   }
 
+  void _selectCell(int r, int c) {
+    if (_grid[r][c].type != CellType.number || _grid[r][c].isHint) return;
+    setState(() {
+      _selectedCellRow = r;
+      _selectedCellCol = c;
+    });
+  }
 
+  void _inputDigit(String key) {
+    if (_selectedCellRow == null || _selectedCellCol == null) return;
+    final cell = _grid[_selectedCellRow!][_selectedCellCol!];
+    setState(() {
+      if (key == 'backspace') {
+        if (cell.userVal.isNotEmpty) {
+          cell.userVal = cell.userVal.substring(0, cell.userVal.length - 1);
+        }
+      } else if (key == '-') {
+        if (cell.userVal.startsWith('-')) {
+          cell.userVal = cell.userVal.substring(1);
+        } else {
+          cell.userVal = '-${cell.userVal}';
+        }
+      } else {
+        final digitsOnly = cell.userVal.replaceAll('-', '');
+        if (digitsOnly.length < 3) {
+          cell.userVal += key;
+        }
+      }
+    });
+    _checkWinState();
+  }
 
   void _endGameAndSaveScore() async {
     _stopwatch.stop();
@@ -576,6 +599,9 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
       return _buildSummaryView();
     }
 
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final showKeypad = _selectedCellRow != null && _selectedCellCol != null;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -613,44 +639,194 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
         ],
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Text(
-                'Điền các chữ số còn thiếu sao cho các phép tính hàng ngang và hàng dọc đều đúng nhé!',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-              ),
-            ),
-
-            // Grid Section
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: AppColors.border),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: InteractiveViewer(
-                  maxScale: 2.5,
-                  minScale: 0.8,
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: FittedBox(
-                        fit: BoxFit.contain,
-                        child: _buildCrosswordGrid(),
-                      ),
+        child: isLandscape
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Left side: Instruction + Grid
+                  Expanded(
+                    child: Column(
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                          child: Text(
+                            'Điền các chữ số còn thiếu sao cho các phép tính hàng ngang và hàng dọc đều đúng nhé!',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                          ),
+                        ),
+                        Expanded(child: _buildGridContainer()),
+                      ],
                     ),
+                  ),
+                  // Right side: Keyboard
+                  if (showKeypad) _buildInlineKeypadColumn(),
+                ],
+              )
+            : Column(
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    child: Text(
+                      'Điền các chữ số còn thiếu sao cho các phép tính hàng ngang và hàng dọc đều đúng nhé!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                    ),
+                  ),
+                  Expanded(child: _buildGridContainer()),
+                  if (showKeypad) _buildInlineKeypadColumn(),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildGridContainer() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InteractiveViewer(
+        maxScale: 2.5,
+        minScale: 0.8,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: FittedBox(
+              fit: BoxFit.contain,
+              child: _buildCrosswordGrid(),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInlineKeypadColumn() {
+    final keys = [
+      ['1', '2', '3'],
+      ['4', '5', '6'],
+      ['7', '8', '9'],
+      ['-', '0', 'backspace'],
+    ];
+
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+
+    String currentValue = '';
+    if (_selectedCellRow != null && _selectedCellCol != null) {
+      currentValue = _grid[_selectedCellRow!][_selectedCellCol!].userVal;
+    }
+
+    return Container(
+      width: isLandscape ? 240 : double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: isLandscape ? BorderSide.none : const BorderSide(color: AppColors.border, width: 1.5),
+          left: isLandscape ? const BorderSide(color: AppColors.border, width: 1.5) : BorderSide.none,
+        ),
+      ),
+      padding: EdgeInsets.fromLTRB(16, 12, 16, isLandscape ? 12 : MediaQuery.of(context).padding.bottom + 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Nhập số:',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 60,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  currentValue.isEmpty ? '-' : currentValue,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _selectedCellRow = null;
+                    _selectedCellCol = null;
+                  });
+                },
+                icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
+                label: const Text(
+                  'Xong',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.success,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ...keys.map((row) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: row.map((key) {
+                  final isSpecial = key == '-' || key == 'backspace';
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 3),
+                      child: InkWell(
+                        onTap: () => _inputDigit(key),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          height: isLandscape ? 38 : 44,
+                          decoration: BoxDecoration(
+                            color: isSpecial ? Colors.grey[100] : AppColors.background,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
+                          ),
+                          alignment: Alignment.center,
+                          child: key == 'backspace'
+                              ? const Icon(Icons.backspace_outlined, color: AppColors.textPrimary, size: 18)
+                              : Text(
+                                  key,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            );
+          }),
+        ],
       ),
     );
   }
@@ -810,6 +986,8 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
     Color textColor = AppColors.textPrimary;
     double borderWidth = 1.0;
 
+    final isSelected = cell.row == _selectedCellRow && cell.col == _selectedCellCol;
+
     if (cell.type == CellType.number) {
       if (cell.isHint) {
         backColor = AppColors.border.withValues(alpha: 0.3);
@@ -820,6 +998,11 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
           borderColor = AppColors.success;
           textColor = AppColors.success;
           borderWidth = 2.0;
+        } else if (isSelected) {
+          backColor = AppColors.primaryLight;
+          borderColor = AppColors.primary;
+          textColor = AppColors.primary;
+          borderWidth = 2.5;
         }
       }
     } else {
@@ -831,53 +1014,34 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
     }
 
     if (cell.type == CellType.number && !cell.isHint) {
-      return AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 42,
-        height: 42,
-        margin: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          color: backColor,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: borderColor, width: borderWidth),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            )
-          ],
-        ),
-        alignment: Alignment.center,
-        child: TextField(
-          controller: cell.controller,
-          keyboardType: const TextInputType.numberWithOptions(signed: true),
-          inputFormatters: [
-            TextInputFormatter.withFunction((oldValue, newValue) {
-              final text = newValue.text;
-              if (text.isEmpty) return newValue;
-              if (RegExp(r'^-?\d*$').hasMatch(text)) {
-                return newValue;
-              }
-              return oldValue;
-            }),
-          ],
-          textAlign: TextAlign.center,
-          maxLength: 3,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: textColor,
+      return GestureDetector(
+        onTap: () => _selectCell(cell.row, cell.col),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: 42,
+          height: 42,
+          margin: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            color: backColor,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: borderColor, width: borderWidth),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              )
+            ],
           ),
-          decoration: const InputDecoration(
-            border: InputBorder.none,
-            counterText: '',
-            contentPadding: EdgeInsets.zero,
+          alignment: Alignment.center,
+          child: Text(
+            cell.userVal,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+            ),
           ),
-          onChanged: (val) {
-            cell.userVal = val;
-            _checkWinState();
-          },
         ),
       );
     }

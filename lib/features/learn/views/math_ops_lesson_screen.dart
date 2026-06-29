@@ -2,6 +2,24 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 
+class MathOpsLessonQuestion {
+  final int num1;
+  final int num2;
+  final String operator;
+  final int correctResult;
+  final List<int> choices;
+  int? selectedAnswer;
+
+  MathOpsLessonQuestion({
+    required this.num1,
+    required this.num2,
+    required this.operator,
+    required this.correctResult,
+    required this.choices,
+    this.selectedAnswer,
+  });
+}
+
 class MathOpsLessonScreen extends StatefulWidget {
   const MathOpsLessonScreen({super.key});
 
@@ -15,73 +33,75 @@ class _MathOpsLessonScreenState extends State<MathOpsLessonScreen> {
   int _currentQuestion = 1;
   final int _totalQuestions = 10;
   
-  late int _num1;
-  late int _num2;
-  late String _operator;
-  late int _correctResult;
-  late List<int> _choices;
-  
+  final List<MathOpsLessonQuestion> _questions = [];
   int? _selectedChoiceIndex;
-  bool _hasAnsweredCorrectly = false;
-  final List<int> _wrongChoicesSelected = [];
+  bool _hasAnswered = false;
+  final List<bool> _results = [];
 
   @override
   void initState() {
     super.initState();
-    _generateNewQuestion();
+    _generateAllQuestions();
   }
 
-  void _generateNewQuestion() {
-    final bool isAddition = _random.nextBool();
-    
-    if (isAddition) {
-      _operator = '+';
-      _num1 = _random.nextInt(10) + 1; // 1 to 10
-      _num2 = _random.nextInt(9) + 1;  // 1 to 9
-      _correctResult = _num1 + _num2;
-    } else {
-      _operator = '-';
-      _num1 = _random.nextInt(10) + 9; // 9 to 18
-      _num2 = _random.nextInt(_num1 - 2) + 1; // 1 to num1-2, avoiding 0 or negative results
-      _correctResult = _num1 - _num2;
-    }
-    
-    // Generate wrong choices
-    final Set<int> uniqueChoices = {_correctResult};
-    while (uniqueChoices.length < 4) {
-      int wrong = _correctResult + _random.nextInt(5) - 2; // -2 to +2
-      if (wrong >= 0 && wrong != _correctResult) {
-        uniqueChoices.add(wrong);
+  void _generateAllQuestions() {
+    _questions.clear();
+    for (int i = 0; i < _totalQuestions; i++) {
+      final bool isAddition = _random.nextBool();
+      int num1;
+      int num2;
+      String operator;
+      int correctResult;
+
+      if (isAddition) {
+        operator = '+';
+        num1 = _random.nextInt(10) + 1; // 1 to 10
+        num2 = _random.nextInt(9) + 1;  // 1 to 9
+        correctResult = num1 + num2;
       } else {
-        uniqueChoices.add(_random.nextInt(20) + 1);
+        operator = '-';
+        num1 = _random.nextInt(10) + 9; // 9 to 18
+        num2 = _random.nextInt(num1 - 2) + 1; // 1 to num1-2, avoiding 0 or negative results
+        correctResult = num1 - num2;
       }
+      
+      // Generate wrong choices
+      final Set<int> uniqueChoices = {correctResult};
+      while (uniqueChoices.length < 4) {
+        int wrong = correctResult + _random.nextInt(5) - 2; // -2 to +2
+        if (wrong >= 0 && wrong != correctResult) {
+          uniqueChoices.add(wrong);
+        } else {
+          uniqueChoices.add(_random.nextInt(20) + 1);
+        }
+      }
+      
+      final choices = uniqueChoices.toList()..shuffle();
+      _questions.add(MathOpsLessonQuestion(
+        num1: num1,
+        num2: num2,
+        operator: operator,
+        correctResult: correctResult,
+        choices: choices,
+      ));
     }
-    
-    _choices = uniqueChoices.toList()..shuffle();
-    _selectedChoiceIndex = null;
-    _hasAnsweredCorrectly = false;
-    _wrongChoicesSelected.clear();
   }
 
   void _handleChoiceTap(int index, int choiceValue) async {
-    if (_hasAnsweredCorrectly) return;
+    if (_hasAnswered) return;
+
+    final currentQuestion = _questions[_currentQuestion - 1];
 
     setState(() {
       _selectedChoiceIndex = index;
-      if (choiceValue == _correctResult) {
-        _hasAnsweredCorrectly = true;
-      } else {
-        if (!_wrongChoicesSelected.contains(index)) {
-          _wrongChoicesSelected.add(index);
-        }
-      }
+      _hasAnswered = true;
+      currentQuestion.selectedAnswer = choiceValue;
+      _results.add(choiceValue == currentQuestion.correctResult);
     });
 
-    if (choiceValue == _correctResult) {
-      await Future.delayed(const Duration(milliseconds: 1200));
-      if (mounted) {
-        _handleNextQuestion();
-      }
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (mounted) {
+      _handleNextQuestion();
     }
   }
 
@@ -89,21 +109,138 @@ class _MathOpsLessonScreenState extends State<MathOpsLessonScreen> {
     if (_currentQuestion < _totalQuestions) {
       setState(() {
         _currentQuestion++;
-        _generateNewQuestion();
+        _selectedChoiceIndex = null;
+        _hasAnswered = false;
       });
     } else {
       _showCompletionDialog();
     }
   }
 
+  void _showQuestionDetailDialog(int index) {
+    final question = _questions[index];
+    final isCorrect = question.selectedAnswer == question.correctResult;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            Icon(
+              isCorrect ? Icons.check_circle_rounded : Icons.cancel_rounded,
+              color: isCorrect ? AppColors.success : AppColors.error,
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Câu số ${index + 1}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Center(
+                child: Text(
+                  '${question.num1} ${question.operator} ${question.num2} = ?',
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Các phương án lựa chọn:',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...question.choices.map((choice) {
+              final isCorrectAnswer = choice == question.correctResult;
+              final isUserSelection = choice == question.selectedAnswer;
+
+              Color itemBgColor = AppColors.background;
+              Color itemBorderColor = AppColors.border.withValues(alpha: 0.5);
+              Color itemTextColor = AppColors.textPrimary;
+              Widget? suffixIcon;
+
+              if (isCorrectAnswer) {
+                itemBgColor = AppColors.success.withValues(alpha: 0.12);
+                itemBorderColor = AppColors.success;
+                itemTextColor = AppColors.success;
+                suffixIcon = const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20);
+              } else if (isUserSelection) {
+                itemBgColor = AppColors.error.withValues(alpha: 0.12);
+                itemBorderColor = AppColors.error;
+                itemTextColor = AppColors.error;
+                suffixIcon = const Icon(Icons.cancel_rounded, color: AppColors.error, size: 20);
+              }
+
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: itemBgColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: itemBorderColor, width: 1.5),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        choice.toString(),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: (isCorrectAnswer || isUserSelection)
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          color: itemTextColor,
+                        ),
+                      ),
+                    ),
+                    suffixIcon ?? const SizedBox.shrink(),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Đóng'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showCompletionDialog() {
+    final int correctCount = _results.where((r) => r).length;
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
         child: Padding(
-          padding: const EdgeInsets.all(28),
+          padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -119,7 +256,7 @@ class _MathOpsLessonScreenState extends State<MathOpsLessonScreen> {
                   size: 64,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               const Text(
                 'Hoàn Thành Bài Học! 🎉',
                 style: TextStyle(
@@ -128,17 +265,66 @@ class _MathOpsLessonScreenState extends State<MathOpsLessonScreen> {
                   color: AppColors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 12),
-              const Text(
-                'Bé tính toán rất giỏi! Hãy tiếp tục rèn luyện các phép tính để đạt điểm cao nhé.',
+              const SizedBox(height: 8),
+              Text(
+                'Bé đã trả lời đúng $correctCount/$_totalQuestions câu hỏi tính toán!',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: 15,
-                  height: 1.4,
+                  fontSize: 14,
                 ),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 16),
+              
+              const Text(
+                'Kết quả chi tiết (Ấn để xem lại):',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: 220,
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 5,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                    childAspectRatio: 1.0,
+                  ),
+                  itemCount: _results.length,
+                  itemBuilder: (context, index) {
+                    final isCorrect = _results[index];
+                    final Color color = isCorrect ? AppColors.success : AppColors.error;
+                    return InkWell(
+                      onTap: () => _showQuestionDetailDialog(index),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: color, width: 2.0),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '${index + 1}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: color,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+
               ElevatedButton(
                 onPressed: () {
                   Navigator.pop(context); // Đóng dialog
@@ -163,6 +349,14 @@ class _MathOpsLessonScreenState extends State<MathOpsLessonScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_questions.isEmpty) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final currentQuestion = _questions[_currentQuestion - 1];
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -180,7 +374,7 @@ class _MathOpsLessonScreenState extends State<MathOpsLessonScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Progress bar
+              // Progress indicator
               Row(
                 children: [
                   Expanded(
@@ -206,22 +400,15 @@ class _MathOpsLessonScreenState extends State<MathOpsLessonScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Chalkboard Math Card
+              // Question Prompt Card
               Expanded(
                 flex: 4,
                 child: Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0F4C3A), // Chalkboard forest green
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: const Color(0xFFD4AF37), width: 6), // Wooden frame effect
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 15,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -229,39 +416,43 @@ class _MathOpsLessonScreenState extends State<MathOpsLessonScreen> {
                       const Text(
                         'Bé hãy giải phép tính sau nhé:',
                         style: TextStyle(
-                          color: Color(0xFFEAEAEA),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 32),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Text(
-                            '$_num1 $_operator $_num2 = ',
+                            '${currentQuestion.num1} ${currentQuestion.operator} ${currentQuestion.num2} =',
                             style: const TextStyle(
-                              color: Colors.white,
                               fontSize: 48,
                               fontWeight: FontWeight.bold,
-                              fontFamily: 'monospace', // Gives a chalky board vibe
+                              color: AppColors.textPrimary,
                             ),
                           ),
+                          const SizedBox(width: 16),
                           Container(
-                            width: 60,
-                            height: 60,
+                            width: 70,
+                            height: 70,
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
+                              color: AppColors.primaryLight,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: AppColors.primary,
+                                width: 2,
+                              ),
                             ),
                             alignment: Alignment.center,
                             child: const Text(
                               '?',
                               style: TextStyle(
-                                color: AppColors.accent,
-                                fontSize: 40,
+                                fontSize: 36,
                                 fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
                               ),
                             ),
                           ),
@@ -271,18 +462,18 @@ class _MathOpsLessonScreenState extends State<MathOpsLessonScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
 
-              // Choice buttons (2x2)
+              // Answer choices Grid (2x2)
               Column(
                 children: [
                   SizedBox(
                     height: 68,
                     child: Row(
                       children: [
-                        _buildChoiceButton(0),
+                        _buildChoiceButton(0, currentQuestion),
                         const SizedBox(width: 16),
-                        _buildChoiceButton(1),
+                        _buildChoiceButton(1, currentQuestion),
                       ],
                     ),
                   ),
@@ -291,15 +482,14 @@ class _MathOpsLessonScreenState extends State<MathOpsLessonScreen> {
                     height: 68,
                     child: Row(
                       children: [
-                        _buildChoiceButton(2),
+                        _buildChoiceButton(2, currentQuestion),
                         const SizedBox(width: 16),
-                        _buildChoiceButton(3),
+                        _buildChoiceButton(3, currentQuestion),
                       ],
                     ),
                   ),
                 ],
               ),
-
             ],
           ),
         ),
@@ -307,24 +497,14 @@ class _MathOpsLessonScreenState extends State<MathOpsLessonScreen> {
     );
   }
 
-  Widget _buildChoiceButton(int index) {
-    final int choiceValue = _choices[index];
-    final bool isWrong = _wrongChoicesSelected.contains(index);
-    final bool isCorrect = _hasAnsweredCorrectly && choiceValue == _correctResult;
-    
+  Widget _buildChoiceButton(int index, MathOpsLessonQuestion question) {
+    final int choiceValue = question.choices[index];
+
     Color buttonColor = Colors.white;
     Color borderColor = AppColors.border;
     Color textColor = AppColors.textPrimary;
 
-    if (isCorrect) {
-      buttonColor = AppColors.success.withValues(alpha: 0.12);
-      borderColor = AppColors.success;
-      textColor = AppColors.success;
-    } else if (isWrong) {
-      buttonColor = AppColors.error.withValues(alpha: 0.12);
-      borderColor = AppColors.error;
-      textColor = AppColors.error;
-    } else if (_selectedChoiceIndex == index && !_hasAnsweredCorrectly) {
+    if (_selectedChoiceIndex == index) {
       buttonColor = AppColors.primaryLight;
       borderColor = AppColors.primary;
       textColor = AppColors.primary;
@@ -339,7 +519,7 @@ class _MathOpsLessonScreenState extends State<MathOpsLessonScreen> {
             color: buttonColor,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: borderColor, width: 2),
-            boxShadow: isCorrect || _selectedChoiceIndex == index
+            boxShadow: _selectedChoiceIndex == index
                 ? [
                     BoxShadow(
                       color: borderColor.withValues(alpha: 0.15),

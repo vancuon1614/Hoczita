@@ -2,6 +2,20 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 
+class CountingLessonQuestion {
+  final String emoji;
+  final int correctCount;
+  final List<int> choices;
+  int? selectedAnswer;
+
+  CountingLessonQuestion({
+    required this.emoji,
+    required this.correctCount,
+    required this.choices,
+    this.selectedAnswer,
+  });
+}
+
 class CountingLessonScreen extends StatefulWidget {
   const CountingLessonScreen({super.key});
 
@@ -12,75 +26,64 @@ class CountingLessonScreen extends StatefulWidget {
 class _CountingLessonScreenState extends State<CountingLessonScreen> {
   final Random _random = Random();
   final List<String> _emojiPool = [
-    '🍎',
-    '🍓',
-    '🐶',
-    '🐱',
-    '🚗',
-    '🎈',
-    '⭐',
-    '🦖',
-    '🐝',
-    '🍟',
+    '🍎', '🍓', '🐶', '🐱', '🚗', '🎈', '⭐', '🦖', '🐝', '🍟',
   ];
 
   int _currentQuestion = 1;
   final int _totalQuestions = 10;
 
-  late String _currentEmoji;
-  late int _correctCount;
-  late List<int> _choices;
-
+  final List<CountingLessonQuestion> _questions = [];
   int? _selectedChoiceIndex;
-  bool _hasAnsweredCorrectly = false;
-  final List<int> _wrongChoicesSelected = [];
+  bool _hasAnswered = false;
+  final List<bool> _results = [];
 
   @override
   void initState() {
     super.initState();
-    _generateNewQuestion();
+    _generateAllQuestions();
   }
 
-  void _generateNewQuestion() {
-    _currentEmoji = _emojiPool[_random.nextInt(_emojiPool.length)];
-    _correctCount = _random.nextInt(8) + 3; // Random from 3 to 10
+  void _generateAllQuestions() {
+    _questions.clear();
+    for (int i = 0; i < _totalQuestions; i++) {
+      final emoji = _emojiPool[_random.nextInt(_emojiPool.length)];
+      final correctCount = _random.nextInt(8) + 3; // Random from 3 to 10
 
-    // Generate 3 unique wrong choices close to correct count
-    final Set<int> uniqueChoices = {_correctCount};
-    while (uniqueChoices.length < 4) {
-      int wrong = _correctCount + _random.nextInt(5) - 2; // -2 to +2
-      if (wrong > 0 && wrong != _correctCount) {
-        uniqueChoices.add(wrong);
-      } else {
-        uniqueChoices.add(_random.nextInt(10) + 1);
+      // Generate 3 unique wrong choices close to correct count
+      final Set<int> uniqueChoices = {correctCount};
+      while (uniqueChoices.length < 4) {
+        int wrong = correctCount + _random.nextInt(5) - 2; // -2 to +2
+        if (wrong > 0 && wrong != correctCount) {
+          uniqueChoices.add(wrong);
+        } else {
+          uniqueChoices.add(_random.nextInt(10) + 1);
+        }
       }
-    }
 
-    _choices = uniqueChoices.toList()..shuffle();
-    _selectedChoiceIndex = null;
-    _hasAnsweredCorrectly = false;
-    _wrongChoicesSelected.clear();
+      final choices = uniqueChoices.toList()..shuffle();
+      _questions.add(CountingLessonQuestion(
+        emoji: emoji,
+        correctCount: correctCount,
+        choices: choices,
+      ));
+    }
   }
 
   void _handleChoiceTap(int index, int choiceValue) async {
-    if (_hasAnsweredCorrectly) return;
+    if (_hasAnswered) return;
+
+    final currentQuestion = _questions[_currentQuestion - 1];
 
     setState(() {
       _selectedChoiceIndex = index;
-      if (choiceValue == _correctCount) {
-        _hasAnsweredCorrectly = true;
-      } else {
-        if (!_wrongChoicesSelected.contains(index)) {
-          _wrongChoicesSelected.add(index);
-        }
-      }
+      _hasAnswered = true;
+      currentQuestion.selectedAnswer = choiceValue;
+      _results.add(choiceValue == currentQuestion.correctCount);
     });
 
-    if (choiceValue == _correctCount) {
-      await Future.delayed(const Duration(milliseconds: 1200));
-      if (mounted) {
-        _handleNextQuestion();
-      }
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (mounted) {
+      _handleNextQuestion();
     }
   }
 
@@ -88,21 +91,153 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
     if (_currentQuestion < _totalQuestions) {
       setState(() {
         _currentQuestion++;
-        _generateNewQuestion();
+        _selectedChoiceIndex = null;
+        _hasAnswered = false;
       });
     } else {
       _showCompletionDialog();
     }
   }
 
+  void _showQuestionDetailDialog(int index) {
+    final question = _questions[index];
+    final isCorrect = question.selectedAnswer == question.correctCount;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            Icon(
+              isCorrect ? Icons.check_circle_rounded : Icons.cancel_rounded,
+              color: isCorrect ? AppColors.success : AppColors.error,
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Câu số ${index + 1}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                children: [
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    alignment: WrapAlignment.center,
+                    children: List.generate(
+                      question.correctCount,
+                      (i) => Text(
+                        question.emoji,
+                        style: const TextStyle(fontSize: 24),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Đố bé có bao nhiêu hình vẽ?',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Các phương án lựa chọn:',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...question.choices.map((choice) {
+              final isCorrectAnswer = choice == question.correctCount;
+              final isUserSelection = choice == question.selectedAnswer;
+
+              Color itemBgColor = AppColors.background;
+              Color itemBorderColor = AppColors.border.withValues(alpha: 0.5);
+              Color itemTextColor = AppColors.textPrimary;
+              Widget? suffixIcon;
+
+              if (isCorrectAnswer) {
+                itemBgColor = AppColors.success.withValues(alpha: 0.12);
+                itemBorderColor = AppColors.success;
+                itemTextColor = AppColors.success;
+                suffixIcon = const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20);
+              } else if (isUserSelection) {
+                itemBgColor = AppColors.error.withValues(alpha: 0.12);
+                itemBorderColor = AppColors.error;
+                itemTextColor = AppColors.error;
+                suffixIcon = const Icon(Icons.cancel_rounded, color: AppColors.error, size: 20);
+              }
+
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: itemBgColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: itemBorderColor, width: 1.5),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        choice.toString(),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: (isCorrectAnswer || isUserSelection)
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          color: itemTextColor,
+                        ),
+                      ),
+                    ),
+                    suffixIcon ?? const SizedBox.shrink(),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Đóng'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showCompletionDialog() {
+    final int correctCount = _results.where((r) => r).length;
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
         child: Padding(
-          padding: const EdgeInsets.all(28),
+          padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -118,7 +253,7 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
                   size: 64,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               const Text(
                 'Hoàn Thành Bài Học! 🎉',
                 style: TextStyle(
@@ -127,17 +262,66 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
                   color: AppColors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 12),
-              const Text(
-                'Bé học đếm rất giỏi! Hãy tiếp tục rèn luyện để thông minh hơn nhé.',
+              const SizedBox(height: 8),
+              Text(
+                'Bé đã trả lời đúng $correctCount/$_totalQuestions câu hỏi học đếm!',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: 15,
-                  height: 1.4,
+                  fontSize: 14,
                 ),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 16),
+              
+              const Text(
+                'Kết quả chi tiết (Ấn để xem lại):',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: 220,
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 5,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                    childAspectRatio: 1.0,
+                  ),
+                  itemCount: _results.length,
+                  itemBuilder: (context, index) {
+                    final isCorrect = _results[index];
+                    final Color color = isCorrect ? AppColors.success : AppColors.error;
+                    return InkWell(
+                      onTap: () => _showQuestionDetailDialog(index),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: color, width: 2.0),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '${index + 1}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: color,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+
               ElevatedButton(
                 onPressed: () {
                   Navigator.pop(context); // Đóng dialog
@@ -162,6 +346,14 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_questions.isEmpty) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final currentQuestion = _questions[_currentQuestion - 1];
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -218,7 +410,7 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
                   child: Column(
                     children: [
                       Text(
-                        'Bé đếm xem có bao nhiêu $_currentEmoji?',
+                        'Bé đếm xem có bao nhiêu ${currentQuestion.emoji}?',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 35,
@@ -236,23 +428,23 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
                               runSpacing: 16,
                               alignment: WrapAlignment.center,
                               children: List.generate(
-                                _correctCount,
+                                currentQuestion.correctCount,
                                 (index) => AnimatedContainer(
                                   duration: Duration(
                                     milliseconds: 200 + (index * 50),
                                   ),
                                   curve: Curves.easeOutBack,
-                                  width: _correctCount > 6 ? 50 : 64,
-                                  height: _correctCount > 6 ? 50 : 64,
+                                  width: currentQuestion.correctCount > 6 ? 50 : 64,
+                                  height: currentQuestion.correctCount > 6 ? 50 : 64,
                                   decoration: BoxDecoration(
                                     color: AppColors.background,
                                     borderRadius: BorderRadius.circular(16),
                                   ),
                                   alignment: Alignment.center,
                                   child: Text(
-                                    _currentEmoji,
+                                    currentQuestion.emoji,
                                     style: TextStyle(
-                                      fontSize: _correctCount > 6 ? 32 : 40,
+                                      fontSize: currentQuestion.correctCount > 6 ? 32 : 40,
                                     ),
                                   ),
                                 ),
@@ -274,9 +466,9 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
                     height: 68,
                     child: Row(
                       children: [
-                        _buildChoiceButton(0),
+                        _buildChoiceButton(0, currentQuestion),
                         const SizedBox(width: 16),
-                        _buildChoiceButton(1),
+                        _buildChoiceButton(1, currentQuestion),
                       ],
                     ),
                   ),
@@ -285,9 +477,9 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
                     height: 68,
                     child: Row(
                       children: [
-                        _buildChoiceButton(2),
+                        _buildChoiceButton(2, currentQuestion),
                         const SizedBox(width: 16),
-                        _buildChoiceButton(3),
+                        _buildChoiceButton(3, currentQuestion),
                       ],
                     ),
                   ),
@@ -300,25 +492,14 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
     );
   }
 
-  Widget _buildChoiceButton(int index) {
-    final int choiceValue = _choices[index];
-    final bool isWrong = _wrongChoicesSelected.contains(index);
-    final bool isCorrect =
-        _hasAnsweredCorrectly && choiceValue == _correctCount;
+  Widget _buildChoiceButton(int index, CountingLessonQuestion question) {
+    final int choiceValue = question.choices[index];
 
     Color buttonColor = Colors.white;
     Color borderColor = AppColors.border;
     Color textColor = AppColors.textPrimary;
 
-    if (isCorrect) {
-      buttonColor = AppColors.success.withValues(alpha: 0.12);
-      borderColor = AppColors.success;
-      textColor = AppColors.success;
-    } else if (isWrong) {
-      buttonColor = AppColors.error.withValues(alpha: 0.12);
-      borderColor = AppColors.error;
-      textColor = AppColors.error;
-    } else if (_selectedChoiceIndex == index && !_hasAnsweredCorrectly) {
+    if (_selectedChoiceIndex == index) {
       buttonColor = AppColors.primaryLight;
       borderColor = AppColors.primary;
       textColor = AppColors.primary;
@@ -333,7 +514,7 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
             color: buttonColor,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: borderColor, width: 2),
-            boxShadow: isCorrect || _selectedChoiceIndex == index
+            boxShadow: _selectedChoiceIndex == index
                 ? [
                     BoxShadow(
                       color: borderColor.withValues(alpha: 0.15),
