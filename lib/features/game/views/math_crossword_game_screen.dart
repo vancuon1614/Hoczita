@@ -631,8 +631,8 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
         ),
         actions: [
           Container(
-            width: 85, // Fixed width to prevent shifting layout
-            margin: const EdgeInsets.only(right: 20),
+            width: 110, // Fixed width to prevent shifting layout
+            margin: const EdgeInsets.only(right: 20, top: 8, bottom: 8),
             padding: const EdgeInsets.symmetric(vertical: 6),
             decoration: BoxDecoration(
               color: AppColors.primaryLight,
@@ -642,12 +642,18 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(Icons.timer_outlined, size: 16, color: AppColors.primary),
-                const SizedBox(width: 6),
-                Text(
-                  _elapsedTimeString,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
+                const SizedBox(width: 4),
+                SizedBox(
+                  width: 65, // Fixed width for text area to prevent any shaking/shifting
+                  child: Text(
+                    _elapsedTimeString,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
                   ),
                 ),
               ],
@@ -991,34 +997,36 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
     }
 
     Color backColor = Colors.white;
-    Color borderColor = AppColors.border;
+    Color borderColor = Colors.black;
     Color textColor = AppColors.textPrimary;
-    double borderWidth = 1.0;
+    double borderWidth = 2.0;
 
     final isSelected = cell.row == _selectedCellRow && cell.col == _selectedCellCol;
 
     if (cell.type == CellType.number) {
       if (cell.isHint) {
-        backColor = AppColors.border.withValues(alpha: 0.3);
-        textColor = AppColors.textSecondary;
+        backColor = Colors.white;
+        textColor = AppColors.textPrimary;
       } else {
         if (isCellPartofCorrectEquation) {
-          backColor = AppColors.success.withValues(alpha: 0.15);
+          backColor = AppColors.success.withValues(alpha: 0.1);
           borderColor = AppColors.success;
           textColor = AppColors.success;
-          borderWidth = 2.0;
+          borderWidth = 2.5;
         } else if (isSelected) {
           backColor = AppColors.primaryLight;
           borderColor = AppColors.primary;
           textColor = AppColors.primary;
-          borderWidth = 2.5;
+          borderWidth = 3.0;
         }
       }
     } else {
       // Operators & equals
-      textColor = AppColors.textSecondary;
+      textColor = AppColors.textPrimary;
       if (isCellPartofCorrectEquation) {
         textColor = AppColors.success;
+        borderColor = AppColors.success;
+        borderWidth = 2.5;
       }
     }
 
@@ -1029,10 +1037,10 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
           duration: const Duration(milliseconds: 200),
           width: 42,
           height: 42,
-          margin: const EdgeInsets.all(2),
+          margin: const EdgeInsets.all(1.5),
           decoration: BoxDecoration(
             color: backColor,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.zero,
             border: Border.all(color: borderColor, width: borderWidth),
             boxShadow: [
               BoxShadow(
@@ -1066,11 +1074,11 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
       duration: const Duration(milliseconds: 200),
       width: 42,
       height: 42,
-      margin: const EdgeInsets.all(2),
+      margin: const EdgeInsets.all(1.5),
       decoration: BoxDecoration(
         color: backColor,
-        borderRadius: BorderRadius.circular(10),
-        border: cell.type == CellType.number ? Border.all(color: borderColor, width: borderWidth) : null,
+        borderRadius: BorderRadius.zero,
+        border: Border.all(color: borderColor, width: borderWidth),
       ),
       alignment: Alignment.center,
       child: Text(

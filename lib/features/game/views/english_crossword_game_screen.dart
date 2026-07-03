@@ -398,8 +398,8 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
           ),
           actions: [
             Container(
-              width: 85,
-              margin: const EdgeInsets.only(right: 20),
+              width: 110, // Fixed width to prevent shifting layout
+              margin: const EdgeInsets.only(right: 20, top: 8, bottom: 8),
               padding: const EdgeInsets.symmetric(vertical: 6),
               decoration: BoxDecoration(
                 color: AppColors.primaryLight,
@@ -409,12 +409,18 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(Icons.timer_outlined, size: 16, color: AppColors.primary),
-                  const SizedBox(width: 6),
-                  Text(
-                    _elapsedTimeString,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
+                  const SizedBox(width: 4),
+                  SizedBox(
+                    width: 65, // Fixed width for text area to prevent any shaking/shifting
+                    child: Text(
+                      _elapsedTimeString,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                        fontFeatures: [FontFeature.tabularFigures()],
+                      ),
                     ),
                   ),
                 ],
@@ -440,20 +446,20 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                       Expanded(
                         child: Column(
                           children: [
-                            _buildClueHeader(),
+                            if (!showKeypad) _buildClueHeader(),
                             Expanded(child: _buildGridContainer()),
                           ],
                         ),
                       ),
-                      // Right side: Keyboard
-                      if (showKeypad) _buildInlineKeypadColumn(),
+                      // Right side: Keyboard or Clue Lists
+                      showKeypad ? _buildInlineKeypadColumn() : _buildClueListsLandscape(),
                     ],
                   )
                 : Column(
                     children: [
-                      _buildClueHeader(),
+                      if (!showKeypad) _buildClueHeader(),
                       Expanded(child: _buildGridContainer()),
-                      if (showKeypad) _buildInlineKeypadColumn(),
+                      showKeypad ? _buildInlineKeypadColumn() : _buildClueLists(),
                     ],
                   ),
           ),
@@ -506,6 +512,188 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                 color: Colors.white,
                 height: 1.3,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildClueLists() {
+    final level = _activeLevel;
+    if (level == null) return const SizedBox.shrink();
+    final acrossWords = level.words.where((w) => w.isAcross).toList();
+    final downWords = level.words.where((w) => !w.isAcross).toList();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: AppColors.border, width: 1.5),
+        ),
+      ),
+      height: 200,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Text(
+                  'Hàng ngang (Across)',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: acrossWords.length,
+                    itemBuilder: (context, idx) {
+                      final w = acrossWords[idx];
+                      final wordNum = level.words.indexOf(w) + 1;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '$wordNum. ${w.clue}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const VerticalDivider(width: 20, thickness: 1),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Text(
+                  'Hàng dọc (Down)',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: downWords.length,
+                    itemBuilder: (context, idx) {
+                      final w = downWords[idx];
+                      final wordNum = level.words.indexOf(w) + 1;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '$wordNum. ${w.clue}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildClueListsLandscape() {
+    final level = _activeLevel;
+    if (level == null) return const SizedBox.shrink();
+    final acrossWords = level.words.where((w) => w.isAcross).toList();
+    final downWords = level.words.where((w) => !w.isAcross).toList();
+
+    return Container(
+      width: 360,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          left: BorderSide(color: AppColors.border, width: 1.5),
+        ),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Text(
+            'Hàng ngang (Across)',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Expanded(
+            child: ListView.builder(
+              itemCount: acrossWords.length,
+              itemBuilder: (context, idx) {
+                final w = acrossWords[idx];
+                final wordNum = level.words.indexOf(w) + 1;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Text(
+                    '$wordNum. ${w.clue}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const Divider(height: 20, thickness: 1),
+          const Text(
+            'Hàng dọc (Down)',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Expanded(
+            child: ListView.builder(
+              itemCount: downWords.length,
+              itemBuilder: (context, idx) {
+                final w = downWords[idx];
+                final wordNum = level.words.indexOf(w) + 1;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Text(
+                    '$wordNum. ${w.clue}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -591,18 +779,18 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
     }
 
     Color backColor = Colors.white;
-    Color borderColor = AppColors.border;
+    Color borderColor = Colors.black;
     Color textColor = AppColors.textPrimary;
-    double borderWidth = 1.0;
+    double borderWidth = 2.0;
 
     if (isSelected) {
       backColor = AppColors.primaryLight;
       borderColor = AppColors.primary;
       textColor = AppColors.primary;
-      borderWidth = 2.5;
+      borderWidth = 3.0;
     } else if (isInSelectedWord) {
-      backColor = AppColors.primary.withValues(alpha: 0.08);
-      borderColor = AppColors.primary.withValues(alpha: 0.3);
+      backColor = AppColors.primary.withValues(alpha: 0.1);
+      borderColor = AppColors.primary;
       textColor = AppColors.primary;
     }
 
@@ -610,10 +798,10 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
       onTap: () => _selectCell(cell.row, cell.col),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        margin: const EdgeInsets.all(2),
+        margin: const EdgeInsets.all(1.5),
         decoration: BoxDecoration(
           color: backColor,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.zero,
           border: Border.all(color: borderColor, width: borderWidth),
           boxShadow: [
             BoxShadow(
@@ -692,6 +880,35 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                 ),
               ],
             ),
+            const SizedBox(height: 6),
+            (() {
+              final word = _selectedWord;
+              final level = _activeLevel;
+              if (word != null && level != null) {
+                final index = level.words.indexOf(word) + 1;
+                final dir = word.isAcross ? 'Ngang' : 'Dọc';
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                  ),
+                  child: Text(
+                    '$index. $dir: ${word.clue}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            })(),
             const SizedBox(height: 8),
           ...keyboardRows.map((row) {
             return Padding(
