@@ -128,11 +128,28 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
     _startTimer();
   }
 
+  String _formatTime(double seconds) {
+    if (seconds < 60) {
+      return '${seconds.toStringAsFixed(1)}s';
+    }
+    final int totalSeconds = seconds.round();
+    if (totalSeconds < 3600) {
+      final int minutes = totalSeconds ~/ 60;
+      final int remainingSeconds = totalSeconds % 60;
+      return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+    } else {
+      final int hours = totalSeconds ~/ 3600;
+      final int minutes = (totalSeconds % 3600) ~/ 60;
+      final int remainingSeconds = totalSeconds % 60;
+      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+    }
+  }
+
   void _startTimer() {
     _timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
       if (_stopwatch.isRunning) {
         setState(() {
-          _elapsedTimeString = (_stopwatch.elapsedMilliseconds / 1000).toStringAsFixed(1);
+          _elapsedTimeString = _formatTime(_stopwatch.elapsedMilliseconds / 1000);
         });
       }
     });
@@ -627,7 +644,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
                 const Icon(Icons.timer_outlined, size: 16, color: AppColors.primary),
                 const SizedBox(width: 6),
                 Text(
-                  '${_elapsedTimeString}s',
+                  _elapsedTimeString,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: AppColors.primary,
@@ -638,45 +655,54 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
           ),
         ],
       ),
-      body: SafeArea(
-        child: isLandscape
-            ? Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Left side: Instruction + Grid
-                  Expanded(
-                    child: Column(
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                          child: Text(
-                            'Điền các chữ số còn thiếu sao cho các phép tính hàng ngang và hàng dọc đều đúng nhé!',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+      body: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedCellRow = null;
+            _selectedCellCol = null;
+          });
+        },
+        behavior: HitTestBehavior.opaque,
+        child: SafeArea(
+          child: isLandscape
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Left side: Instruction + Grid
+                    Expanded(
+                      child: Column(
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                            child: Text(
+                              'Điền các chữ số còn thiếu sao cho các phép tính hàng ngang và hàng dọc đều đúng nhé!',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                            ),
                           ),
-                        ),
-                        Expanded(child: _buildGridContainer()),
-                      ],
+                          Expanded(child: _buildGridContainer()),
+                        ],
+                      ),
                     ),
-                  ),
-                  // Right side: Keyboard
-                  if (showKeypad) _buildInlineKeypadColumn(),
-                ],
-              )
-            : Column(
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    child: Text(
-                      'Điền các chữ số còn thiếu sao cho các phép tính hàng ngang và hàng dọc đều đúng nhé!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                    // Right side: Keyboard
+                    if (showKeypad) _buildInlineKeypadColumn(),
+                  ],
+                )
+              : Column(
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      child: Text(
+                        'Điền các chữ số còn thiếu sao cho các phép tính hàng ngang và hàng dọc đều đúng nhé!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                      ),
                     ),
-                  ),
-                  Expanded(child: _buildGridContainer()),
-                  if (showKeypad) _buildInlineKeypadColumn(),
-                ],
-              ),
+                    Expanded(child: _buildGridContainer()),
+                    if (showKeypad) _buildInlineKeypadColumn(),
+                  ],
+                ),
+        ),
       ),
     );
   }
@@ -721,72 +747,54 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
       currentValue = _grid[_selectedCellRow!][_selectedCellCol!].userVal;
     }
 
-    return Container(
-      width: isLandscape ? 240 : double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          top: isLandscape ? BorderSide.none : const BorderSide(color: AppColors.border, width: 1.5),
-          left: isLandscape ? const BorderSide(color: AppColors.border, width: 1.5) : BorderSide.none,
+    return GestureDetector(
+      onTap: () {},
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: isLandscape ? 240 : double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            top: isLandscape ? BorderSide.none : const BorderSide(color: AppColors.border, width: 1.5),
+            left: isLandscape ? const BorderSide(color: AppColors.border, width: 1.5) : BorderSide.none,
+          ),
         ),
-      ),
-      padding: EdgeInsets.fromLTRB(16, 12, 16, isLandscape ? 12 : MediaQuery.of(context).padding.bottom + 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Nhập số:',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                width: 60,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: AppColors.primaryLight,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  currentValue.isEmpty ? '-' : currentValue,
-                  style: const TextStyle(
-                    fontSize: 16,
+        padding: EdgeInsets.fromLTRB(16, 12, 16, isLandscape ? 12 : MediaQuery.of(context).padding.bottom + 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Text(
+                  'Nhập số:',
+                  style: TextStyle(
+                    fontSize: 15,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
+                    color: AppColors.textPrimary,
                   ),
                 ),
-              ),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _selectedCellRow = null;
-                    _selectedCellCol = null;
-                  });
-                },
-                icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
-                label: const Text(
-                  'Xong',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                const SizedBox(width: 12),
+                Container(
+                  width: 60,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    currentValue.isEmpty ? '-' : currentValue,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
                 ),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.success,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              ),
-            ],
-          ),
+              ],
+            ),
           const SizedBox(height: 10),
           ...keys.map((row) {
             return Padding(
@@ -828,8 +836,9 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
           }),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildDifficultySelection() {
     return Scaffold(
@@ -1116,7 +1125,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
               const SizedBox(height: 8),
               
               Text(
-                'Bé đã giải thành công toàn bộ ô chữ toán học trong $_elapsedTimeString giây.',
+                'Bé đã giải thành công toàn bộ ô chữ toán học trong $_elapsedTimeString.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 16,
@@ -1165,7 +1174,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${_elapsedTimeString}s',
+                            _elapsedTimeString,
                             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primary),
                           ),
                         ],

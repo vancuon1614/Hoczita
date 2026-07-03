@@ -2,20 +2,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 
-class CountingLessonQuestion {
-  final String emoji;
-  final int correctCount;
-  final List<int> choices;
-  int? selectedAnswer;
-
-  CountingLessonQuestion({
-    required this.emoji,
-    required this.correctCount,
-    required this.choices,
-    this.selectedAnswer,
-  });
-}
-
 class CountingLessonScreen extends StatefulWidget {
   const CountingLessonScreen({super.key});
 
@@ -30,330 +16,72 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
   ];
 
   int _currentQuestion = 1;
-  final int _totalQuestions = 10;
+  late String _currentEmoji;
+  late int _correctCount;
+  late List<int> _choices;
 
-  final List<CountingLessonQuestion> _questions = [];
   int? _selectedChoiceIndex;
-  bool _hasAnswered = false;
-  final List<bool> _results = [];
+  bool _hasAnsweredCorrectly = false;
+  final List<int> _wrongChoicesSelected = [];
 
   @override
   void initState() {
     super.initState();
-    _generateAllQuestions();
+    _generateNewQuestion();
   }
 
-  void _generateAllQuestions() {
-    _questions.clear();
-    for (int i = 0; i < _totalQuestions; i++) {
-      final emoji = _emojiPool[_random.nextInt(_emojiPool.length)];
-      final correctCount = _random.nextInt(8) + 3; // Random from 3 to 10
+  void _generateNewQuestion() {
+    _currentEmoji = _emojiPool[_random.nextInt(_emojiPool.length)];
+    _correctCount = _random.nextInt(8) + 3; // Random from 3 to 10
 
-      // Generate 3 unique wrong choices close to correct count
-      final Set<int> uniqueChoices = {correctCount};
-      while (uniqueChoices.length < 4) {
-        int wrong = correctCount + _random.nextInt(5) - 2; // -2 to +2
-        if (wrong > 0 && wrong != correctCount) {
-          uniqueChoices.add(wrong);
-        } else {
-          uniqueChoices.add(_random.nextInt(10) + 1);
-        }
+    // Generate 3 unique wrong choices close to correct count
+    final Set<int> uniqueChoices = {_correctCount};
+    while (uniqueChoices.length < 4) {
+      int wrong = _correctCount + _random.nextInt(5) - 2; // -2 to +2
+      if (wrong > 0 && wrong != _correctCount) {
+        uniqueChoices.add(wrong);
+      } else {
+        uniqueChoices.add(_random.nextInt(10) + 1);
       }
-
-      final choices = uniqueChoices.toList()..shuffle();
-      _questions.add(CountingLessonQuestion(
-        emoji: emoji,
-        correctCount: correctCount,
-        choices: choices,
-      ));
     }
+
+    _choices = uniqueChoices.toList()..shuffle();
+    _selectedChoiceIndex = null;
+    _hasAnsweredCorrectly = false;
+    _wrongChoicesSelected.clear();
   }
 
   void _handleChoiceTap(int index, int choiceValue) async {
-    if (_hasAnswered) return;
-
-    final currentQuestion = _questions[_currentQuestion - 1];
+    if (_hasAnsweredCorrectly) return;
 
     setState(() {
       _selectedChoiceIndex = index;
-      _hasAnswered = true;
-      currentQuestion.selectedAnswer = choiceValue;
-      _results.add(choiceValue == currentQuestion.correctCount);
+      if (choiceValue == _correctCount) {
+        _hasAnsweredCorrectly = true;
+      } else {
+        if (!_wrongChoicesSelected.contains(index)) {
+          _wrongChoicesSelected.add(index);
+        }
+      }
     });
 
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (mounted) {
-      _handleNextQuestion();
+    if (choiceValue == _correctCount) {
+      await Future.delayed(const Duration(milliseconds: 1200));
+      if (mounted) {
+        _handleNextQuestion();
+      }
     }
   }
 
   void _handleNextQuestion() {
-    if (_currentQuestion < _totalQuestions) {
-      setState(() {
-        _currentQuestion++;
-        _selectedChoiceIndex = null;
-        _hasAnswered = false;
-      });
-    } else {
-      _showCompletionDialog();
-    }
-  }
-
-  void _showQuestionDetailDialog(int index) {
-    final question = _questions[index];
-    final isCorrect = question.selectedAnswer == question.correctCount;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Row(
-          children: [
-            Icon(
-              isCorrect ? Icons.check_circle_rounded : Icons.cancel_rounded,
-              color: isCorrect ? AppColors.success : AppColors.error,
-              size: 28,
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Câu số ${index + 1}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Column(
-                children: [
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    alignment: WrapAlignment.center,
-                    children: List.generate(
-                      question.correctCount,
-                      (i) => Text(
-                        question.emoji,
-                        style: const TextStyle(fontSize: 24),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Đố bé có bao nhiêu hình vẽ?',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Các phương án lựa chọn:',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...question.choices.map((choice) {
-              final isCorrectAnswer = choice == question.correctCount;
-              final isUserSelection = choice == question.selectedAnswer;
-
-              Color itemBgColor = AppColors.background;
-              Color itemBorderColor = AppColors.border.withValues(alpha: 0.5);
-              Color itemTextColor = AppColors.textPrimary;
-              Widget? suffixIcon;
-
-              if (isCorrectAnswer) {
-                itemBgColor = AppColors.success.withValues(alpha: 0.12);
-                itemBorderColor = AppColors.success;
-                itemTextColor = AppColors.success;
-                suffixIcon = const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20);
-              } else if (isUserSelection) {
-                itemBgColor = AppColors.error.withValues(alpha: 0.12);
-                itemBorderColor = AppColors.error;
-                itemTextColor = AppColors.error;
-                suffixIcon = const Icon(Icons.cancel_rounded, color: AppColors.error, size: 20);
-              }
-
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: itemBgColor,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: itemBorderColor, width: 1.5),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        choice.toString(),
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: (isCorrectAnswer || isUserSelection)
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                          color: itemTextColor,
-                        ),
-                      ),
-                    ),
-                    suffixIcon ?? const SizedBox.shrink(),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Đóng'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showCompletionDialog() {
-    final int correctCount = _results.where((r) => r).length;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFE8F8F5),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.emoji_events_rounded,
-                  color: AppColors.success,
-                  size: 64,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Hoàn Thành Bài Học! 🎉',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Bé đã trả lời đúng $correctCount/$_totalQuestions câu hỏi học đếm!',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              const Text(
-                'Kết quả chi tiết (Ấn để xem lại):',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: 220,
-                child: GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 5,
-                    crossAxisSpacing: 8,
-                    mainAxisSpacing: 8,
-                    childAspectRatio: 1.0,
-                  ),
-                  itemCount: _results.length,
-                  itemBuilder: (context, index) {
-                    final isCorrect = _results[index];
-                    final Color color = isCorrect ? AppColors.success : AppColors.error;
-                    return InkWell(
-                      onTap: () => _showQuestionDetailDialog(index),
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: color, width: 2.0),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          '${index + 1}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: color,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context); // Đóng dialog
-                  Navigator.pop(context); // Quay về LearnTab
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: const Text('Quay lại danh mục'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    setState(() {
+      _currentQuestion++;
+      _generateNewQuestion();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_questions.isEmpty) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    final currentQuestion = _questions[_currentQuestion - 1];
-
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -371,26 +99,17 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Progress indicator
+              // Progress indicator showing current question number
               Row(
                 children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: LinearProgressIndicator(
-                        value: _currentQuestion / _totalQuestions,
-                        backgroundColor: AppColors.border,
-                        color: AppColors.primary,
-                        minHeight: 10,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
+                  const Icon(Icons.psychology_rounded, color: AppColors.primary, size: 24),
+                  const SizedBox(width: 8),
                   Text(
-                    '$_currentQuestion / $_totalQuestions',
+                    'Câu số $_currentQuestion',
                     style: const TextStyle(
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textSecondary,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ],
@@ -410,7 +129,7 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
                   child: Column(
                     children: [
                       Text(
-                        'Bé đếm xem có bao nhiêu ${currentQuestion.emoji}?',
+                        'Bé đếm xem có bao nhiêu $_currentEmoji?',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 35,
@@ -428,23 +147,23 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
                               runSpacing: 16,
                               alignment: WrapAlignment.center,
                               children: List.generate(
-                                currentQuestion.correctCount,
+                                _correctCount,
                                 (index) => AnimatedContainer(
                                   duration: Duration(
                                     milliseconds: 200 + (index * 50),
                                   ),
                                   curve: Curves.easeOutBack,
-                                  width: currentQuestion.correctCount > 6 ? 50 : 64,
-                                  height: currentQuestion.correctCount > 6 ? 50 : 64,
+                                  width: _correctCount > 6 ? 50 : 64,
+                                  height: _correctCount > 6 ? 50 : 64,
                                   decoration: BoxDecoration(
                                     color: AppColors.background,
                                     borderRadius: BorderRadius.circular(16),
                                   ),
                                   alignment: Alignment.center,
                                   child: Text(
-                                    currentQuestion.emoji,
+                                    _currentEmoji,
                                     style: TextStyle(
-                                      fontSize: currentQuestion.correctCount > 6 ? 32 : 40,
+                                      fontSize: _correctCount > 6 ? 32 : 40,
                                     ),
                                   ),
                                 ),
@@ -466,9 +185,9 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
                     height: 68,
                     child: Row(
                       children: [
-                        _buildChoiceButton(0, currentQuestion),
+                        _buildChoiceButton(0),
                         const SizedBox(width: 16),
-                        _buildChoiceButton(1, currentQuestion),
+                        _buildChoiceButton(1),
                       ],
                     ),
                   ),
@@ -477,9 +196,9 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
                     height: 68,
                     child: Row(
                       children: [
-                        _buildChoiceButton(2, currentQuestion),
+                        _buildChoiceButton(2),
                         const SizedBox(width: 16),
-                        _buildChoiceButton(3, currentQuestion),
+                        _buildChoiceButton(3),
                       ],
                     ),
                   ),
@@ -492,14 +211,24 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
     );
   }
 
-  Widget _buildChoiceButton(int index, CountingLessonQuestion question) {
-    final int choiceValue = question.choices[index];
+  Widget _buildChoiceButton(int index) {
+    final int choiceValue = _choices[index];
+    final bool isWrong = _wrongChoicesSelected.contains(index);
+    final bool isCorrect = _hasAnsweredCorrectly && choiceValue == _correctCount;
 
     Color buttonColor = Colors.white;
     Color borderColor = AppColors.border;
     Color textColor = AppColors.textPrimary;
 
-    if (_selectedChoiceIndex == index) {
+    if (isCorrect) {
+      buttonColor = AppColors.success.withValues(alpha: 0.12);
+      borderColor = AppColors.success;
+      textColor = AppColors.success;
+    } else if (isWrong) {
+      buttonColor = AppColors.error.withValues(alpha: 0.12);
+      borderColor = AppColors.error;
+      textColor = AppColors.error;
+    } else if (_selectedChoiceIndex == index && !_hasAnsweredCorrectly) {
       buttonColor = AppColors.primaryLight;
       borderColor = AppColors.primary;
       textColor = AppColors.primary;
@@ -514,7 +243,7 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
             color: buttonColor,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: borderColor, width: 2),
-            boxShadow: _selectedChoiceIndex == index
+            boxShadow: isCorrect || _selectedChoiceIndex == index
                 ? [
                     BoxShadow(
                       color: borderColor.withValues(alpha: 0.15),

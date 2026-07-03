@@ -101,11 +101,7 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
     _stopwatch.start();
     _startTimer();
 
-    // Auto-select first word & cell
-    if (randLevel.words.isNotEmpty) {
-      final firstWord = randLevel.words[0];
-      _selectCell(firstWord.row, firstWord.col);
-    }
+
 
     // Request keyboard focus
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -138,11 +134,28 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
     }
   }
 
+  String _formatTime(double seconds) {
+    if (seconds < 60) {
+      return '${seconds.toStringAsFixed(1)}s';
+    }
+    final int totalSeconds = seconds.round();
+    if (totalSeconds < 3600) {
+      final int minutes = totalSeconds ~/ 60;
+      final int remainingSeconds = totalSeconds % 60;
+      return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+    } else {
+      final int hours = totalSeconds ~/ 3600;
+      final int minutes = (totalSeconds % 3600) ~/ 60;
+      final int remainingSeconds = totalSeconds % 60;
+      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+    }
+  }
+
   void _startTimer() {
     _timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
       if (!mounted) return;
       setState(() {
-        _elapsedTimeString = (_stopwatch.elapsedMilliseconds / 1000).toStringAsFixed(1);
+        _elapsedTimeString = _formatTime(_stopwatch.elapsedMilliseconds / 1000);
       });
     });
   }
@@ -398,7 +411,7 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                   const Icon(Icons.timer_outlined, size: 16, color: AppColors.primary),
                   const SizedBox(width: 6),
                   Text(
-                    '${_elapsedTimeString}s',
+                    _elapsedTimeString,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       color: AppColors.primary,
@@ -409,31 +422,41 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
             ),
           ],
         ),
-        body: SafeArea(
-          child: isLandscape
-              ? Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Left side: Clue + Grid
-                    Expanded(
-                      child: Column(
-                        children: [
-                          _buildClueHeader(),
-                          Expanded(child: _buildGridContainer()),
-                        ],
+        body: GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedCellRow = null;
+              _selectedCellCol = null;
+              _selectedWord = null;
+            });
+          },
+          behavior: HitTestBehavior.opaque,
+          child: SafeArea(
+            child: isLandscape
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Left side: Clue + Grid
+                      Expanded(
+                        child: Column(
+                          children: [
+                            _buildClueHeader(),
+                            Expanded(child: _buildGridContainer()),
+                          ],
+                        ),
                       ),
-                    ),
-                    // Right side: Keyboard
-                    if (showKeypad) _buildInlineKeypadColumn(),
-                  ],
-                )
-              : Column(
-                  children: [
-                    _buildClueHeader(),
-                    Expanded(child: _buildGridContainer()),
-                    if (showKeypad) _buildInlineKeypadColumn(),
-                  ],
-                ),
+                      // Right side: Keyboard
+                      if (showKeypad) _buildInlineKeypadColumn(),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      _buildClueHeader(),
+                      Expanded(child: _buildGridContainer()),
+                      if (showKeypad) _buildInlineKeypadColumn(),
+                    ],
+                  ),
+          ),
         ),
       ),
     );
@@ -540,13 +563,7 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
 
   Widget _buildCellItem(EnglishCrosswordCell cell, double cellSize) {
     if (cell.isBlocked) {
-      return Container(
-        margin: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(8),
-        ),
-      );
+      return const SizedBox.shrink();
     }
 
     final isSelected = cell.row == _selectedCellRow && cell.col == _selectedCellCol;
@@ -646,54 +663,36 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
 
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
-    return Container(
-      width: isLandscape ? 360 : double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          top: isLandscape ? BorderSide.none : const BorderSide(color: AppColors.border, width: 1.5),
-          left: isLandscape ? const BorderSide(color: AppColors.border, width: 1.5) : BorderSide.none,
-        ),
-      ),
-      padding: EdgeInsets.fromLTRB(10, 10, 10, isLandscape ? 10 : MediaQuery.of(context).padding.bottom + 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Bàn phím nhập chữ:',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              TextButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _selectedCellRow = null;
-                    _selectedCellCol = null;
-                    _selectedWord = null;
-                  });
-                },
-                icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
-                label: const Text(
-                  'Ẩn',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                ),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.success,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              ),
-            ],
+    return GestureDetector(
+      onTap: () {},
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: isLandscape ? 360 : double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            top: isLandscape ? BorderSide.none : const BorderSide(color: AppColors.border, width: 1.5),
+            left: isLandscape ? const BorderSide(color: AppColors.border, width: 1.5) : BorderSide.none,
           ),
-          const SizedBox(height: 8),
+        ),
+        padding: EdgeInsets.fromLTRB(10, 10, 10, isLandscape ? 10 : MediaQuery.of(context).padding.bottom + 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Text(
+                  'Bàn phím nhập chữ:',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
           ...keyboardRows.map((row) {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
@@ -736,8 +735,9 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
           }),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildDifficultySelection() {
     return Scaffold(
@@ -892,7 +892,7 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                'Bé đã giải thành công toàn bộ ô chữ Tiếng Anh trong ${_elapsedTimeString}s!',
+                'Bé đã giải thành công toàn bộ ô chữ Tiếng Anh trong $_elapsedTimeString!',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 16,
@@ -937,7 +937,7 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${_elapsedTimeString}s',
+                            _elapsedTimeString,
                             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primary),
                           ),
                         ],

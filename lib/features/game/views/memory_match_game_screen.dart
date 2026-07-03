@@ -93,11 +93,28 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
     _stopwatch.start();
   }
 
+  String _formatTime(double seconds) {
+    if (seconds < 60) {
+      return '${seconds.toStringAsFixed(1)}s';
+    }
+    final int totalSeconds = seconds.round();
+    if (totalSeconds < 3600) {
+      final int minutes = totalSeconds ~/ 60;
+      final int remainingSeconds = totalSeconds % 60;
+      return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+    } else {
+      final int hours = totalSeconds ~/ 3600;
+      final int minutes = (totalSeconds % 3600) ~/ 60;
+      final int remainingSeconds = totalSeconds % 60;
+      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+    }
+  }
+
   void _startTimer() {
     _timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
       if (_stopwatch.isRunning) {
         setState(() {
-          _elapsedTimeString = (_stopwatch.elapsedMilliseconds / 1000).toStringAsFixed(1);
+          _elapsedTimeString = _formatTime(_stopwatch.elapsedMilliseconds / 1000);
         });
       }
     });
@@ -230,7 +247,7 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
                 const Icon(Icons.timer_outlined, size: 16, color: AppColors.primary),
                 const SizedBox(width: 6),
                 Text(
-                  '${_elapsedTimeString}s',
+                  _elapsedTimeString,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: AppColors.primary,
@@ -404,7 +421,7 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
               const SizedBox(height: 8),
               
               Text(
-                'Bé đã ghép hoàn tất 8 cặp từ trong $_elapsedTimeString giây.',
+                'Bé đã ghép hoàn tất 8 cặp từ trong $_elapsedTimeString.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 16,
@@ -453,7 +470,7 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${_elapsedTimeString}s',
+                            _elapsedTimeString,
                             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primary),
                           ),
                         ],

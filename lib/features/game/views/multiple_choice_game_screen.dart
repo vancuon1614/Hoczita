@@ -114,12 +114,29 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
     });
   }
 
+  String _formatTime(double seconds) {
+    if (seconds < 60) {
+      return '${seconds.toStringAsFixed(1)}s';
+    }
+    final int totalSeconds = seconds.round();
+    if (totalSeconds < 3600) {
+      final int minutes = totalSeconds ~/ 60;
+      final int remainingSeconds = totalSeconds % 60;
+      return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+    } else {
+      final int hours = totalSeconds ~/ 3600;
+      final int minutes = (totalSeconds % 3600) ~/ 60;
+      final int remainingSeconds = totalSeconds % 60;
+      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+    }
+  }
+
   void _endGameAndSaveScore() async {
     _gameStopwatch.stop();
     final totalElapsedSeconds = _gameStopwatch.elapsedMilliseconds / 1000;
 
     setState(() {
-      _elapsedTimeString = totalElapsedSeconds.toStringAsFixed(1);
+      _elapsedTimeString = _formatTime(totalElapsedSeconds);
       _isGameOver = true;
       _isSavingScore = true;
     });
@@ -611,7 +628,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
               const SizedBox(height: 4),
               
               Text(
-                'Bé đã trả lời đúng $_correctAnswersCount/${widget.questions.length} câu đố trong ${_elapsedTimeString}s.',
+                'Bé đã trả lời đúng $_correctAnswersCount/${widget.questions.length} câu đố trong $_elapsedTimeString.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 14,
@@ -660,7 +677,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${_elapsedTimeString}s',
+                            _elapsedTimeString,
                             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
                           ),
                         ],
