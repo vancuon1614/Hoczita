@@ -412,7 +412,7 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
                               _buildDetailItem('Ngày sinh', _dob),
                               _buildDetailItem('Nơi sinh', _pob),
                               _buildDetailItemWithEdit(
-                                'CMND',
+                                'CCCD',
                                 _idCard,
                                 subtext: (_idCardDate.isEmpty && _idCardPlace.isEmpty)
                                     ? 'Chưa cập nhật'
