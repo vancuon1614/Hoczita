@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
@@ -108,6 +109,8 @@ class _CccdOcrDialogState extends State<CccdOcrDialog> {
         'address': '123 Đường Láng, Phường Láng Thượng, Quận Đống Đa, Thành phố Hà Nội',
         'issueDate': '20/11/2021',
         'issuePlace': 'Cục Cảnh sát QLHC về TTXH',
+        'frontBase64': 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+        'backBase64': 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
       };
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -137,6 +140,18 @@ class _CccdOcrDialogState extends State<CccdOcrDialog> {
         backOcr = _parseBackCard(backResult.text);
       }
 
+      // Read images as base64 bytes
+      String frontBase64 = '';
+      if (_frontImage != null) {
+        final bytes = await _frontImage!.readAsBytes();
+        frontBase64 = base64Encode(bytes);
+      }
+      String backBase64 = '';
+      if (_backImage != null) {
+        final bytes = await _backImage!.readAsBytes();
+        backBase64 = base64Encode(bytes);
+      }
+
       final Map<String, String> finalData = {
         'idNumber': frontOcr['idNumber'] ?? '',
         'fullName': frontOcr['fullName'] ?? '',
@@ -145,6 +160,8 @@ class _CccdOcrDialogState extends State<CccdOcrDialog> {
         'address': frontOcr['address'] ?? '',
         'issueDate': backOcr['issueDate'] ?? '',
         'issuePlace': backOcr['issuePlace'] ?? 'Cục Cảnh sát QLHC về TTXH',
+        'frontBase64': frontBase64,
+        'backBase64': backBase64,
       };
 
       if (mounted) {

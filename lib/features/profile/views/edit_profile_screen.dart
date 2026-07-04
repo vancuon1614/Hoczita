@@ -33,6 +33,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _provinceController = TextEditingController();
 
   bool _isLoading = true;
+  String? _cccdFrontBase64;
+  String? _cccdBackBase64;
 
   // Geography API variables
   List<Map<String, dynamic>> _provinceList = [];
@@ -359,6 +361,21 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           }
         }
         
+        // 3. Sync CCCD images (Base64) to NKS Server if available
+        if (_cccdFrontBase64 != null && _cccdBackBase64 != null && ApiService.instance.hasToken) {
+          try {
+            await ApiService.instance.updateCccd(
+              frontBase64: _cccdFrontBase64!,
+              backBase64: _cccdBackBase64!,
+              number: _idCardController.text.trim(),
+              date: _idCardDateController.text.trim(),
+              place: _idCardPlaceController.text.trim(),
+            );
+          } catch (ae) {
+            debugPrint('Sync CCCD to NKS API error: $ae');
+          }
+        }
+        
         // Global keys as fallback
         await prefs.setString('profile_fullName', _fullNameController.text.trim());
         await prefs.setString('profile_email', _emailController.text.trim());
@@ -432,6 +449,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         }
         if (ocrData['address'] != null && ocrData['address']!.isNotEmpty) {
           _parseAddress(ocrData['address']!);
+        }
+        if (ocrData['frontBase64'] != null && ocrData['frontBase64']!.isNotEmpty) {
+          _cccdFrontBase64 = ocrData['frontBase64'];
+        }
+        if (ocrData['backBase64'] != null && ocrData['backBase64']!.isNotEmpty) {
+          _cccdBackBase64 = ocrData['backBase64'];
         }
       });
 
