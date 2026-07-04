@@ -34,24 +34,24 @@ class _MathOpsLessonScreenState extends State<MathOpsLessonScreen> {
     
     if (isAddition) {
       _operator = '+';
-      _num1 = _random.nextInt(10) + 1; // 1 to 10
-      _num2 = _random.nextInt(9) + 1;  // 1 to 9
+      _num1 = _random.nextInt(71) + 10; // 10 to 80
+      _num2 = _random.nextInt(100 - _num1) + 1; // 1 to 100-num1
       _correctResult = _num1 + _num2;
     } else {
       _operator = '-';
-      _num1 = _random.nextInt(10) + 9; // 9 to 18
-      _num2 = _random.nextInt(_num1 - 2) + 1; // 1 to num1-2, avoiding 0 or negative results
+      _num1 = _random.nextInt(81) + 20; // 20 to 100
+      _num2 = _random.nextInt(_num1 - 1) + 1; // 1 to num1-1
       _correctResult = _num1 - _num2;
     }
     
     // Generate wrong choices
     final Set<int> uniqueChoices = {_correctResult};
     while (uniqueChoices.length < 4) {
-      int wrong = _correctResult + _random.nextInt(5) - 2; // -2 to +2
-      if (wrong >= 0 && wrong != _correctResult) {
+      int wrong = _correctResult + _random.nextInt(9) - 4; // -4 to +4
+      if (wrong >= 1 && wrong <= 100 && wrong != _correctResult) {
         uniqueChoices.add(wrong);
       } else {
-        uniqueChoices.add(_random.nextInt(20) + 1);
+        uniqueChoices.add(_random.nextInt(100) + 1);
       }
     }
     

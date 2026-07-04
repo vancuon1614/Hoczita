@@ -55,6 +55,17 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
   int _score = 0;
   int _stars = 0;
 
+  final Set<EnglishCrosswordWord> _correctWords = {};
+  final Set<String> _hintCells = {};
+
+  @override
+  void initState() {
+    super.initState();
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+  }
+
   @override
   void dispose() {
     SystemChrome.setPreferredOrientations([
@@ -69,16 +80,9 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
   }
 
   void _selectDifficulty(CrosswordDifficulty diff) {
-    if (diff == CrosswordDifficulty.medium || diff == CrosswordDifficulty.hard) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
-    } else {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-      ]);
-    }
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
 
     final levels = EnglishCrosswordLevel.getPredefinedLevels()
         .where((l) => l.difficulty == diff)
@@ -94,6 +98,8 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
       _selectedCellRow = null;
       _selectedCellCol = null;
       _selectedWord = null;
+      _correctWords.clear();
+      _hintCells.clear();
     });
 
     _initializeGrid(randLevel);
@@ -101,7 +107,15 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
     _stopwatch.start();
     _startTimer();
 
-
+    // Select first word by default so the user is not confused and clue bar shows it
+    if (randLevel.words.isNotEmpty) {
+      final firstWord = randLevel.words.first;
+      setState(() {
+        _selectedWord = firstWord;
+        _selectedCellRow = firstWord.row;
+        _selectedCellCol = firstWord.col;
+      });
+    }
 
     // Request keyboard focus
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -129,6 +143,26 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
         if (r < _gridRows && c < _gridCols) {
           _grid[r][c].isBlocked = false;
           _grid[r][c].correctLetter = w.word[i].toUpperCase();
+        }
+      }
+    }
+
+    // Pre-fill letters for Easy mode
+    if (level.difficulty == CrosswordDifficulty.easy) {
+      final rand = Random();
+      for (final w in level.words) {
+        final numToFill = w.word.length > 4 ? 2 : 1;
+        final filledIndices = <int>{};
+        while (filledIndices.length < numToFill) {
+          filledIndices.add(rand.nextInt(w.word.length));
+        }
+        for (final idx in filledIndices) {
+          final r = w.isAcross ? w.row : w.row + idx;
+          final c = w.isAcross ? w.col + idx : w.col;
+          if (r < _gridRows && c < _gridCols) {
+            _grid[r][c].userLetter = w.word[idx].toUpperCase();
+            _hintCells.add('$r,$c');
+          }
         }
       }
     }
@@ -160,6 +194,41 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
     });
   }
 
+  bool _isCellLocked(int r, int c) {
+    if (_selectedDifficulty == CrosswordDifficulty.hard) return false;
+    if (_hintCells.contains('$r,$c')) return true;
+    for (final cw in _correctWords) {
+      if (_getCellIndexInWord(cw, r, c) != -1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool _isWordCorrect(EnglishCrosswordWord word) {
+    for (int i = 0; i < word.word.length; i++) {
+      final r = word.isAcross ? word.row : word.row + i;
+      final c = word.isAcross ? word.col + i : word.col;
+      if (_grid[r][c].userLetter.toUpperCase() != word.word[i].toUpperCase()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void _checkCompletedWords() {
+    if (_selectedDifficulty == CrosswordDifficulty.hard) return;
+    final level = _activeLevel;
+    if (level == null) return;
+    setState(() {
+      for (final w in level.words) {
+        if (!_correctWords.contains(w) && _isWordCorrect(w)) {
+          _correctWords.add(w);
+        }
+      }
+    });
+  }
+
   void _selectCell(int r, int c) {
     if (r < 0 || r >= _gridRows || c < 0 || c >= _gridCols) return;
     final cell = _grid[r][c];
@@ -177,19 +246,20 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
     if (matchingWords.isEmpty) return;
 
     setState(() {
-      _selectedCellRow = r;
-      _selectedCellCol = c;
-
-      // Toggle direction if tapping the current cell and it is an intersection
-      if (_selectedWord != null &&
-          matchingWords.contains(_selectedWord) &&
-          matchingWords.length > 1 &&
-          _selectedCellRow == r &&
-          _selectedCellCol == c) {
-        _selectedWord = matchingWords.firstWhere((w) => w != _selectedWord);
+      if (_selectedCellRow == r && _selectedCellCol == c) {
+        // Tap 2: toggle direction if intersection
+        if (matchingWords.length > 1 && _selectedWord != null) {
+          _selectedWord = matchingWords.firstWhere((w) => w != _selectedWord);
+        }
       } else {
-        // Otherwise, prefer current word's direction or just pick the first match
-        _selectedWord = matchingWords.first;
+        // Tap 1: new cell -> default to Across if available
+        _selectedCellRow = r;
+        _selectedCellCol = c;
+        final acrossWord = matchingWords.firstWhere(
+          (w) => w.isAcross,
+          orElse: () => matchingWords.first,
+        );
+        _selectedWord = acrossWord;
       }
     });
 
@@ -213,12 +283,15 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
     if (_isGameOver) return;
     if (_selectedCellRow == null || _selectedCellCol == null || _selectedWord == null) return;
 
-    final cell = _grid[_selectedCellRow!][_selectedCellCol!];
     final word = _selectedWord!;
 
     setState(() {
       if (key == 'backspace') {
-        cell.userLetter = '';
+        // Only clear if not locked
+        if (!_isCellLocked(_selectedCellRow!, _selectedCellCol!)) {
+          _grid[_selectedCellRow!][_selectedCellCol!].userLetter = '';
+        }
+        
         // Move selection back
         final currentIdx = _getCellIndexInWord(word, _selectedCellRow!, _selectedCellCol!);
         if (currentIdx > 0) {
@@ -228,9 +301,14 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
           _selectedCellCol = prevC;
         }
       } else {
-        // Set value
-        cell.userLetter = key.toUpperCase();
+        // Set value if not locked
+        if (!_isCellLocked(_selectedCellRow!, _selectedCellCol!)) {
+          _grid[_selectedCellRow!][_selectedCellCol!].userLetter = key.toUpperCase();
+        }
         
+        // Check if any words got completed and corrected
+        _checkCompletedWords();
+
         // Move selection forward
         final currentIdx = _getCellIndexInWord(word, _selectedCellRow!, _selectedCellCol!);
         if (currentIdx < word.word.length - 1) {
@@ -370,6 +448,27 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
     }
   }
 
+  void _navigateClue(bool goNext) {
+    final level = _activeLevel;
+    if (level == null || _selectedWord == null) return;
+    final words = level.words;
+    int idx = words.indexOf(_selectedWord!);
+    if (idx == -1) return;
+
+    if (goNext) {
+      idx = (idx + 1) % words.length;
+    } else {
+      idx = (idx - 1 + words.length) % words.length;
+    }
+
+    final nextWord = words[idx];
+    setState(() {
+      _selectedWord = nextWord;
+      _selectedCellRow = nextWord.row;
+      _selectedCellCol = nextWord.col;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_isPlaying) {
@@ -379,7 +478,6 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
       return _buildSummaryView();
     }
 
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     final showKeypad = _selectedCellRow != null && _selectedCellCol != null;
 
     return KeyboardListener(
@@ -430,6 +528,7 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
         ),
         body: GestureDetector(
           onTap: () {
+            // Dismiss keyboard when tapping on blank areas
             setState(() {
               _selectedCellRow = null;
               _selectedCellCol = null;
@@ -438,263 +537,82 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
           },
           behavior: HitTestBehavior.opaque,
           child: SafeArea(
-            child: isLandscape
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Left side: Clue + Grid
-                      Expanded(
-                        child: Column(
-                          children: [
-                            if (!showKeypad) _buildClueHeader(),
-                            Expanded(child: _buildGridContainer()),
-                          ],
+            child: Column(
+              children: [
+                Expanded(
+                  flex: 55,
+                  child: Container(
+                    color: Colors.grey[50],
+                    child: ClipRect(
+                      child: InteractiveViewer(
+                        minScale: 0.5,
+                        maxScale: 2.5,
+                        boundaryMargin: const EdgeInsets.all(80),
+                        child: Center(
+                          child: _buildGridContainer(),
                         ),
                       ),
-                      // Right side: Keyboard or Clue Lists
-                      showKeypad ? _buildInlineKeypadColumn() : _buildClueListsLandscape(),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      if (!showKeypad) _buildClueHeader(),
-                      Expanded(child: _buildGridContainer()),
-                      showKeypad ? _buildInlineKeypadColumn() : _buildClueLists(),
-                    ],
+                    ),
                   ),
+                ),
+                if (showKeypad) ...[
+                  _buildClueBar(),
+                  _buildInlineKeypadColumn(),
+                ] else ...[
+                  _buildClueLists(),
+                ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildClueHeader() {
+  Widget _buildClueBar() {
     final word = _selectedWord;
     final level = _activeLevel;
-    String clueText = 'Bấm chọn một ô chữ để xem gợi ý...';
-    
+    String clueText = 'Bấm chọn một ô chữ để bắt đầu!';
+
     if (word != null && level != null) {
       final index = level.words.indexOf(word) + 1;
-      final dir = word.isAcross ? 'Hàng ngang' : 'Hàng dọc';
-      clueText = '$index. $dir: ${word.clue} (${word.word.length} chữ cái)';
+      final dir = word.isAcross ? 'Across' : 'Down';
+      clueText = '$index. $dir: ${word.clue}';
     }
 
     return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.primary,
-            AppColors.primary.withValues(alpha: 0.8),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.15),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.help_outline_rounded, color: Colors.white, size: 24),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              clueText,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                height: 1.3,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildClueLists() {
-    final level = _activeLevel;
-    if (level == null) return const SizedBox.shrink();
-    final acrossWords = level.words.where((w) => w.isAcross).toList();
-    final downWords = level.words.where((w) => !w.isAcross).toList();
-
-    return Container(
-      padding: const EdgeInsets.all(16),
+      height: 64,
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(
           top: BorderSide(color: AppColors.border, width: 1.5),
+          bottom: BorderSide(color: AppColors.border, width: 1.5),
         ),
       ),
-      height: 200,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_rounded, color: AppColors.primary, size: 20),
+            onPressed: () => _navigateClue(false),
+          ),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const Text(
-                  'Hàng ngang (Across)',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: acrossWords.length,
-                    itemBuilder: (context, idx) {
-                      final w = acrossWords[idx];
-                      final wordNum = level.words.indexOf(w) + 1;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Text(
-                          '$wordNum. ${w.clue}',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
+            child: Text(
+              clueText,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              softWrap: true,
             ),
           ),
-          const VerticalDivider(width: 20, thickness: 1),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const Text(
-                  'Hàng dọc (Down)',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: downWords.length,
-                    itemBuilder: (context, idx) {
-                      final w = downWords[idx];
-                      final wordNum = level.words.indexOf(w) + 1;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Text(
-                          '$wordNum. ${w.clue}',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildClueListsLandscape() {
-    final level = _activeLevel;
-    if (level == null) return const SizedBox.shrink();
-    final acrossWords = level.words.where((w) => w.isAcross).toList();
-    final downWords = level.words.where((w) => !w.isAcross).toList();
-
-    return Container(
-      width: 360,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          left: BorderSide(color: AppColors.border, width: 1.5),
-        ),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const Text(
-            'Hàng ngang (Across)',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Expanded(
-            child: ListView.builder(
-              itemCount: acrossWords.length,
-              itemBuilder: (context, idx) {
-                final w = acrossWords[idx];
-                final wordNum = level.words.indexOf(w) + 1;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 3),
-                  child: Text(
-                    '$wordNum. ${w.clue}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          const Divider(height: 20, thickness: 1),
-          const Text(
-            'Hàng dọc (Down)',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Expanded(
-            child: ListView.builder(
-              itemCount: downWords.length,
-              itemBuilder: (context, idx) {
-                final w = downWords[idx];
-                final wordNum = level.words.indexOf(w) + 1;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 3),
-                  child: Text(
-                    '$wordNum. ${w.clue}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                );
-              },
-            ),
+          IconButton(
+            icon: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.primary, size: 20),
+            onPressed: () => _navigateClue(true),
           ),
         ],
       ),
@@ -702,32 +620,20 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
   }
 
   Widget _buildGridContainer() {
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    // Scale cell sizes slightly based on difficulty
     final cellSize = (_selectedDifficulty == CrosswordDifficulty.hard) 
-        ? (isLandscape ? 32.0 : 36.0) 
-        : 42.0;
+        ? 26.0 
+        : ((_selectedDifficulty == CrosswordDifficulty.medium) ? 32.0 : 40.0);
 
     return Container(
-      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border, width: 1.5),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: InteractiveViewer(
-        maxScale: 2.5,
-        minScale: 0.8,
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: FittedBox(
-              fit: BoxFit.contain,
-              child: _buildCrosswordGrid(cellSize),
-            ),
-          ),
-        ),
+      child: FittedBox(
+        fit: BoxFit.contain,
+        child: _buildCrosswordGrid(cellSize),
       ),
     );
   }
@@ -766,6 +672,21 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
       }
     }
 
+    // Check if cell is correct and locked (except in Hard mode)
+    bool isCellCorrectAndLocked = false;
+    if (_selectedDifficulty != CrosswordDifficulty.hard) {
+      if (_hintCells.contains('${cell.row},${cell.col}')) {
+        isCellCorrectAndLocked = true;
+      } else {
+        for (final cw in _correctWords) {
+          if (_getCellIndexInWord(cw, cell.row, cell.col) != -1) {
+            isCellCorrectAndLocked = true;
+            break;
+          }
+        }
+      }
+    }
+
     // Determine start number label (e.g. "1", "2")
     int? wordStartIndex;
     final level = _activeLevel;
@@ -783,7 +704,12 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
     Color textColor = AppColors.textPrimary;
     double borderWidth = 2.0;
 
-    if (isSelected) {
+    if (isCellCorrectAndLocked) {
+      backColor = AppColors.success.withValues(alpha: 0.15);
+      borderColor = AppColors.success;
+      textColor = AppColors.success;
+      borderWidth = 2.0;
+    } else if (isSelected) {
       backColor = AppColors.primaryLight;
       borderColor = AppColors.primary;
       textColor = AppColors.primary;
@@ -849,95 +775,47 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
       ['Z', 'X', 'C', 'V', 'B', 'N', 'M', 'backspace'],
     ];
 
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-
     return GestureDetector(
       onTap: () {},
       behavior: HitTestBehavior.opaque,
       child: Container(
-        width: isLandscape ? 360 : double.infinity,
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: Colors.white,
           border: Border(
-            top: isLandscape ? BorderSide.none : const BorderSide(color: AppColors.border, width: 1.5),
-            left: isLandscape ? const BorderSide(color: AppColors.border, width: 1.5) : BorderSide.none,
+            top: BorderSide(color: AppColors.border, width: 1.5),
           ),
         ),
-        padding: EdgeInsets.fromLTRB(10, 10, 10, isLandscape ? 10 : MediaQuery.of(context).padding.bottom + 8),
+        padding: EdgeInsets.fromLTRB(10, 10, 10, MediaQuery.of(context).padding.bottom + 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const Text(
-                  'Bàn phím nhập chữ:',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            (() {
-              final word = _selectedWord;
-              final level = _activeLevel;
-              if (word != null && level != null) {
-                final index = level.words.indexOf(word) + 1;
-                final dir = word.isAcross ? 'Ngang' : 'Dọc';
-                return Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryLight,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-                  ),
-                  child: Text(
-                    '$index. $dir: ${word.clue}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                );
-              }
-              return const SizedBox.shrink();
-            })(),
-            const SizedBox(height: 8),
-          ...keyboardRows.map((row) {
+          children: keyboardRows.map((row) {
             return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
+              padding: const EdgeInsets.symmetric(vertical: 3),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: row.map((key) {
-                  final isBack = key == 'backspace';
+                  final isBackspace = key == 'backspace';
                   return Expanded(
-                    flex: isBack ? 2 : 1,
+                    flex: isBackspace ? 2 : 1,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 2),
                       child: InkWell(
                         onTap: () => _inputLetter(key),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                         child: Container(
-                          height: isLandscape ? 38 : 42,
+                          height: 44,
                           decoration: BoxDecoration(
-                            color: isBack ? Colors.grey[200] : AppColors.background,
-                            borderRadius: BorderRadius.circular(10),
+                            color: isBackspace ? Colors.grey[200] : AppColors.background,
+                            borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
                           ),
                           alignment: Alignment.center,
-                          child: isBack
-                              ? const Icon(Icons.backspace_outlined, color: AppColors.textPrimary, size: 16)
+                          child: isBackspace
+                              ? const Icon(Icons.backspace_outlined, color: AppColors.textPrimary, size: 18)
                               : Text(
                                   key,
                                   style: const TextStyle(
-                                    fontSize: 15,
+                                    fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                     color: AppColors.textPrimary,
                                   ),
@@ -949,131 +827,13 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                 }).toList(),
               ),
             );
-          }),
-        ],
-      ),
-    ),
-  );
-}
-
-  Widget _buildDifficultySelection() {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'English Crossword 🇬🇧',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.translate_rounded,
-                size: 80,
-                color: AppColors.primary,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Chọn Cấp Độ Ô Chữ',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Giải các ô chữ tiếng Anh bằng cách điền từ tương ứng với gợi ý tiếng Việt nhé.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 40),
-              _buildDifficultyButton(
-                title: 'Dễ (Easy)',
-                subtitle: 'Ô chữ 3-4 từ ngắn - Thích hợp cho bé làm quen',
-                difficulty: CrosswordDifficulty.easy,
-                color: Colors.green,
-              ),
-              const SizedBox(height: 16),
-              _buildDifficultyButton(
-                title: 'Trung Bình (Medium)',
-                subtitle: 'Ô chữ 5 từ vừa - Rèn luyện ghi nhớ từ vựng tốt hơn',
-                difficulty: CrosswordDifficulty.medium,
-                color: Colors.orange,
-              ),
-              const SizedBox(height: 16),
-              _buildDifficultyButton(
-                title: 'Khó (Hard)',
-                subtitle: 'Ô chữ 4-5 từ dài - Thử thách trí tuệ siêu việt của bé',
-                difficulty: CrosswordDifficulty.hard,
-                color: Colors.red,
-              ),
-            ],
-          ),
+          }).toList(),
         ),
       ),
     );
   }
 
-  Widget _buildDifficultyButton({
-    required String title,
-    required String subtitle,
-    required CrosswordDifficulty difficulty,
-    required Color color,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _selectDifficulty(difficulty),
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: color.withValues(alpha: 0.1),
-                  child: Icon(Icons.star_rounded, color: color, size: 20),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right_rounded, color: AppColors.border),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+
 
   Widget _buildSummaryView() {
     return Scaffold(
@@ -1213,6 +973,225 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                       ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClueLists() {
+    final level = _activeLevel;
+    if (level == null) return const SizedBox.shrink();
+    final acrossWords = level.words.where((w) => w.isAcross).toList();
+    final downWords = level.words.where((w) => !w.isAcross).toList();
+
+    return Expanded(
+      flex: 35,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            top: BorderSide(color: AppColors.border, width: 1.5),
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Hàng ngang (Across)',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: acrossWords.length,
+                      itemBuilder: (context, idx) {
+                        final w = acrossWords[idx];
+                        final wordNum = level.words.indexOf(w) + 1;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Text(
+                            '$wordNum. ${w.clue}',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const VerticalDivider(width: 20, thickness: 1),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Hàng dọc (Down)',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: downWords.length,
+                      itemBuilder: (context, idx) {
+                        final w = downWords[idx];
+                        final wordNum = level.words.indexOf(w) + 1;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Text(
+                            '$wordNum. ${w.clue}',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDifficultySelection() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'English Crossword 🇬🇧',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.translate_rounded,
+                size: 80,
+                color: AppColors.primary,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Chọn Cấp Độ Ô Chữ',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Giải các ô chữ tiếng Anh bằng cách điền từ tương ứng với gợi ý tiếng Việt nhé.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 40),
+              _buildDifficultyButton(
+                title: 'Dễ (Easy)',
+                subtitle: 'Ô chữ 5 từ ngắn (7x7) - Thích hợp cho bé làm quen',
+                difficulty: CrosswordDifficulty.easy,
+                color: Colors.green,
+              ),
+              const SizedBox(height: 16),
+              _buildDifficultyButton(
+                title: 'Trung Bình (Medium)',
+                subtitle: 'Ô chữ 10 từ vừa (11x11) - Rèn luyện ghi nhớ từ vựng tốt hơn',
+                difficulty: CrosswordDifficulty.medium,
+                color: Colors.orange,
+              ),
+              const SizedBox(height: 16),
+              _buildDifficultyButton(
+                title: 'Khó (Hard)',
+                subtitle: 'Ô chữ 20 từ dài (14x14) - Thử thách trí tuệ siêu việt của bé',
+                difficulty: CrosswordDifficulty.hard,
+                color: Colors.red,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDifficultyButton({
+    required String title,
+    required String subtitle,
+    required CrosswordDifficulty difficulty,
+    required Color color,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _selectDifficulty(difficulty),
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: color.withValues(alpha: 0.1),
+                  child: Icon(Icons.star_rounded, color: color, size: 20),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: AppColors.border),
+              ],
+            ),
           ),
         ),
       ),

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter/foundation.dart';
 import '../../../core/theme/app_theme.dart';
 
 class CccdOcrDialog extends StatefulWidget {
@@ -96,6 +97,30 @@ class _CccdOcrDialogState extends State<CccdOcrDialog> {
       _isLoading = true;
     });
 
+    if (kIsWeb) {
+      // Simulate processing delay on Web
+      await Future.delayed(const Duration(milliseconds: 1000));
+      final Map<String, String> mockData = {
+        'idNumber': '038096001234',
+        'fullName': 'NGUYEN VAN A',
+        'dob': '15/08/1996',
+        'gender': 'NAM',
+        'address': '123 Đường Láng, Phường Láng Thượng, Quận Đống Đa, Thành phố Hà Nội',
+        'issueDate': '20/11/2021',
+        'issuePlace': 'Cục Cảnh sát QLHC về TTXH',
+      };
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Trình duyệt Web không hỗ trợ thư viện nhận diện chữ. Hệ thống tự động điền dữ liệu mẫu để thử nghiệm! 🧪'),
+            backgroundColor: Colors.blue,
+          ),
+        );
+        Navigator.pop(context, mockData);
+      }
+      return;
+    }
+
     final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
 
     try {
@@ -163,20 +188,38 @@ class _CccdOcrDialogState extends State<CccdOcrDialog> {
     }
 
     // 2. Extract Date of Birth
-    final dateRegex = RegExp(r'\b\d{2}/\d{2}/\d{4}\b');
+    final dateRegex = RegExp(r'\b\d{1,2}/\d{1,2}/\d{4}\b');
+    final vnDateRegex = RegExp(r'ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(\d{4})', caseSensitive: false);
+
     for (var line in lines) {
       if (line.toLowerCase().contains('ngày sinh') || 
           line.toLowerCase().contains('birth') ||
           line.toLowerCase().contains('birth:')) {
-        final match = dateRegex.firstMatch(line);
-        if (match != null) {
-          dob = match.group(0)!;
+        final vnMatch = vnDateRegex.firstMatch(line);
+        if (vnMatch != null) {
+          final d = vnMatch.group(1)!.padLeft(2, '0');
+          final m = vnMatch.group(2)!.padLeft(2, '0');
+          final y = vnMatch.group(3)!;
+          dob = '$d/$m/$y';
         } else {
-          int idx = lines.indexOf(line);
-          if (idx != -1 && idx + 1 < lines.length) {
-            final nextMatch = dateRegex.firstMatch(lines[idx + 1]);
-            if (nextMatch != null) {
-              dob = nextMatch.group(0)!;
+          final match = dateRegex.firstMatch(line);
+          if (match != null) {
+            dob = match.group(0)!;
+          } else {
+            int idx = lines.indexOf(line);
+            if (idx != -1 && idx + 1 < lines.length) {
+              final nextVnMatch = vnDateRegex.firstMatch(lines[idx + 1]);
+              if (nextVnMatch != null) {
+                final d = nextVnMatch.group(1)!.padLeft(2, '0');
+                final m = nextVnMatch.group(2)!.padLeft(2, '0');
+                final y = nextVnMatch.group(3)!;
+                dob = '$d/$m/$y';
+              } else {
+                final nextMatch = dateRegex.firstMatch(lines[idx + 1]);
+                if (nextMatch != null) {
+                  dob = nextMatch.group(0)!;
+                }
+              }
             }
           }
         }
@@ -185,6 +228,14 @@ class _CccdOcrDialogState extends State<CccdOcrDialog> {
     // Fallback DOB
     if (dob.isEmpty) {
       for (var line in lines) {
+        final vnMatch = vnDateRegex.firstMatch(line);
+        if (vnMatch != null) {
+          final d = vnMatch.group(1)!.padLeft(2, '0');
+          final m = vnMatch.group(2)!.padLeft(2, '0');
+          final y = vnMatch.group(3)!;
+          dob = '$d/$m/$y';
+          break;
+        }
         final match = dateRegex.firstMatch(line);
         if (match != null) {
           dob = match.group(0)!;
@@ -298,18 +349,35 @@ class _CccdOcrDialogState extends State<CccdOcrDialog> {
     String issueDate = '';
     String issuePlace = 'Cục Cảnh sát QLHC về TTXH';
 
-    final dateRegex = RegExp(r'\b\d{2}/\d{2}/\d{4}\b');
+    final dateRegex = RegExp(r'\b\d{1,2}/\d{1,2}/\d{4}\b');
+    final vnDateRegex = RegExp(r'ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(\d{4})', caseSensitive: false);
+
     for (var line in lines) {
-      if (line.toLowerCase().contains('ngày') || line.toLowerCase().contains('cấp')) {
-        final match = dateRegex.firstMatch(line);
-        if (match != null) {
-          issueDate = match.group(0)!;
-        }
+      final vnMatch = vnDateRegex.firstMatch(line);
+      if (vnMatch != null) {
+        final d = vnMatch.group(1)!.padLeft(2, '0');
+        final m = vnMatch.group(2)!.padLeft(2, '0');
+        final y = vnMatch.group(3)!;
+        issueDate = '$d/$m/$y';
+        break;
+      }
+      final match = dateRegex.firstMatch(line);
+      if (match != null) {
+        issueDate = match.group(0)!;
+        break;
       }
     }
     
     if (issueDate.isEmpty) {
       for (var line in lines) {
+        final vnMatch = vnDateRegex.firstMatch(line);
+        if (vnMatch != null) {
+          final d = vnMatch.group(1)!.padLeft(2, '0');
+          final m = vnMatch.group(2)!.padLeft(2, '0');
+          final y = vnMatch.group(3)!;
+          issueDate = '$d/$m/$y';
+          break;
+        }
         final match = dateRegex.firstMatch(line);
         if (match != null) {
           issueDate = match.group(0)!;
@@ -361,11 +429,17 @@ class _CccdOcrDialogState extends State<CccdOcrDialog> {
           child: imageFile != null
               ? ClipRRect(
                   borderRadius: BorderRadius.circular(14),
-                  child: Image.file(
-                    imageFile,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                  ),
+                  child: kIsWeb
+                      ? Image.network(
+                          imageFile.path,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                        )
+                      : Image.file(
+                          imageFile,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                        ),
                 )
               : Column(
                   mainAxisAlignment: MainAxisAlignment.center,

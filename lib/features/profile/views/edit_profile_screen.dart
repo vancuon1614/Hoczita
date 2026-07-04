@@ -608,7 +608,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const Text(
-                            'Chứng minh nhân dân (CMND/CCCD)',
+                            'Căn cước công dân (CCCD)',
                             style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 16),
                           ),
                           TextButton.icon(
@@ -629,12 +629,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      _buildTextField(_idCardController, 'Số CMND', 'Nhập số CMND'),
+                      _buildTextField(_idCardController, 'Số CCCD', 'Nhập số CCCD'),
                       const SizedBox(height: 16),
                       _buildTextField(
                         _idCardDateController,
-                        'Ngày cấp CMND',
-                        'Chọn ngày cấp CMND',
+                        'Ngày cấp CCCD',
+                        'Chọn ngày cấp CCCD',
                         onTap: () => _selectDate(context, _idCardDateController),
                         suffixIcon: IconButton(
                           icon: const Icon(Icons.calendar_month_rounded, color: AppColors.primary),
@@ -642,7 +642,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _buildTextField(_idCardPlaceController, 'Nơi cấp CMND', 'Ví dụ: CA. TP. HCM'),
+                      _buildTextField(_idCardPlaceController, 'Nơi cấp CCCD', 'Ví dụ: Cục Cảnh sát QLHC về TTXH'),
                       
                       const Divider(height: 32),
                       const Text(

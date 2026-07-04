@@ -260,13 +260,13 @@ class GameContent {
 
       if (isAddition) {
         op = '+';
-        num1 = _random.nextInt(20) + 5; // 5 to 25
-        num2 = _random.nextInt(15) + 1; // 1 to 15
+        num1 = _random.nextInt(71) + 10; // 10 to 80
+        num2 = _random.nextInt(100 - num1) + 1; // 1 to 100-num1
         result = num1 + num2;
       } else {
         op = '-';
-        num1 = _random.nextInt(30) + 10; // 10 to 40
-        num2 = _random.nextInt(num1 - 2) + 1; // Avoid negative and 0
+        num1 = _random.nextInt(81) + 20; // 20 to 100
+        num2 = _random.nextInt(num1 - 1) + 1; // 1 to num1-1
         result = num1 - num2;
       }
 
@@ -275,7 +275,11 @@ class GameContent {
       final Set<int> wrongs = {result};
       while (wrongs.length < 4) {
         int wrong = result + _random.nextInt(9) - 4; // -4 to +4
-        if (wrong >= 0) wrongs.add(wrong);
+        if (wrong >= 1 && wrong <= 100) {
+          wrongs.add(wrong);
+        } else {
+          wrongs.add(_random.nextInt(100) + 1);
+        }
       }
 
       final List<String> choices = wrongs.map((e) => e.toString()).toList()..shuffle();
