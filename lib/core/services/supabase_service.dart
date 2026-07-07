@@ -295,6 +295,24 @@ class SupabaseService {
     }
   }
 
+  /// Lấy thông tin hồ sơ người dùng từ bảng profiles trên Supabase.
+  Future<Map<String, dynamic>?> getProfile() async {
+    if (isOfflineDemoMode) return null;
+    try {
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) return null;
+      final response = await client
+          .from(SupabaseConstants.tableProfiles)
+          .select()
+          .eq('id', userId)
+          .maybeSingle();
+      return response;
+    } catch (e) {
+      debugPrint('Error fetching profile from Supabase: $e');
+      return null;
+    }
+  }
+
   /// Cập nhật thông tin hồ sơ người dùng lên bảng profiles trên Supabase.
   Future<bool> updateProfile({
     required String fullName,

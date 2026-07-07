@@ -11,9 +11,9 @@ class CrosswordCell {
   final int row;
   final int col;
   final CellType type;
-  final String correctVal; // e.g., "5", "+", "="
-  String userVal; // empty string initially for input numbers
-  bool isHint; // true if pre-filled, false if input needed
+  final String correctVal;
+  String userVal;
+  bool isHint;
 
   CrosswordCell({
     required this.row,
@@ -28,59 +28,62 @@ class CrosswordCell {
 }
 
 class CrosswordEquation {
-  final List<CrosswordCell> numberCells; // 3 cells (num1, num2, result)
-  final CrosswordCell opCell;
-  final CrosswordCell eqCell;
-  final String opType; // "+" or "-"
-
-  CrosswordEquation({
-    required this.numberCells,
-    required this.opCell,
-    required this.eqCell,
-    required this.opType,
-  });
+  final List<CrosswordCell> cells;
+  CrosswordEquation({required this.cells});
 
   bool get isSatisfied {
-    if (numberCells.any((c) => c.type == CellType.number && !c.isHint && c.userVal.isEmpty)) {
-      return false;
+    if (cells.length != 5) return false;
+    for (var c in cells) {
+      if (c.type == CellType.number && !c.isHint && c.userVal.isEmpty) return false;
     }
-    final val1Str = numberCells[0].isHint ? numberCells[0].correctVal : numberCells[0].userVal;
-    final val2Str = numberCells[1].isHint ? numberCells[1].correctVal : numberCells[1].userVal;
-    final resStr = numberCells[2].isHint ? numberCells[2].correctVal : numberCells[2].userVal;
-
-    final n1 = int.tryParse(val1Str) ?? -999;
-    final n2 = int.tryParse(val2Str) ?? -999;
-    final res = int.tryParse(resStr) ?? -999;
-
-    if (opType == '+') {
-      return n1 + n2 == res;
-    } else {
-      return n1 - n2 == res;
-    }
+    try {
+      final a   = int.parse(cells[0].isHint ? cells[0].correctVal : cells[0].userVal);
+      final op  = cells[1].correctVal;
+      final b   = int.parse(cells[2].isHint ? cells[2].correctVal : cells[2].userVal);
+      final res = int.parse(cells[4].isHint ? cells[4].correctVal : cells[4].userVal);
+      int calc;
+      switch (op) {
+        case '+': calc = a + b; break;
+        case '-': calc = a - b; break;
+        case '*': calc = a * b; break;
+        case '/':
+          if (b == 0) return false;
+          calc = a ~/ b;
+          if (a % b != 0) return false;
+          break;
+        default: return false;
+      }
+      return calc == res;
+    } catch (_) { return false; }
   }
 
-  bool get isFullyCorrect {
-    return numberCells.every((c) => c.isCorrect);
-  }
+  bool get isFullyCorrect => cells.every((c) => c.isCorrect);
+}
+
+class _EqSlot {
+  final bool isHorizontal;
+  final int row;
+  final int col;
+  const _EqSlot({required this.isHorizontal, required this.row, required this.col});
 }
 
 class MathCrosswordGameScreen extends StatefulWidget {
   const MathCrosswordGameScreen({super.key});
-
   @override
   State<MathCrosswordGameScreen> createState() => _MathCrosswordGameScreenState();
 }
 
 class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
-  int? _selectedDifficulty; // 5, 10, or 20 equations
+  int? _selectedDifficulty;
+  List<List<CrosswordCell>> _grid = [];
+  final List<CrosswordEquation> _equations = [];
+
   bool _isPlaying = false;
   bool _isGameOver = false;
   bool _isSavingScore = false;
 
   int _gridRows = 0;
   int _gridCols = 0;
-  List<List<CrosswordCell>> _grid = [];
-  final List<CrosswordEquation> _equations = [];
 
   int? _selectedCellRow;
   int? _selectedCellCol;
@@ -93,12 +96,8 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
 
   @override
   void dispose() {
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
-    if (_isPlaying) {
-      _timer.cancel();
-    }
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    if (_isPlaying) _timer.cancel();
     _stopwatch.stop();
     super.dispose();
   }
@@ -110,9 +109,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
         DeviceOrientation.landscapeRight,
       ]);
     } else {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-      ]);
+      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     }
     setState(() {
       _selectedDifficulty = difficulty;
@@ -129,321 +126,444 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
   }
 
   String _formatTime(double seconds) {
-    if (seconds < 60) {
-      return '${seconds.toStringAsFixed(1)}s';
+    if (seconds < 60) return '${seconds.toStringAsFixed(1)}s';
+    final int ts = seconds.round();
+    if (ts < 3600) {
+      return '${(ts ~/ 60).toString().padLeft(2, '0')}:${(ts % 60).toString().padLeft(2, '0')}';
     }
-    final int totalSeconds = seconds.round();
-    if (totalSeconds < 3600) {
-      final int minutes = totalSeconds ~/ 60;
-      final int remainingSeconds = totalSeconds % 60;
-      return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
-    } else {
-      final int hours = totalSeconds ~/ 3600;
-      final int minutes = (totalSeconds % 3600) ~/ 60;
-      final int remainingSeconds = totalSeconds % 60;
-      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
-    }
+    final h = ts ~/ 3600; final m = (ts % 3600) ~/ 60; final s = ts % 60;
+    return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
   void _startTimer() {
-    _timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+    _timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
       if (_stopwatch.isRunning) {
-        setState(() {
-          _elapsedTimeString = _formatTime(_stopwatch.elapsedMilliseconds / 1000);
-        });
+        setState(() => _elapsedTimeString = _formatTime(_stopwatch.elapsedMilliseconds / 1000));
       }
     });
   }
 
+  // ─── TEMPLATES ──────────────────────────────────────────────────────────────
+  static const _easyTemplates = <List<_EqSlot>>[
+    [
+      _EqSlot(isHorizontal: true,  row: 0, col: 0),
+      _EqSlot(isHorizontal: true,  row: 4, col: 2),
+      _EqSlot(isHorizontal: true,  row: 8, col: 4),
+      _EqSlot(isHorizontal: false, row: 0, col: 2),
+      _EqSlot(isHorizontal: false, row: 2, col: 6),
+      _EqSlot(isHorizontal: false, row: 4, col: 0),
+    ],
+    [
+      _EqSlot(isHorizontal: true,  row: 0, col: 0),
+      _EqSlot(isHorizontal: true,  row: 4, col: 0),
+      _EqSlot(isHorizontal: true,  row: 8, col: 4),
+      _EqSlot(isHorizontal: false, row: 0, col: 4),
+      _EqSlot(isHorizontal: false, row: 2, col: 0),
+      _EqSlot(isHorizontal: false, row: 4, col: 8),
+    ],
+    [
+      _EqSlot(isHorizontal: true,  row: 0, col: 0),
+      _EqSlot(isHorizontal: true,  row: 8, col: 0),
+      _EqSlot(isHorizontal: false, row: 0, col: 0),
+      _EqSlot(isHorizontal: false, row: 0, col: 2),
+      _EqSlot(isHorizontal: false, row: 0, col: 6),
+      _EqSlot(isHorizontal: false, row: 0, col: 8),
+    ],
+    [
+      _EqSlot(isHorizontal: true,  row: 0, col: 2),
+      _EqSlot(isHorizontal: true,  row: 4, col: 0),
+      _EqSlot(isHorizontal: true,  row: 8, col: 4),
+      _EqSlot(isHorizontal: false, row: 0, col: 2),
+      _EqSlot(isHorizontal: false, row: 2, col: 6),
+      _EqSlot(isHorizontal: false, row: 4, col: 0),
+    ],
+    [
+      _EqSlot(isHorizontal: true,  row: 0, col: 0),
+      _EqSlot(isHorizontal: true,  row: 4, col: 2),
+      _EqSlot(isHorizontal: true,  row: 8, col: 4),
+      _EqSlot(isHorizontal: false, row: 0, col: 4),
+      _EqSlot(isHorizontal: false, row: 2, col: 2),
+      _EqSlot(isHorizontal: false, row: 4, col: 6),
+    ],
+  ];
+
+  static const _mediumTemplates = <List<_EqSlot>>[
+    [
+      _EqSlot(isHorizontal: true,  row: 0,  col: 0),
+      _EqSlot(isHorizontal: true,  row: 2,  col: 4),
+      _EqSlot(isHorizontal: true,  row: 6,  col: 0),
+      _EqSlot(isHorizontal: true,  row: 8,  col: 6),
+      _EqSlot(isHorizontal: true,  row: 12, col: 2),
+      _EqSlot(isHorizontal: false, row: 0,  col: 0),
+      _EqSlot(isHorizontal: false, row: 0,  col: 4),
+      _EqSlot(isHorizontal: false, row: 4,  col: 8),
+      _EqSlot(isHorizontal: false, row: 2,  col: 6),
+      _EqSlot(isHorizontal: false, row: 8,  col: 12),
+    ],
+    [
+      _EqSlot(isHorizontal: true,  row: 0,  col: 0),
+      _EqSlot(isHorizontal: true,  row: 4,  col: 8),
+      _EqSlot(isHorizontal: true,  row: 6,  col: 4),
+      _EqSlot(isHorizontal: true,  row: 10, col: 0),
+      _EqSlot(isHorizontal: true,  row: 12, col: 6),
+      _EqSlot(isHorizontal: false, row: 0,  col: 0),
+      _EqSlot(isHorizontal: false, row: 0,  col: 4),
+      _EqSlot(isHorizontal: false, row: 0,  col: 8),
+      _EqSlot(isHorizontal: false, row: 0,  col: 12),
+      _EqSlot(isHorizontal: false, row: 4,  col: 6),
+    ],
+    [
+      _EqSlot(isHorizontal: true,  row: 0,  col: 0),
+      _EqSlot(isHorizontal: true,  row: 2,  col: 0),
+      _EqSlot(isHorizontal: true,  row: 4,  col: 4),
+      _EqSlot(isHorizontal: true,  row: 8,  col: 6),
+      _EqSlot(isHorizontal: true,  row: 12, col: 8),
+      _EqSlot(isHorizontal: false, row: 0,  col: 0),
+      _EqSlot(isHorizontal: false, row: 0,  col: 4),
+      _EqSlot(isHorizontal: false, row: 0,  col: 8),
+      _EqSlot(isHorizontal: false, row: 4,  col: 10),
+      _EqSlot(isHorizontal: false, row: 8,  col: 12),
+    ],
+    [
+      _EqSlot(isHorizontal: true,  row: 0,  col: 4),
+      _EqSlot(isHorizontal: true,  row: 4,  col: 0),
+      _EqSlot(isHorizontal: true,  row: 6,  col: 8),
+      _EqSlot(isHorizontal: true,  row: 8,  col: 2),
+      _EqSlot(isHorizontal: true,  row: 12, col: 4),
+      _EqSlot(isHorizontal: false, row: 0,  col: 4),
+      _EqSlot(isHorizontal: false, row: 0,  col: 8),
+      _EqSlot(isHorizontal: false, row: 4,  col: 0),
+      _EqSlot(isHorizontal: false, row: 4,  col: 12),
+      _EqSlot(isHorizontal: false, row: 8,  col: 6),
+    ],
+    [
+      _EqSlot(isHorizontal: true,  row: 0,  col: 0),
+      _EqSlot(isHorizontal: true,  row: 4,  col: 6),
+      _EqSlot(isHorizontal: true,  row: 8,  col: 4),
+      _EqSlot(isHorizontal: true,  row: 10, col: 0),
+      _EqSlot(isHorizontal: true,  row: 12, col: 8),
+      _EqSlot(isHorizontal: false, row: 0,  col: 0),
+      _EqSlot(isHorizontal: false, row: 0,  col: 4),
+      _EqSlot(isHorizontal: false, row: 2,  col: 8),
+      _EqSlot(isHorizontal: false, row: 6,  col: 12),
+      _EqSlot(isHorizontal: false, row: 8,  col: 2),
+    ],
+  ];
+
+  static const _hardTemplates = <List<_EqSlot>>[
+    [
+      _EqSlot(isHorizontal: true,  row: 0,  col: 0),
+      _EqSlot(isHorizontal: true,  row: 2,  col: 4),
+      _EqSlot(isHorizontal: true,  row: 4,  col: 8),
+      _EqSlot(isHorizontal: true,  row: 8,  col: 0),
+      _EqSlot(isHorizontal: true,  row: 10, col: 6),
+      _EqSlot(isHorizontal: true,  row: 14, col: 2),
+      _EqSlot(isHorizontal: true,  row: 16, col: 10),
+      _EqSlot(isHorizontal: false, row: 0,  col: 0),
+      _EqSlot(isHorizontal: false, row: 0,  col: 4),
+      _EqSlot(isHorizontal: false, row: 0,  col: 8),
+      _EqSlot(isHorizontal: false, row: 0,  col: 12),
+      _EqSlot(isHorizontal: false, row: 4,  col: 16),
+      _EqSlot(isHorizontal: false, row: 8,  col: 2),
+      _EqSlot(isHorizontal: false, row: 12, col: 6),
+    ],
+    [
+      _EqSlot(isHorizontal: true,  row: 0,  col: 0),
+      _EqSlot(isHorizontal: true,  row: 0,  col: 8),
+      _EqSlot(isHorizontal: true,  row: 4,  col: 4),
+      _EqSlot(isHorizontal: true,  row: 8,  col: 0),
+      _EqSlot(isHorizontal: true,  row: 8,  col: 10),
+      _EqSlot(isHorizontal: true,  row: 12, col: 6),
+      _EqSlot(isHorizontal: true,  row: 16, col: 8),
+      _EqSlot(isHorizontal: false, row: 0,  col: 0),
+      _EqSlot(isHorizontal: false, row: 0,  col: 8),
+      _EqSlot(isHorizontal: false, row: 0,  col: 16),
+      _EqSlot(isHorizontal: false, row: 4,  col: 4),
+      _EqSlot(isHorizontal: false, row: 4,  col: 12),
+      _EqSlot(isHorizontal: false, row: 8,  col: 2),
+      _EqSlot(isHorizontal: false, row: 12, col: 10),
+    ],
+    [
+      _EqSlot(isHorizontal: true,  row: 0,  col: 0),
+      _EqSlot(isHorizontal: true,  row: 2,  col: 0),
+      _EqSlot(isHorizontal: true,  row: 4,  col: 4),
+      _EqSlot(isHorizontal: true,  row: 6,  col: 8),
+      _EqSlot(isHorizontal: true,  row: 10, col: 4),
+      _EqSlot(isHorizontal: true,  row: 14, col: 0),
+      _EqSlot(isHorizontal: true,  row: 16, col: 8),
+      _EqSlot(isHorizontal: false, row: 0,  col: 0),
+      _EqSlot(isHorizontal: false, row: 0,  col: 4),
+      _EqSlot(isHorizontal: false, row: 0,  col: 8),
+      _EqSlot(isHorizontal: false, row: 4,  col: 12),
+      _EqSlot(isHorizontal: false, row: 6,  col: 16),
+      _EqSlot(isHorizontal: false, row: 10, col: 2),
+      _EqSlot(isHorizontal: false, row: 12, col: 6),
+    ],
+    [
+      _EqSlot(isHorizontal: true,  row: 0,  col: 4),
+      _EqSlot(isHorizontal: true,  row: 4,  col: 0),
+      _EqSlot(isHorizontal: true,  row: 6,  col: 8),
+      _EqSlot(isHorizontal: true,  row: 10, col: 0),
+      _EqSlot(isHorizontal: true,  row: 12, col: 6),
+      _EqSlot(isHorizontal: true,  row: 14, col: 12),
+      _EqSlot(isHorizontal: true,  row: 16, col: 2),
+      _EqSlot(isHorizontal: false, row: 0,  col: 0),
+      _EqSlot(isHorizontal: false, row: 0,  col: 4),
+      _EqSlot(isHorizontal: false, row: 0,  col: 8),
+      _EqSlot(isHorizontal: false, row: 0,  col: 12),
+      _EqSlot(isHorizontal: false, row: 0,  col: 16),
+      _EqSlot(isHorizontal: false, row: 4,  col: 2),
+      _EqSlot(isHorizontal: false, row: 8,  col: 10),
+    ],
+    [
+      _EqSlot(isHorizontal: true,  row: 0,  col: 0),
+      _EqSlot(isHorizontal: true,  row: 2,  col: 8),
+      _EqSlot(isHorizontal: true,  row: 6,  col: 4),
+      _EqSlot(isHorizontal: true,  row: 8,  col: 0),
+      _EqSlot(isHorizontal: true,  row: 10, col: 10),
+      _EqSlot(isHorizontal: true,  row: 14, col: 4),
+      _EqSlot(isHorizontal: true,  row: 16, col: 0),
+      _EqSlot(isHorizontal: false, row: 0,  col: 0),
+      _EqSlot(isHorizontal: false, row: 0,  col: 4),
+      _EqSlot(isHorizontal: false, row: 0,  col: 8),
+      _EqSlot(isHorizontal: false, row: 2,  col: 12),
+      _EqSlot(isHorizontal: false, row: 4,  col: 16),
+      _EqSlot(isHorizontal: false, row: 6,  col: 2),
+      _EqSlot(isHorizontal: false, row: 12, col: 6),
+    ],
+    [
+      _EqSlot(isHorizontal: true,  row: 0,  col: 0),
+      _EqSlot(isHorizontal: true,  row: 4,  col: 6),
+      _EqSlot(isHorizontal: true,  row: 6,  col: 0),
+      _EqSlot(isHorizontal: true,  row: 8,  col: 10),
+      _EqSlot(isHorizontal: true,  row: 10, col: 2),
+      _EqSlot(isHorizontal: true,  row: 12, col: 8),
+      _EqSlot(isHorizontal: true,  row: 16, col: 4),
+      _EqSlot(isHorizontal: false, row: 0,  col: 2),
+      _EqSlot(isHorizontal: false, row: 0,  col: 6),
+      _EqSlot(isHorizontal: false, row: 0,  col: 10),
+      _EqSlot(isHorizontal: false, row: 4,  col: 0),
+      _EqSlot(isHorizontal: false, row: 2,  col: 14),
+      _EqSlot(isHorizontal: false, row: 8,  col: 4),
+      _EqSlot(isHorizontal: false, row: 12, col: 12),
+    ],
+  ];
+
+  // ─── GENERATE PUZZLE ────────────────────────────────────────────────────────
   void _generatePuzzle(int difficulty) {
     final rand = Random();
     _equations.clear();
+    final List<List<_EqSlot>> pool;
+    final int gs;
+    switch (difficulty) {
+      case 5:  gs = 9;  pool = _easyTemplates;   break;
+      case 10: gs = 13; pool = _mediumTemplates;  break;
+      default: gs = 17; pool = _hardTemplates;
+    }
+    _gridRows = gs; _gridCols = gs;
 
-    if (difficulty == 5) {
-      _gridRows = 5;
-      _gridCols = 5;
-      _grid = List.generate(
-        _gridRows,
-        (r) => List.generate(
-          _gridCols,
-          (c) => CrosswordCell(row: r, col: c, type: CellType.empty, correctVal: ''),
-        ),
-      );
-
-      // Generate consistent values for 5x5 layout
-      final a = rand.nextInt(7) + 2; // 2..8
-      final b = rand.nextInt(5) + 4; // 4..8
-      final c = rand.nextInt(5) + 4; // 4..8
-      final d = rand.nextInt(min(b, c) - 2) + 1; // 1..(min-2) to avoid negative/zero
-
-      final values = {
-        '0,0': a,
-        '0,2': b,
-        '0,4': a + b,
-        '2,0': c,
-        '2,2': d,
-        '2,4': c - d,
-        '4,0': a + c,
-        '4,2': b - d,
-        '4,4': (a + c) + (b - d),
-      };
-
-      // Fill grid
-      for (int r = 0; r < 5; r++) {
-        for (int c = 0; c < 5; c++) {
-          if (r % 2 == 0 && c % 2 == 0) {
-            final val = values['$r,$c']!;
-            _grid[r][c] = CrosswordCell(
-              row: r,
-              col: c,
-              type: CellType.number,
-              correctVal: val.toString(),
-            );
-          } else if (r % 2 == 0 && c % 2 != 0) {
-            final val = (c == 1) ? (r == 2 ? '-' : '+') : (c == 3 ? '=' : '');
-            _grid[r][c] = CrosswordCell(
-              row: r,
-              col: c,
-              type: (c == 3) ? CellType.equals : CellType.operator,
-              correctVal: val,
-            );
-          } else if (r % 2 != 0 && c % 2 == 0) {
-            final val = (r == 1) ? (c == 2 ? '-' : '+') : (r == 3 ? '=' : '');
-            _grid[r][c] = CrosswordCell(
-              row: r,
-              col: c,
-              type: (r == 3) ? CellType.equals : CellType.operator,
-              correctVal: val,
-            );
-          }
-        }
-      }
-
-      _equations.addAll([
-        // Horizontal
-        CrosswordEquation(
-          numberCells: [_grid[0][0], _grid[0][2], _grid[0][4]],
-          opCell: _grid[0][1],
-          eqCell: _grid[0][3],
-          opType: '+',
-        ),
-        CrosswordEquation(
-          numberCells: [_grid[2][0], _grid[2][2], _grid[2][4]],
-          opCell: _grid[2][1],
-          eqCell: _grid[2][3],
-          opType: '-',
-        ),
-        CrosswordEquation(
-          numberCells: [_grid[4][0], _grid[4][2], _grid[4][4]],
-          opCell: _grid[4][1],
-          eqCell: _grid[4][3],
-          opType: '+',
-        ),
-        // Vertical
-        CrosswordEquation(
-          numberCells: [_grid[0][0], _grid[2][0], _grid[4][0]],
-          opCell: _grid[1][0],
-          eqCell: _grid[3][0],
-          opType: '+',
-        ),
-        CrosswordEquation(
-          numberCells: [_grid[0][2], _grid[2][2], _grid[4][2]],
-          opCell: _grid[1][2],
-          eqCell: _grid[3][2],
-          opType: '-',
-        ),
-        CrosswordEquation(
-          numberCells: [_grid[0][4], _grid[2][4], _grid[4][4]],
-          opCell: _grid[1][4],
-          eqCell: _grid[3][4],
-          opType: '+',
-        ),
-      ]);
-
-      // Assign hints (about 4 out of 9 number cells)
-      final numberCellList = <CrosswordCell>[];
-      for (var r in [0, 2, 4]) {
-        for (var c in [0, 2, 4]) {
-          numberCellList.add(_grid[r][c]);
-        }
-      }
-      numberCellList.shuffle(rand);
-      for (int i = 0; i < 4; i++) {
-        numberCellList[i].isHint = true;
-      }
-    } else if (difficulty == 10) {
-      _gridRows = 9;
-      _gridCols = 5;
-      _grid = List.generate(
-        _gridRows,
-        (r) => List.generate(
-          _gridCols,
-          (c) => CrosswordCell(row: r, col: c, type: CellType.empty, correctVal: ''),
-        ),
-      );
-
-      final a = rand.nextInt(4) + 1; // 1..4
-      final b = rand.nextInt(4) + 1; // 1..4
-      final c = rand.nextInt(4) + 1; // 1..4
-      final d = rand.nextInt(4) + 1; // 1..4
-      final g = rand.nextInt(4) + 1; // 1..4
-      final h = rand.nextInt(4) + 1; // 1..4
-
-      final values = {
-        '0,0': a,
-        '0,2': b,
-        '0,4': a + b,
-        '2,0': c,
-        '2,2': d,
-        '2,4': c + d,
-        '4,0': a + c,
-        '4,2': b + d,
-        '4,4': a + b + c + d,
-        '6,0': g,
-        '6,2': h,
-        '6,4': g + h,
-        '8,0': a + c + g,
-        '8,2': b + d + h,
-        '8,4': a + b + c + d + g + h,
-      };
-
-      for (int r = 0; r < 9; r++) {
-        for (int c = 0; c < 5; c++) {
-          if (r % 2 == 0 && c % 2 == 0) {
-            _grid[r][c] = CrosswordCell(
-              row: r,
-              col: c,
-              type: CellType.number,
-              correctVal: values['$r,$c']!.toString(),
-            );
-          } else if (r % 2 == 0 && c % 2 != 0) {
-            _grid[r][c] = CrosswordCell(
-              row: r,
-              col: c,
-              type: (c == 3) ? CellType.equals : CellType.operator,
-              correctVal: (c == 3) ? '=' : '+',
-            );
-          } else if (r % 2 != 0 && c % 2 == 0) {
-            _grid[r][c] = CrosswordCell(
-              row: r,
-              col: c,
-              type: (r == 3 || r == 7) ? CellType.equals : CellType.operator,
-              correctVal: (r == 3 || r == 7) ? '=' : '+',
-            );
-          }
-        }
-      }
-
-      // Add equations
-      _equations.addAll([
-        // Horizontal
-        CrosswordEquation(numberCells: [_grid[0][0], _grid[0][2], _grid[0][4]], opCell: _grid[0][1], eqCell: _grid[0][3], opType: '+'),
-        CrosswordEquation(numberCells: [_grid[2][0], _grid[2][2], _grid[2][4]], opCell: _grid[2][1], eqCell: _grid[2][3], opType: '+'),
-        CrosswordEquation(numberCells: [_grid[4][0], _grid[4][2], _grid[4][4]], opCell: _grid[4][1], eqCell: _grid[4][3], opType: '+'),
-        CrosswordEquation(numberCells: [_grid[6][0], _grid[6][2], _grid[6][4]], opCell: _grid[6][1], eqCell: _grid[6][3], opType: '+'),
-        CrosswordEquation(numberCells: [_grid[8][0], _grid[8][2], _grid[8][4]], opCell: _grid[8][1], eqCell: _grid[8][3], opType: '+'),
-        // Vertical
-        CrosswordEquation(numberCells: [_grid[0][0], _grid[2][0], _grid[4][0]], opCell: _grid[1][0], eqCell: _grid[3][0], opType: '+'),
-        CrosswordEquation(numberCells: [_grid[4][0], _grid[6][0], _grid[8][0]], opCell: _grid[5][0], eqCell: _grid[7][0], opType: '+'),
-        CrosswordEquation(numberCells: [_grid[0][2], _grid[2][2], _grid[4][2]], opCell: _grid[1][2], eqCell: _grid[3][2], opType: '+'),
-        CrosswordEquation(numberCells: [_grid[4][2], _grid[6][2], _grid[8][2]], opCell: _grid[5][2], eqCell: _grid[7][2], opType: '+'),
-        CrosswordEquation(numberCells: [_grid[0][4], _grid[2][4], _grid[4][4]], opCell: _grid[1][4], eqCell: _grid[3][4], opType: '+'),
-        CrosswordEquation(numberCells: [_grid[4][4], _grid[6][4], _grid[8][4]], opCell: _grid[5][4], eqCell: _grid[7][4], opType: '+'),
-      ]);
-
-      // Assign hints (about 7 out of 15 number cells)
-      final numberCellList = <CrosswordCell>[];
-      for (var r in [0, 2, 4, 6, 8]) {
-        for (var c in [0, 2, 4]) {
-          numberCellList.add(_grid[r][c]);
-        }
-      }
-      numberCellList.shuffle(rand);
-      for (int i = 0; i < 7; i++) {
-        numberCellList[i].isHint = true;
-      }
-    } else {
-      // Large layout (20 equations, 9x9 grid)
-      _gridRows = 9;
-      _gridCols = 9;
-      _grid = List.generate(
-        _gridRows,
-        (r) => List.generate(
-          _gridCols,
-          (c) => CrosswordCell(row: r, col: c, type: CellType.empty, correctVal: ''),
-        ),
-      );
-
-      final a = rand.nextInt(3) + 1; // 1..3
-      final b = rand.nextInt(3) + 1;
-      final c = rand.nextInt(3) + 1;
-      final d = rand.nextInt(3) + 1;
-      final e = rand.nextInt(3) + 1;
-      final f = rand.nextInt(3) + 1;
-      final g = rand.nextInt(3) + 1;
-      final h = rand.nextInt(3) + 1;
-      final i = rand.nextInt(3) + 1;
-
-      final values = {
-        '0,0': a, '0,2': b, '0,4': a + b, '0,6': c, '0,8': a + b + c,
-        '2,0': d, '2,2': e, '2,4': d + e, '2,6': f, '2,8': d + e + f,
-        '4,0': a + d, '4,2': b + e, '4,4': a + b + d + e, '4,6': c + f, '4,8': a + b + c + d + e + f,
-        '6,0': g, '6,2': h, '6,4': g + h, '6,6': i, '6,8': g + h + i,
-        '8,0': a + d + g, '8,2': b + e + h, '8,4': a + b + d + e + g + h, '8,6': c + f + i, '8,8': a + b + c + d + e + f + g + h + i,
-      };
-
-      for (int r = 0; r < 9; r++) {
-        for (int c = 0; c < 9; c++) {
-          if (r % 2 == 0 && c % 2 == 0) {
-            _grid[r][c] = CrosswordCell(
-              row: r,
-              col: c,
-              type: CellType.number,
-              correctVal: values['$r,$c']!.toString(),
-            );
-          } else if (r % 2 == 0 && c % 2 != 0) {
-            _grid[r][c] = CrosswordCell(
-              row: r,
-              col: c,
-              type: (c == 3 || c == 7) ? CellType.equals : CellType.operator,
-              correctVal: (c == 3 || c == 7) ? '=' : '+',
-            );
-          } else if (r % 2 != 0 && c % 2 == 0) {
-            _grid[r][c] = CrosswordCell(
-              row: r,
-              col: c,
-              type: (r == 3 || r == 7) ? CellType.equals : CellType.operator,
-              correctVal: (r == 3 || r == 7) ? '=' : '+',
-            );
-          }
-        }
-      }
-
-      // Add equations
-      for (int r = 0; r < 9; r += 2) {
-        _equations.add(CrosswordEquation(numberCells: [_grid[r][0], _grid[r][2], _grid[r][4]], opCell: _grid[r][1], eqCell: _grid[r][3], opType: '+'));
-        _equations.add(CrosswordEquation(numberCells: [_grid[r][4], _grid[r][6], _grid[r][8]], opCell: _grid[r][5], eqCell: _grid[r][7], opType: '+'));
-      }
-      for (int c = 0; c < 9; c += 2) {
-        _equations.add(CrosswordEquation(numberCells: [_grid[0][c], _grid[2][c], _grid[4][c]], opCell: _grid[1][c], eqCell: _grid[3][c], opType: '+'));
-        _equations.add(CrosswordEquation(numberCells: [_grid[4][c], _grid[6][c], _grid[8][c]], opCell: _grid[5][c], eqCell: _grid[7][c], opType: '+'));
-      }
-
-      // Assign hints (about 12 out of 25 number cells)
-      final numberCellList = <CrosswordCell>[];
-      for (var r in [0, 2, 4, 6, 8]) {
-        for (var c in [0, 2, 4, 6, 8]) {
-          numberCellList.add(_grid[r][c]);
-        }
-      }
-      numberCellList.shuffle(rand);
-      for (int i = 0; i < 12; i++) {
-        numberCellList[i].isHint = true;
+    for (int attempt = 0; attempt < 30; attempt++) {
+      _grid = List.generate(gs, (r) => List.generate(gs,
+          (c) => CrosswordCell(row: r, col: c, type: CellType.empty, correctVal: '')));
+      _equations.clear();
+      if (_fillSlots(pool[rand.nextInt(pool.length)], rand, difficulty)) {
+        _assignHints(rand, difficulty);
+        return;
       }
     }
+    // Fallback
+    _gridRows = 9; _gridCols = 9;
+    _grid = List.generate(9, (r) => List.generate(9,
+        (c) => CrosswordCell(row: r, col: c, type: CellType.empty, correctVal: '')));
+    _equations.clear();
+    _fillSlots(_easyTemplates[0], rand, 5);
+    _assignHints(rand, difficulty);
   }
 
+  List<({int row, int col})>? _slotPositions(_EqSlot slot) {
+    final res = <({int row, int col})>[];
+    for (int i = 0; i < 5; i++) {
+      final r = slot.isHorizontal ? slot.row : slot.row + i;
+      final c = slot.isHorizontal ? slot.col + i : slot.col;
+      if (r < 0 || r >= _gridRows || c < 0 || c >= _gridCols) return null;
+      res.add((row: r, col: c));
+    }
+    return res;
+  }
 
+  bool _fillSlots(List<_EqSlot> slots, Random rand, int difficulty) {
+    final cellVals = List.generate(_gridRows, (_) => List<String?>.filled(_gridCols, null));
+    final List<String> opPool;
+    if (difficulty == 5) {
+      opPool = ['+', '+', '+', '-', '-'];
+    } else if (difficulty == 10) {
+      opPool = ['+', '+', '-', '-', '*', '/'];
+    } else {
+      opPool = ['+', '-', '*', '*', '/', '/'];
+    }
+
+    for (final slot in slots) {
+      final positions = _slotPositions(slot);
+      if (positions == null) return false;
+      final existA  = cellVals[positions[0].row][positions[0].col];
+      final existB  = cellVals[positions[2].row][positions[2].col];
+      final existC  = cellVals[positions[4].row][positions[4].col];
+      final existOp = cellVals[positions[1].row][positions[1].col];
+      final existEq = cellVals[positions[3].row][positions[3].col];
+      if (existOp != null && !_isOp(existOp)) return false;
+      if (existEq != null && existEq != '=') return false;
+
+      bool placed = false;
+      for (int t = 0; t < 40 && !placed; t++) {
+        final op = existOp ?? opPool[rand.nextInt(opPool.length)];
+        int? a = existA != null ? int.tryParse(existA) : null;
+        int? b = existB != null ? int.tryParse(existB) : null;
+        int? c = existC != null ? int.tryParse(existC) : null;
+
+        if (a == null && b == null && c == null) {
+          final v = _rEq(op, rand); if (v == null) continue; a=v[0]; b=v[1]; c=v[2];
+        } else if (a != null && b == null && c == null) {
+          final v = _fA(a, op, rand); if (v == null) continue; b=v[1]; c=v[2];
+        } else if (b != null && a == null && c == null) {
+          final v = _fB(b, op, rand); if (v == null) continue; a=v[0]; c=v[2];
+        } else if (c != null && a == null && b == null) {
+          final v = _fC(c, op, rand); if (v == null) continue; a=v[0]; b=v[1];
+        } else if (a != null && b != null && c == null) {
+          c = _app(a, b, op);
+        } else if (a != null && c != null && b == null) {
+          b = _rvB(a, c, op);
+        } else if (b != null && c != null && a == null) {
+          a = _rvA(b, c, op);
+        } else if (a != null && b != null && c != null) {
+          if (_app(a, b, op) != c) continue;
+        }
+
+        if (a == null || b == null || c == null) continue;
+        if (a <= 0 || b <= 0 || c <= 0 || a > 99 || b > 99 || c > 99) continue;
+
+        void sN(int idx, int val) {
+          final p = positions[idx]; final s = val.toString();
+          cellVals[p.row][p.col] = s;
+          _grid[p.row][p.col] = CrosswordCell(row: p.row, col: p.col, type: CellType.number, correctVal: s);
+        }
+        void sO(int idx, String val, CellType ct) {
+          final p = positions[idx];
+          cellVals[p.row][p.col] = val;
+          _grid[p.row][p.col] = CrosswordCell(row: p.row, col: p.col, type: ct, correctVal: val);
+        }
+        sN(0, a); sO(1, op, CellType.operator); sN(2, b); sO(3, '=', CellType.equals); sN(4, c);
+        _equations.add(CrosswordEquation(cells: [
+          _grid[positions[0].row][positions[0].col],
+          _grid[positions[1].row][positions[1].col],
+          _grid[positions[2].row][positions[2].col],
+          _grid[positions[3].row][positions[3].col],
+          _grid[positions[4].row][positions[4].col],
+        ]));
+        placed = true;
+      }
+      if (!placed) return false;
+    }
+    return true;
+  }
+
+  bool _isOp(String s) => s == '+' || s == '-' || s == '*' || s == '/';
+
+  int? _app(int a, int b, String op) {
+    switch (op) {
+      case '+': return a + b;
+      case '-': return a - b > 0 ? a - b : null;
+      case '*': return a * b;
+      case '/': return (b > 0 && a % b == 0) ? a ~/ b : null;
+    }
+    return null;
+  }
+
+  List<int>? _rEq(String op, Random rand) {
+    switch (op) {
+      case '+': { final a=rand.nextInt(18)+1,b=rand.nextInt(18)+1; final c=a+b; return c<=99?[a,b,c]:null; }
+      case '-': { final c=rand.nextInt(15)+1,b=rand.nextInt(15)+1; final a=b+c; return a<=99?[a,b,c]:null; }
+      case '*': { final a=rand.nextInt(9)+2,b=rand.nextInt(9)+2; final c=a*b; return c<=99?[a,b,c]:null; }
+      case '/': { final b=rand.nextInt(8)+2,c=rand.nextInt(9)+1; final a=b*c; return a<=99?[a,b,c]:null; }
+    }
+    return null;
+  }
+
+  List<int>? _fA(int a, String op, Random rand) {
+    for (int i=0;i<10;i++) {
+      switch(op) {
+        case '+': { final b=rand.nextInt(18)+1; final c=a+b; if(c<=99) return [a,b,c]; break; }
+        case '-': { if(a<2) break; final b=rand.nextInt(a-1)+1; final c=a-b; if(c>0) return [a,b,c]; break; }
+        case '*': { final b=rand.nextInt(9)+2; final c=a*b; if(c<=99) return [a,b,c]; break; }
+        case '/': { final ds=List.generate(9,(i)=>i+2).where((d)=>a%d==0).toList(); if(ds.isEmpty) break; final b=ds[rand.nextInt(ds.length)]; return [a,b,a~/b]; }
+      }
+    }
+    return null;
+  }
+
+  List<int>? _fB(int b, String op, Random rand) {
+    for (int i=0;i<10;i++) {
+      switch(op) {
+        case '+': { final a=rand.nextInt(18)+1; final c=a+b; if(c<=99) return [a,b,c]; break; }
+        case '-': { final a=b+rand.nextInt(15)+1; final c=a-b; if(a<=99&&c>0) return [a,b,c]; break; }
+        case '*': { final a=rand.nextInt(9)+2; final c=a*b; if(c<=99) return [a,b,c]; break; }
+        case '/': { final a=b*(rand.nextInt(9)+1); if(a<=99) return [a,b,a~/b]; break; }
+      }
+    }
+    return null;
+  }
+
+  List<int>? _fC(int c, String op, Random rand) {
+    for (int i=0;i<10;i++) {
+      switch(op) {
+        case '+': { if(c<2) break; final b=rand.nextInt(c-1)+1; return [c-b,b,c]; }
+        case '-': { final b=rand.nextInt(15)+1; final a=c+b; if(a<=99) return [a,b,c]; break; }
+        case '*': { final fs=List.generate(9,(i)=>i+2).where((f)=>c%f==0&&(c~/f)>=2&&(c~/f)<=10).toList(); if(fs.isEmpty) break; final b2=fs[rand.nextInt(fs.length)]; return [c~/b2,b2,c]; }
+        case '/': { final b=rand.nextInt(8)+2; final a=b*c; if(a<=99) return [a,b,c]; break; }
+      }
+    }
+    return null;
+  }
+
+  int? _rvB(int a, int c, String op) {
+    switch (op) {
+      case '+': return (c-a)>0?c-a:null;
+      case '-': return (a-c)>0?a-c:null;
+      case '*': return (c>0&&c%a==0)?c~/a:null;
+      case '/': return null;
+    }
+    return null;
+  }
+
+  int? _rvA(int b, int c, String op) {
+    switch (op) {
+      case '+': return (c-b)>0?c-b:null;
+      case '-': return (c+b)<=99?c+b:null;
+      case '*': return (c>0&&c%b==0)?c~/b:null;
+      case '/': return (b*c)<=99?b*c:null;
+    }
+    return null;
+  }
+
+  void _assignHints(Random rand, int difficulty) {
+    final all = <CrosswordCell>[];
+    for (int r=0;r<_gridRows;r++) {
+      for (int c=0;c<_gridCols;c++) {
+        if (_grid[r][c].type == CellType.number) all.add(_grid[r][c]);
+      }
+    }
+    all.shuffle(rand);
+    final total = all.length;
+    int hintCount;
+    if (difficulty == 5) {
+      hintCount = (total * 0.44).round();
+    } else if (difficulty == 10) {
+      hintCount = (total * (0.30 + rand.nextDouble() * 0.10)).round();
+    } else {
+      hintCount = (total * (0.12 + rand.nextDouble() * 0.07)).round();
+    }
+    hintCount = hintCount.clamp(1, total);
+    for (int i=0;i<hintCount;i++) { all[i].isHint = true; }
+  }
 
   bool _checkAllEquationsSatisfied() {
     // 1. Check if all number cells are filled
@@ -631,8 +751,8 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
         ),
         actions: [
           Container(
-            width: 110, // Fixed width to prevent shifting layout
-            margin: const EdgeInsets.only(right: 20, top: 8, bottom: 8),
+            width: 90, // Fixed width to prevent shifting layout
+            margin: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
             padding: const EdgeInsets.symmetric(vertical: 6),
             decoration: BoxDecoration(
               color: AppColors.primaryLight,
@@ -641,15 +761,15 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.timer_outlined, size: 16, color: AppColors.primary),
+                const Icon(Icons.timer_outlined, size: 14, color: AppColors.primary),
                 const SizedBox(width: 4),
                 SizedBox(
-                  width: 65, // Fixed width for text area to prevent any shaking/shifting
+                  width: 50, // Fixed width for text area to prevent any shaking/shifting
                   child: Text(
                     _elapsedTimeString,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
                       color: AppColors.primary,
                       fontFeatures: [FontFeature.tabularFigures()],
@@ -714,6 +834,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
   }
 
   Widget _buildGridContainer() {
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     return Container(
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -729,7 +850,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: FittedBox(
-              fit: BoxFit.contain,
+              fit: isLandscape ? BoxFit.contain : BoxFit.fitWidth,
               child: _buildCrosswordGrid(),
             ),
           ),
@@ -990,7 +1111,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
     bool isCellPartofCorrectEquation = false;
     for (var eq in _equations) {
       if (eq.isSatisfied) {
-        if (eq.numberCells.contains(cell) || eq.opCell == cell || eq.eqCell == cell) {
+        if (eq.cells.contains(cell)) {
           isCellPartofCorrectEquation = true;
         }
       }
@@ -1003,17 +1124,17 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
 
     final isSelected = cell.row == _selectedCellRow && cell.col == _selectedCellCol;
 
-    if (cell.type == CellType.number) {
+    if (isCellPartofCorrectEquation) {
+      backColor = Colors.green[50]!;
+      borderColor = AppColors.success;
+      textColor = AppColors.success;
+      borderWidth = 2.5;
+    } else if (cell.type == CellType.number) {
       if (cell.isHint) {
         backColor = Colors.white;
         textColor = AppColors.textPrimary;
       } else {
-        if (isCellPartofCorrectEquation) {
-          backColor = AppColors.success.withValues(alpha: 0.1);
-          borderColor = AppColors.success;
-          textColor = AppColors.success;
-          borderWidth = 2.5;
-        } else if (isSelected) {
+        if (isSelected) {
           backColor = AppColors.primaryLight;
           borderColor = AppColors.primary;
           textColor = AppColors.primary;
@@ -1023,11 +1144,6 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
     } else {
       // Operators & equals
       textColor = AppColors.textPrimary;
-      if (isCellPartofCorrectEquation) {
-        textColor = AppColors.success;
-        borderColor = AppColors.success;
-        borderWidth = 2.5;
-      }
     }
 
     if (cell.type == CellType.number && !cell.isHint) {

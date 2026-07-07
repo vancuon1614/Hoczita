@@ -368,6 +368,12 @@ class _GameTabState extends ConsumerState<GameTab> {
                                 width: 44,
                                 height: 44,
                                 fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) => AnimatedGameIcon(
+                                  icon: icon,
+                                  color: color,
+                                  size: 28,
+                                  animationType: animationType,
+                                ),
                               ),
                             )
                           : AnimatedGameIcon(

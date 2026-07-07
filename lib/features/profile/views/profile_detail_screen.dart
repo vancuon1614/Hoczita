@@ -49,8 +49,31 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
   Future<void> _loadProfileDetails() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final score = await _db.getTotalScore();
       final email = ref.read(authProvider).email?.trim().toLowerCase() ?? '';
+
+      // Đồng bộ từ Supabase nếu có kết nối
+      try {
+        final profile = await _db.getProfile();
+        if (profile != null && email.isNotEmpty) {
+          await prefs.setString('profile_fullName_$email', profile['username']?.toString() ?? '');
+          await prefs.setString('profile_gender_$email', profile['gender']?.toString() ?? '');
+          await prefs.setString('profile_dob_$email', profile['dob']?.toString() ?? '');
+          await prefs.setString('profile_pob_$email', profile['pob']?.toString() ?? '');
+          await prefs.setString('profile_idCard_$email', profile['id_number']?.toString() ?? '');
+          await prefs.setString('profile_idCardDate_$email', profile['id_card_date']?.toString() ?? '');
+          await prefs.setString('profile_idCardPlace_$email', profile['id_card_place']?.toString() ?? '');
+          await prefs.setString('profile_address_$email', profile['address']?.toString() ?? '');
+          await prefs.setString('profile_district_$email', profile['district']?.toString() ?? '');
+          await prefs.setString('profile_province_$email', profile['province']?.toString() ?? '');
+          if (profile['phone'] != null) {
+            await prefs.setString('profile_phone_$email', profile['phone'].toString());
+          }
+        }
+      } catch (e) {
+        debugPrint('Failed to sync profile from Supabase: $e');
+      }
+
+      final score = await _db.getTotalScore();
       final defaultUsername = ref.read(authProvider).username ?? '';
       
       // Load user-scoped values first, fallback to legacy/global values, fallback to empty/defaults

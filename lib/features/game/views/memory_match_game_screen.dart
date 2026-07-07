@@ -232,10 +232,10 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
           icon: const Icon(Icons.close_rounded),
           onPressed: () => _showQuitConfirmation(),
         ),
-        actions: [
+         actions: [
           Container(
-            width: 110, // Fixed width to prevent shifting layout
-            margin: const EdgeInsets.only(right: 20, top: 8, bottom: 8),
+            width: 90, // Fixed width to prevent shifting layout
+            margin: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
             padding: const EdgeInsets.symmetric(vertical: 6),
             decoration: BoxDecoration(
               color: AppColors.primaryLight,
@@ -244,15 +244,15 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.timer_outlined, size: 16, color: AppColors.primary),
+                const Icon(Icons.timer_outlined, size: 14, color: AppColors.primary),
                 const SizedBox(width: 4),
                 SizedBox(
-                  width: 65, // Fixed width for text area to prevent any shaking/shifting
+                  width: 50, // Fixed width for text area to prevent any shaking/shifting
                   child: Text(
                     _elapsedTimeString,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
                       color: AppColors.primary,
                       fontFeatures: [FontFeature.tabularFigures()],

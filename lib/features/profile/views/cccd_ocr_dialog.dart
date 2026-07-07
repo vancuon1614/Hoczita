@@ -195,11 +195,30 @@ class _CccdOcrDialogState extends State<CccdOcrDialog> {
     String address = '';
 
     // 1. Extract 12-digit ID Number
-    final idRegex = RegExp(r'\b\d{12}\b');
+    final idRegex = RegExp(r'\d{12,}');
     for (var line in lines) {
-      final match = idRegex.firstMatch(line);
+      // Remove common labels to prevent their letters (like 'o' in 'no') from turning into digits
+      var cleanLine = line.toLowerCase()
+          .replaceAll('số', '')
+          .replaceAll('no', '')
+          .replaceAll('id', '')
+          .replaceAll('card', '')
+          .replaceAll('định danh', '')
+          .replaceAll('cá nhân', '');
+
+      // Clean up spacing and separators (e.g. "038 096 001 234" -> "038096001234")
+      cleanLine = cleanLine.replaceAll(RegExp(r'[\s\-\.\:\/\\_]'), '');
+      
+      // Fix common OCR digit misrecognitions: letter 'O'/'o' -> '0', letter 'I'/'i'/'l' -> '1'
+      cleanLine = cleanLine
+          .replaceAll(RegExp(r'[Oo]'), '0')
+          .replaceAll(RegExp(r'[Iil]'), '1');
+
+      final match = idRegex.firstMatch(cleanLine);
       if (match != null) {
-        idNumber = match.group(0)!;
+        final matchedStr = match.group(0)!;
+        // Take the last 12 digits to discard any prepended header remnants (like '1' from '/' or '0' from 'No')
+        idNumber = matchedStr.substring(matchedStr.length - 12);
         break;
       }
     }
@@ -211,7 +230,9 @@ class _CccdOcrDialogState extends State<CccdOcrDialog> {
     for (var line in lines) {
       if (line.toLowerCase().contains('ngày sinh') || 
           line.toLowerCase().contains('birth') ||
-          line.toLowerCase().contains('birth:')) {
+          line.toLowerCase().contains('birth:') ||
+          line.toLowerCase().contains('tháng, năm sinh') ||
+          line.toLowerCase().contains('năm sinh')) {
         final vnMatch = vnDateRegex.firstMatch(line);
         if (vnMatch != null) {
           final d = vnMatch.group(1)!.padLeft(2, '0');
@@ -286,7 +307,11 @@ class _CccdOcrDialogState extends State<CccdOcrDialog> {
     // 4. Extract Full Name
     for (int i = 0; i < lines.length; i++) {
       final line = lines[i];
-      if (line.toLowerCase().contains('họ và tên') || line.toLowerCase().contains('full name')) {
+      if (line.toLowerCase().contains('họ và tên') || 
+          line.toLowerCase().contains('full name') ||
+          line.toLowerCase().contains('tên khai sinh') ||
+          line.toLowerCase().contains('chữ đệm') ||
+          line.toLowerCase().contains('khai sinh')) {
         if (line.contains(':')) {
           final part = line.split(':').last.trim();
           if (part.length > 3 && part == part.toUpperCase()) {
@@ -317,7 +342,10 @@ class _CccdOcrDialogState extends State<CccdOcrDialog> {
     int residenceIndex = -1;
     for (int i = 0; i < lines.length; i++) {
       final line = lines[i].toLowerCase();
-      if (line.contains('nơi thường trú') || line.contains('residence')) {
+      if (line.contains('nơi thường trú') || 
+          line.contains('residence') ||
+          line.contains('nơi cư trú') ||
+          line.contains('nơi cư tru')) {
         residenceIndex = i;
         break;
       }

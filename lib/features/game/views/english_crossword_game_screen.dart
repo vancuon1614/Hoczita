@@ -57,6 +57,8 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
 
   final Set<EnglishCrosswordWord> _correctWords = {};
   final Set<String> _hintCells = {};
+  final Map<EnglishCrosswordWord, int> _wordNumbers = {};
+  int _activeClueTab = 0; // 0 for Across, 1 for Down
 
   @override
   void initState() {
@@ -83,44 +85,7 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
     ]);
-
-    final levels = EnglishCrosswordLevel.getPredefinedLevels()
-        .where((l) => l.difficulty == diff)
-        .toList();
-    final randLevel = levels[Random().nextInt(levels.length)];
-
-    setState(() {
-      _selectedDifficulty = diff;
-      _activeLevel = randLevel;
-      _isPlaying = true;
-      _isGameOver = false;
-      _isSavingScore = false;
-      _selectedCellRow = null;
-      _selectedCellCol = null;
-      _selectedWord = null;
-      _correctWords.clear();
-      _hintCells.clear();
-    });
-
-    _initializeGrid(randLevel);
-    _stopwatch.reset();
-    _stopwatch.start();
-    _startTimer();
-
-    // Select first word by default so the user is not confused and clue bar shows it
-    if (randLevel.words.isNotEmpty) {
-      final firstWord = randLevel.words.first;
-      setState(() {
-        _selectedWord = firstWord;
-        _selectedCellRow = firstWord.row;
-        _selectedCellCol = firstWord.col;
-      });
-    }
-
-    // Request keyboard focus
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _keyboardFocusNode.requestFocus();
-    });
+    _generateCrossword(diff);
   }
 
   void _initializeGrid(EnglishCrosswordLevel level) {
@@ -496,8 +461,8 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
           ),
           actions: [
             Container(
-              width: 110, // Fixed width to prevent shifting layout
-              margin: const EdgeInsets.only(right: 20, top: 8, bottom: 8),
+              width: 90, // Fixed width to prevent shifting layout
+              margin: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
               padding: const EdgeInsets.symmetric(vertical: 6),
               decoration: BoxDecoration(
                 color: AppColors.primaryLight,
@@ -506,15 +471,15 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.timer_outlined, size: 16, color: AppColors.primary),
+                  const Icon(Icons.timer_outlined, size: 14, color: AppColors.primary),
                   const SizedBox(width: 4),
                   SizedBox(
-                    width: 65, // Fixed width for text area to prevent any shaking/shifting
+                    width: 50, // Fixed width for text area to prevent any shaking/shifting
                     child: Text(
                       _elapsedTimeString,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: FontWeight.bold,
                         color: AppColors.primary,
                         fontFeatures: [FontFeature.tabularFigures()],
@@ -575,8 +540,8 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
     String clueText = 'Bấm chọn một ô chữ để bắt đầu!';
 
     if (word != null && level != null) {
-      final index = level.words.indexOf(word) + 1;
-      final dir = word.isAcross ? 'Across' : 'Down';
+      final index = _wordNumbers[word] ?? 1;
+      final dir = word.isAcross ? 'Ngang' : 'Dọc';
       clueText = '$index. $dir: ${word.clue}';
     }
 
@@ -624,6 +589,8 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
         ? 26.0 
         : ((_selectedDifficulty == CrosswordDifficulty.medium) ? 32.0 : 40.0);
 
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -632,7 +599,7 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
         border: Border.all(color: AppColors.border, width: 1.5),
       ),
       child: FittedBox(
-        fit: BoxFit.contain,
+        fit: isLandscape ? BoxFit.contain : BoxFit.fitWidth,
         child: _buildCrosswordGrid(cellSize),
       ),
     );
@@ -691,11 +658,13 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
     int? wordStartIndex;
     final level = _activeLevel;
     if (level != null) {
-      for (int i = 0; i < level.words.length; i++) {
-        if (level.words[i].row == cell.row && level.words[i].col == cell.col) {
-          wordStartIndex = i + 1;
-          break;
-        }
+      // Find the first word that starts at this cell
+      final startingWord = level.words.firstWhere(
+        (w) => w.row == cell.row && w.col == cell.col,
+        orElse: () => level.words.first,
+      );
+      if (startingWord.row == cell.row && startingWord.col == cell.col) {
+        wordStartIndex = _wordNumbers[startingWord];
       }
     }
 
@@ -982,95 +951,150 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
   Widget _buildClueLists() {
     final level = _activeLevel;
     if (level == null) return const SizedBox.shrink();
-    final acrossWords = level.words.where((w) => w.isAcross).toList();
-    final downWords = level.words.where((w) => !w.isAcross).toList();
+    
+    // Sort words by assigned crossword number
+    final acrossWords = level.words.where((w) => w.isAcross).toList()
+      ..sort((a, b) => (_wordNumbers[a] ?? 0).compareTo(_wordNumbers[b] ?? 0));
+    final downWords = level.words.where((w) => !w.isAcross).toList()
+      ..sort((a, b) => (_wordNumbers[a] ?? 0).compareTo(_wordNumbers[b] ?? 0));
 
     return Expanded(
       flex: 35,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.all(12),
         decoration: const BoxDecoration(
           color: Colors.white,
           border: Border(
             top: BorderSide(color: AppColors.border, width: 1.5),
           ),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Text(
-                    'Hàng ngang (Across)',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: acrossWords.length,
-                      itemBuilder: (context, idx) {
-                        final w = acrossWords[idx];
-                        final wordNum = level.words.indexOf(w) + 1;
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 2),
-                          child: Text(
-                            '$wordNum. ${w.clue}',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textPrimary,
-                            ),
+            // Tabs for Horizontal/Vertical
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _activeClueTab = 0),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: _activeClueTab == 0 ? AppColors.primary : Colors.transparent,
+                            width: 2.5,
                           ),
-                        );
-                      },
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'HÀNG NGANG (ACROSS)',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: _activeClueTab == 0 ? AppColors.primary : AppColors.textSecondary,
+                        ),
+                      ),
                     ),
                   ),
-                ],
-              ),
+                ),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _activeClueTab = 1),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: _activeClueTab == 1 ? AppColors.primary : Colors.transparent,
+                            width: 2.5,
+                          ),
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'HÀNG DỌC (DOWN)',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: _activeClueTab == 1 ? AppColors.primary : AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const VerticalDivider(width: 20, thickness: 1),
+            const SizedBox(height: 8),
+            // Scrollable Clue List
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Text(
-                    'Hàng dọc (Down)',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: downWords.length,
-                      itemBuilder: (context, idx) {
-                        final w = downWords[idx];
-                        final wordNum = level.words.indexOf(w) + 1;
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 2),
-                          child: Text(
-                            '$wordNum. ${w.clue}',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textPrimary,
+              child: ListView.builder(
+                itemCount: _activeClueTab == 0 ? acrossWords.length : downWords.length,
+                itemBuilder: (context, idx) {
+                  final w = _activeClueTab == 0 ? acrossWords[idx] : downWords[idx];
+                  final wordNum = _wordNumbers[w] ?? 1;
+                  final isSelectedWord = _selectedWord == w;
+                  
+                  return InkWell(
+                    onTap: () {
+                      setState(() {
+                        _selectedWord = w;
+                        _selectedCellRow = w.row;
+                        _selectedCellCol = w.col;
+                      });
+                      _keyboardFocusNode.requestFocus();
+                    },
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isSelectedWord ? AppColors.primary.withValues(alpha: 0.08) : Colors.grey[50],
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isSelectedWord ? AppColors.primary.withValues(alpha: 0.3) : Colors.transparent,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 26,
+                            height: 26,
+                            decoration: BoxDecoration(
+                              color: isSelectedWord ? AppColors.primary : Colors.grey[300],
+                              shape: BoxShape.circle,
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              '$wordNum',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: isSelectedWord ? Colors.white : AppColors.textPrimary,
+                              ),
                             ),
                           ),
-                        );
-                      },
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              w.clue,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: isSelectedWord ? FontWeight.bold : FontWeight.normal,
+                                color: isSelectedWord ? AppColors.primary : AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          if (isSelectedWord)
+                            const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.primary),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  );
+                },
               ),
             ),
           ],
@@ -1197,4 +1221,471 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
       ),
     );
   }
+
+  // ─── DYNAMIC CROSSWORD GENERATOR ───────────────────────────────────────────
+  static const List<WordClue> _vocabPool = [
+    // Animals
+    WordClue('DOG', 'Con chó'),
+    WordClue('CAT', 'Con mèo'),
+    WordClue('LION', 'Sư tử'),
+    WordClue('ELEPHANT', 'Con voi'),
+    WordClue('MONKEY', 'Con khỉ'),
+    WordClue('RABBIT', 'Con thỏ'),
+    WordClue('BEAR', 'Con gấu'),
+    WordClue('TIGER', 'Con hổ'),
+    WordClue('SHEEP', 'Con cừu'),
+    WordClue('PIG', 'Con lợn'),
+    // Fruits
+    WordClue('APPLE', 'Quả táo'),
+    WordClue('BANANA', 'Quả chuối'),
+    WordClue('ORANGE', 'Quả cam'),
+    WordClue('WATERMELON', 'Dưa hấu'),
+    WordClue('STRAWBERRY', 'Dâu tây'),
+    WordClue('GRAPE', 'Quả nho'),
+    WordClue('MANGO', 'Quả xoài'),
+    WordClue('PINEAPPLE', 'Quả dứa'),
+    WordClue('PEACH', 'Quả đào'),
+    WordClue('CHERRY', 'Quả anh đào'),
+    // Vegetables
+    WordClue('CARROT', 'Củ cà rốt'),
+    WordClue('TOMATO', 'Quả cà chua'),
+    WordClue('POTATO', 'Củ khoai tây'),
+    WordClue('CORN', 'Bắp ngô'),
+    WordClue('BROCCOLI', 'Súp lơ xanh'),
+    WordClue('PUMPKIN', 'Quả bí ngô'),
+    WordClue('ONION', 'Củ hành tây'),
+    WordClue('CUCUMBER', 'Quả dưa chuột'),
+    WordClue('MUSHROOM', 'Cây nấm'),
+    WordClue('PEA', 'Hạt đậu Hà Lan'),
+    // Transportation
+    WordClue('CAR', 'Ô tô'),
+    WordClue('AIRPLANE', 'Máy bay'),
+    WordClue('TRAIN', 'Tàu hỏa'),
+    WordClue('BICYCLE', 'Xe đạp'),
+    WordClue('SHIP', 'Tàu thủy'),
+    WordClue('HELICOPTER', 'Trực thăng'),
+    WordClue('BUS', 'Xe buýt'),
+    WordClue('TRUCK', 'Xe tải'),
+    WordClue('ROCKET', 'Tên lửa'),
+    WordClue('MOTORBIKE', 'Xe máy'),
+    // School
+    WordClue('BOOK', 'Quyển sách'),
+    WordClue('PEN', 'Bút mực'),
+    WordClue('PENCIL', 'Bút chì'),
+    WordClue('BACKPACK', 'Balo'),
+    WordClue('ERASER', 'Cục tẩy'),
+    WordClue('RULER', 'Thước kẻ'),
+    WordClue('SCISSORS', 'Kéo thủ công'),
+    WordClue('GLOBE', 'Quả địa cầu'),
+    WordClue('DESK', 'Bàn học'),
+    WordClue('CHAIR', 'Ghế ngồi'),
+    // Home
+    WordClue('SOFA', 'Ghế sofa'),
+    WordClue('BED', 'Giường ngủ'),
+    WordClue('TABLE', 'Bàn tròn'),
+    WordClue('LAMP', 'Đèn ngủ'),
+    WordClue('CLOCK', 'Đồng hồ'),
+    WordClue('KEY', 'Chìa khóa'),
+    WordClue('CUP', 'Cốc nước'),
+    WordClue('DOOR', 'Cửa ra vào'),
+    WordClue('WINDOW', 'Cửa sổ'),
+    WordClue('MIRROR', 'Cái gương'),
+    // Nature
+    WordClue('SUN', 'Mặt trời'),
+    WordClue('MOON', 'Mặt trăng'),
+    WordClue('STAR', 'Ngôi sao'),
+    WordClue('CLOUD', 'Đám mây'),
+    WordClue('RAINBOW', 'Cầu vồng'),
+    WordClue('TREE', 'Cây xanh'),
+    WordClue('FLOWER', 'Bông hoa'),
+    WordClue('RAIN', 'Mưa'),
+    WordClue('SNOW', 'Tuyết'),
+    WordClue('WIND', 'Gió'),
+    // Space
+    WordClue('ASTRONAUT', 'Phi hành gia'),
+    WordClue('SPACESHIP', 'Tàu vũ trụ'),
+    WordClue('EARTH', 'Trái Đất'),
+    WordClue('MARS', 'Sao Hỏa'),
+    WordClue('ROVER', 'Xe tự hành vũ trụ'),
+    WordClue('UFO', 'Đĩa bay'),
+    WordClue('TELESCOPE', 'Kính thiên văn'),
+    WordClue('SATELLITE', 'Vệ tinh'),
+    WordClue('METEOR', 'Sao băng'),
+    WordClue('SPACESUIT', 'Bộ đồ phi hành'),
+    // Sea Creatures
+    WordClue('FISH', 'Con cá'),
+    WordClue('SHARK', 'Cá mập'),
+    WordClue('WHALE', 'Cá voi'),
+    WordClue('DOLPHIN', 'Cá heo'),
+    WordClue('OCTOPUS', 'Bạch tuộc'),
+    WordClue('CRAB', 'Con cua'),
+    WordClue('STARFISH', 'Sao biển'),
+    WordClue('TURTLE', 'Rùa biển'),
+    WordClue('SEAHORSE', 'Cá ngựa'),
+    WordClue('JELLYFISH', 'Con sứa'),
+    // Toys
+    WordClue('SOCCER', 'Bóng đá'),
+    WordClue('BASKETBALL', 'Bóng rổ'),
+    WordClue('KITE', 'Cánh diều'),
+    WordClue('SLIDE', 'Cầu trượt'),
+    WordClue('BALLOON', 'Bóng bay'),
+    WordClue('DOLL', 'Búp bê'),
+    WordClue('TEDDY', 'Gấu bông'),
+    WordClue('ROBOT', 'Rô bốt đồ chơi'),
+    WordClue('YOYO', 'Đồ chơi yo-yo'),
+    WordClue('SWING', 'Xích đu'),
+    // Clothing
+    WordClue('SHIRT', 'Áo thun'),
+    WordClue('PANTS', 'Quần dài'),
+    WordClue('DRESS', 'Váy liền'),
+    WordClue('HAT', 'Mũ'),
+    WordClue('SHOES', 'Giày'),
+    WordClue('SOCKS', 'Tất/Vớ'),
+    WordClue('JACKET', 'Áo khoác'),
+    WordClue('GLASSES', 'Kính mắt'),
+    WordClue('SCARF', 'Khăn quàng'),
+    WordClue('BOOTS', 'Ủng'),
+    // Food
+    WordClue('BREAD', 'Bánh mì'),
+    WordClue('MILK', 'Sữa'),
+    WordClue('ICECREAM', 'Kem'),
+    WordClue('LOLLIPOP', 'Kẹo mút'),
+    WordClue('CAKE', 'Bánh ngọt'),
+    WordClue('PIZZA', 'Bánh pizza'),
+    WordClue('EGG', 'Quả trứng'),
+    WordClue('CHEESE', 'Phô mai'),
+    WordClue('BURGER', 'Hamburger'),
+    WordClue('JUICE', 'Nước ép'),
+  ];
+
+  static const _easyTemplates = <List<_EnglishSlot>>[
+    [
+      _EnglishSlot(row: 1, col: 1, length: 5, isAcross: true),
+      _EnglishSlot(row: 1, col: 3, length: 5, isAcross: false),
+      _EnglishSlot(row: 3, col: 2, length: 6, isAcross: true),
+      _EnglishSlot(row: 3, col: 5, length: 5, isAcross: false),
+      _EnglishSlot(row: 5, col: 4, length: 5, isAcross: true),
+      _EnglishSlot(row: 5, col: 7, length: 4, isAcross: false),
+    ],
+    [
+      _EnglishSlot(row: 2, col: 1, length: 5, isAcross: true),
+      _EnglishSlot(row: 0, col: 2, length: 5, isAcross: false),
+      _EnglishSlot(row: 4, col: 2, length: 5, isAcross: true),
+      _EnglishSlot(row: 2, col: 4, length: 5, isAcross: false),
+      _EnglishSlot(row: 6, col: 3, length: 5, isAcross: true),
+    ],
+    [
+      _EnglishSlot(row: 1, col: 1, length: 5, isAcross: false),
+      _EnglishSlot(row: 3, col: 0, length: 5, isAcross: true),
+      _EnglishSlot(row: 2, col: 3, length: 5, isAcross: false),
+      _EnglishSlot(row: 5, col: 2, length: 5, isAcross: true),
+      _EnglishSlot(row: 4, col: 5, length: 5, isAcross: false),
+    ],
+    [
+      _EnglishSlot(row: 1, col: 2, length: 5, isAcross: true),
+      _EnglishSlot(row: 0, col: 4, length: 5, isAcross: false),
+      _EnglishSlot(row: 3, col: 1, length: 6, isAcross: true),
+      _EnglishSlot(row: 2, col: 2, length: 5, isAcross: false),
+      _EnglishSlot(row: 5, col: 2, length: 5, isAcross: true),
+    ],
+  ];
+
+  static const _mediumTemplates = <List<_EnglishSlot>>[
+    [
+      _EnglishSlot(row: 1, col: 2, length: 6, isAcross: true),
+      _EnglishSlot(row: 1, col: 4, length: 5, isAcross: false),
+      _EnglishSlot(row: 3, col: 3, length: 5, isAcross: true),
+      _EnglishSlot(row: 3, col: 6, length: 6, isAcross: false),
+      _EnglishSlot(row: 5, col: 5, length: 6, isAcross: true),
+      _EnglishSlot(row: 5, col: 8, length: 4, isAcross: false),
+      _EnglishSlot(row: 7, col: 7, length: 5, isAcross: true),
+      _EnglishSlot(row: 7, col: 10, length: 5, isAcross: false),
+      _EnglishSlot(row: 9, col: 9, length: 4, isAcross: true),
+    ],
+    [
+      _EnglishSlot(row: 2, col: 1, length: 6, isAcross: true),
+      _EnglishSlot(row: 0, col: 3, length: 5, isAcross: false),
+      _EnglishSlot(row: 4, col: 2, length: 5, isAcross: true),
+      _EnglishSlot(row: 4, col: 5, length: 5, isAcross: false),
+      _EnglishSlot(row: 6, col: 4, length: 6, isAcross: true),
+      _EnglishSlot(row: 6, col: 7, length: 4, isAcross: false),
+      _EnglishSlot(row: 8, col: 6, length: 5, isAcross: true),
+      _EnglishSlot(row: 8, col: 9, length: 5, isAcross: false),
+      _EnglishSlot(row: 10, col: 8, length: 5, isAcross: true),
+    ],
+  ];
+
+  static const _hardTemplates = <List<_EnglishSlot>>[
+    [
+      _EnglishSlot(row: 1, col: 1, length: 5, isAcross: true),
+      _EnglishSlot(row: 1, col: 3, length: 5, isAcross: false),
+      _EnglishSlot(row: 3, col: 2, length: 6, isAcross: true),
+      _EnglishSlot(row: 3, col: 5, length: 5, isAcross: false),
+      _EnglishSlot(row: 5, col: 4, length: 5, isAcross: true),
+      _EnglishSlot(row: 5, col: 7, length: 6, isAcross: false),
+      _EnglishSlot(row: 7, col: 6, length: 6, isAcross: true),
+      _EnglishSlot(row: 7, col: 9, length: 5, isAcross: false),
+      _EnglishSlot(row: 9, col: 8, length: 5, isAcross: true),
+      _EnglishSlot(row: 9, col: 11, length: 5, isAcross: false),
+      _EnglishSlot(row: 11, col: 10, length: 6, isAcross: true),
+      _EnglishSlot(row: 11, col: 13, length: 4, isAcross: false),
+      _EnglishSlot(row: 13, col: 11, length: 5, isAcross: true),
+    ],
+    [
+      _EnglishSlot(row: 2, col: 2, length: 5, isAcross: false),
+      _EnglishSlot(row: 4, col: 1, length: 6, isAcross: true),
+      _EnglishSlot(row: 4, col: 4, length: 5, isAcross: false),
+      _EnglishSlot(row: 6, col: 3, length: 5, isAcross: true),
+      _EnglishSlot(row: 6, col: 6, length: 5, isAcross: false),
+      _EnglishSlot(row: 8, col: 5, length: 6, isAcross: true),
+      _EnglishSlot(row: 8, col: 8, length: 5, isAcross: false),
+      _EnglishSlot(row: 10, col: 7, length: 5, isAcross: true),
+      _EnglishSlot(row: 10, col: 10, length: 6, isAcross: false),
+      _EnglishSlot(row: 12, col: 9, length: 6, isAcross: true),
+      _EnglishSlot(row: 12, col: 12, length: 5, isAcross: false),
+      _EnglishSlot(row: 14, col: 11, length: 5, isAcross: true),
+    ],
+  ];
+
+  void _generateCrossword(CrosswordDifficulty diff) {
+    final rand = Random();
+    final List<List<_EnglishSlot>> pool;
+    final int gs;
+    switch (diff) {
+      case CrosswordDifficulty.easy:
+        gs = 9;
+        pool = _easyTemplates;
+        break;
+      case CrosswordDifficulty.medium:
+        gs = 13;
+        pool = _mediumTemplates;
+        break;
+      case CrosswordDifficulty.hard:
+        gs = 17;
+        pool = _hardTemplates;
+        break;
+    }
+    _gridRows = gs;
+    _gridCols = gs;
+
+    for (int attempt = 0; attempt < 50; attempt++) {
+      final template = pool[rand.nextInt(pool.length)];
+      final filledWords = _solveTemplate(template, rand);
+      if (filledWords != null) {
+        final generatedLevel = EnglishCrosswordLevel(
+          id: rand.nextInt(1000000),
+          difficulty: diff,
+          rows: gs,
+          cols: gs,
+          words: filledWords,
+        );
+        
+        setState(() {
+          _selectedDifficulty = diff;
+          _activeLevel = generatedLevel;
+          _isPlaying = true;
+          _isGameOver = false;
+          _isSavingScore = false;
+          _selectedCellRow = null;
+          _selectedCellCol = null;
+          _selectedWord = null;
+          _correctWords.clear();
+          _hintCells.clear();
+        });
+        
+        _calculateWordNumbers(generatedLevel);
+        _initializeGrid(generatedLevel);
+        _stopwatch.reset();
+        _stopwatch.start();
+        _startTimer();
+        
+        if (generatedLevel.words.isNotEmpty) {
+          final firstWord = generatedLevel.words.first;
+          setState(() {
+            _selectedWord = firstWord;
+            _selectedCellRow = firstWord.row;
+            _selectedCellCol = firstWord.col;
+          });
+        }
+        
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _keyboardFocusNode.requestFocus();
+        });
+        return;
+      }
+    }
+    
+    final fallbackLevels = EnglishCrosswordLevel.getPredefinedLevels()
+        .where((l) => l.difficulty == diff)
+        .toList();
+    final fallbackLevel = fallbackLevels[rand.nextInt(fallbackLevels.length)];
+    
+    setState(() {
+      _selectedDifficulty = diff;
+      _activeLevel = fallbackLevel;
+      _isPlaying = true;
+      _isGameOver = false;
+      _isSavingScore = false;
+      _selectedCellRow = null;
+      _selectedCellCol = null;
+      _selectedWord = null;
+      _correctWords.clear();
+      _hintCells.clear();
+    });
+    
+    _calculateWordNumbers(fallbackLevel);
+    _initializeGrid(fallbackLevel);
+    _stopwatch.reset();
+    _stopwatch.start();
+    _startTimer();
+    
+    if (fallbackLevel.words.isNotEmpty) {
+      final firstWord = fallbackLevel.words.first;
+      setState(() {
+        _selectedWord = firstWord;
+        _selectedCellRow = firstWord.row;
+        _selectedCellCol = firstWord.col;
+      });
+    }
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _keyboardFocusNode.requestFocus();
+    });
+  }
+
+  void _calculateWordNumbers(EnglishCrosswordLevel level) {
+    _wordNumbers.clear();
+    
+    final startCells = <String>{};
+    for (final w in level.words) {
+      startCells.add('${w.row},${w.col}');
+    }
+    
+    final sortedStarts = startCells.toList()..sort((a, b) {
+      final partsA = a.split(',').map(int.parse).toList();
+      final partsB = b.split(',').map(int.parse).toList();
+      if (partsA[0] != partsB[0]) {
+        return partsA[0].compareTo(partsB[0]);
+      }
+      return partsA[1].compareTo(partsB[1]);
+    });
+    
+    final cellNumbers = <String, int>{};
+    for (int i = 0; i < sortedStarts.length; i++) {
+      cellNumbers[sortedStarts[i]] = i + 1;
+    }
+    
+    for (final w in level.words) {
+      _wordNumbers[w] = cellNumbers['${w.row},${w.col}'] ?? 1;
+    }
+  }
+
+  List<EnglishCrosswordWord>? _solveTemplate(List<_EnglishSlot> slots, Random rand) {
+    final inters = _findIntersections(slots);
+    
+    final List<List<WordClue>> candidatesBySlot = [];
+    for (final s in slots) {
+      final cands = _vocabPool.where((w) => w.word.length == s.length).toList();
+      cands.shuffle(rand);
+      candidatesBySlot.add(cands);
+    }
+    
+    final List<String?> currentWords = List.filled(slots.length, null);
+    final Set<String> usedWords = {};
+    
+    bool solve(int slotIdx) {
+      if (slotIdx == slots.length) return true;
+      final slotInters = inters[slotIdx];
+      
+      for (final w in candidatesBySlot[slotIdx]) {
+        if (usedWords.contains(w.word)) continue;
+        
+        bool conflict = false;
+        for (final intersection in slotInters) {
+          if (intersection.otherSlotIdx < slotIdx) {
+            final otherWord = currentWords[intersection.otherSlotIdx]!;
+            if (w.word[intersection.charIdx] != otherWord[intersection.otherCharIdx]) {
+              conflict = true;
+              break;
+            }
+          }
+        }
+        
+        if (!conflict) {
+          currentWords[slotIdx] = w.word;
+          usedWords.add(w.word);
+          if (solve(slotIdx + 1)) return true;
+          usedWords.remove(w.word);
+          currentWords[slotIdx] = null;
+        }
+      }
+      return false;
+    }
+    
+    if (solve(0)) {
+      final List<EnglishCrosswordWord> result = [];
+      for (int i = 0; i < slots.length; i++) {
+        final wordText = currentWords[i]!;
+        final clueItem = _vocabPool.firstWhere((w) => w.word == wordText);
+        result.add(EnglishCrosswordWord(
+          word: wordText,
+          clue: clueItem.clue,
+          row: slots[i].row,
+          col: slots[i].col,
+          isAcross: slots[i].isAcross,
+        ));
+      }
+      return result;
+    }
+    
+    return null;
+  }
+
+  List<List<_Intersection>> _findIntersections(List<_EnglishSlot> slots) {
+    final intersections = List.generate(slots.length, (_) => <_Intersection>[]);
+    for (int i = 0; i < slots.length; i++) {
+      for (int j = i + 1; j < slots.length; j++) {
+        final s1 = slots[i];
+        final s2 = slots[j];
+        if (s1.isAcross != s2.isAcross) {
+          final a = s1.isAcross ? s1 : s2;
+          final d = s1.isAcross ? s2 : s1;
+          final idxA = slots.indexOf(a);
+          final idxD = slots.indexOf(d);
+          
+          if (d.row <= a.row && a.row < d.row + d.length &&
+              a.col <= d.col && d.col < a.col + a.length) {
+            final charIdxA = d.col - a.col;
+            final charIdxD = a.row - d.row;
+            intersections[idxA].add(_Intersection(idxD, charIdxA, charIdxD));
+            intersections[idxD].add(_Intersection(idxA, charIdxD, charIdxA));
+          }
+        }
+      }
+    }
+    return intersections;
+  }
+
+}
+
+
+class WordClue {
+  final String word;
+  final String clue;
+  const WordClue(this.word, this.clue);
+}
+
+class _EnglishSlot {
+  final int row;
+  final int col;
+  final int length;
+  final bool isAcross;
+  const _EnglishSlot({required this.row, required this.col, required this.length, required this.isAcross});
+}
+
+class _Intersection {
+  final int otherSlotIdx;
+  final int charIdx;
+  final int otherCharIdx;
+  _Intersection(this.otherSlotIdx, this.charIdx, this.otherCharIdx);
 }

@@ -6,6 +6,7 @@ import '../../../core/services/api_service.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'cccd_ocr_dialog.dart';
+import 'cccd_qr_scanner_dialog.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -39,9 +40,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   // Geography API variables
   List<Map<String, dynamic>> _provinceList = [];
   List<Map<String, dynamic>> _districtList = [];
-  List<Map<String, dynamic>> _wardList = [];
   String? _selectedProvinceId;
-  String? _selectedDistrictId;
 
   @override
   void initState() {
@@ -73,6 +72,29 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final email = ref.read(authProvider).email?.trim().toLowerCase() ?? '';
+
+      // Đồng bộ từ Supabase nếu có kết nối
+      try {
+        final profile = await SupabaseService.instance.getProfile();
+        if (profile != null && email.isNotEmpty) {
+          await prefs.setString('profile_fullName_$email', profile['username']?.toString() ?? '');
+          await prefs.setString('profile_gender_$email', profile['gender']?.toString() ?? '');
+          await prefs.setString('profile_dob_$email', profile['dob']?.toString() ?? '');
+          await prefs.setString('profile_pob_$email', profile['pob']?.toString() ?? '');
+          await prefs.setString('profile_idCard_$email', profile['id_number']?.toString() ?? '');
+          await prefs.setString('profile_idCardDate_$email', profile['id_card_date']?.toString() ?? '');
+          await prefs.setString('profile_idCardPlace_$email', profile['id_card_place']?.toString() ?? '');
+          await prefs.setString('profile_address_$email', profile['address']?.toString() ?? '');
+          await prefs.setString('profile_district_$email', profile['district']?.toString() ?? '');
+          await prefs.setString('profile_province_$email', profile['province']?.toString() ?? '');
+          if (profile['phone'] != null) {
+            await prefs.setString('profile_phone_$email', profile['phone'].toString());
+          }
+        }
+      } catch (e) {
+        debugPrint('Failed to sync profile from Supabase: $e');
+      }
+
       final defaultUsername = ref.read(authProvider).username ?? '';
 
       setState(() {
@@ -110,17 +132,18 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             ?? prefs.getString('profile_idCardPlace') 
             ?? '';
             
-        _addressController.text = prefs.getString('profile_address_$email') 
-            ?? prefs.getString('profile_address') 
-            ?? '';
-            
-        _streetController.text = prefs.getString('profile_street_$email') 
-            ?? prefs.getString('profile_street') 
-            ?? '';
-            
-        _wardController.text = prefs.getString('profile_ward_$email') 
-            ?? prefs.getString('profile_ward') 
-            ?? '';
+        final String savedAddress = prefs.getString('profile_address_$email') ?? prefs.getString('profile_address') ?? '';
+        final String savedStreet = prefs.getString('profile_street_$email') ?? prefs.getString('profile_street') ?? '';
+        final String savedWard = prefs.getString('profile_ward_$email') ?? prefs.getString('profile_ward') ?? '';
+        
+        List<String> addrParts = [];
+        if (savedAddress.isNotEmpty) addrParts.add(savedAddress);
+        if (savedStreet.isNotEmpty && !savedAddress.contains(savedStreet)) addrParts.add(savedStreet);
+        if (savedWard.isNotEmpty && !savedAddress.contains(savedWard)) addrParts.add(savedWard);
+        
+        _addressController.text = addrParts.join(', ');
+        _streetController.text = '';
+        _wardController.text = '';
             
         _districtController.text = prefs.getString('profile_district_$email') 
             ?? prefs.getString('profile_district') 
@@ -170,34 +193,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       setState(() {
         _districtList = list;
       });
-      
-      // Khôi phục lại ID của quận/huyện hiện tại để lấy tiếp phường/xã
-      final currentDistrict = _districtController.text.trim();
-      if (currentDistrict.isNotEmpty) {
-        final match = _districtList.firstWhere(
-          (d) => d['title'].toString().toLowerCase() == currentDistrict.toLowerCase(),
-          orElse: () => {},
-        );
-        if (match.isNotEmpty) {
-          _selectedDistrictId = match['id'].toString();
-          await _loadWards(match['id'].toString());
-        }
-      }
     } catch (e) {
       debugPrint('Error loading districts: $e');
     }
   }
 
-  Future<void> _loadWards(String districtId) async {
-    try {
-      final list = await ApiService.instance.getAdministratives(districtId: districtId);
-      setState(() {
-        _wardList = list;
-      });
-    } catch (e) {
-      debugPrint('Error loading wards: $e');
-    }
-  }
+
 
   void _showSelectionBottomSheet({
     required String title,
@@ -329,8 +330,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         await prefs.setString('profile_idCardDate_$email', _idCardDateController.text.trim());
         await prefs.setString('profile_idCardPlace_$email', _idCardPlaceController.text.trim());
         await prefs.setString('profile_address_$email', _addressController.text.trim());
-        await prefs.setString('profile_street_$email', _streetController.text.trim());
-        await prefs.setString('profile_ward_$email', _wardController.text.trim());
+        await prefs.setString('profile_street_$email', '');
+        await prefs.setString('profile_ward_$email', '');
         await prefs.setString('profile_district_$email', _districtController.text.trim());
         await prefs.setString('profile_province_$email', _provinceController.text.trim());
         
@@ -351,8 +352,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               idCardDate: _idCardDateController.text.trim(),
               idCardPlace: _idCardPlaceController.text.trim(),
               address: _addressController.text.trim(),
-              street: _streetController.text.trim(),
-              ward: _wardController.text.trim(),
+              street: '',
+              ward: '',
               district: _districtController.text.trim(),
               province: _provinceController.text.trim(),
             );
@@ -387,8 +388,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         await prefs.setString('profile_idCardDate', _idCardDateController.text.trim());
         await prefs.setString('profile_idCardPlace', _idCardPlaceController.text.trim());
         await prefs.setString('profile_address', _addressController.text.trim());
-        await prefs.setString('profile_street', _streetController.text.trim());
-        await prefs.setString('profile_ward', _wardController.text.trim());
+        await prefs.setString('profile_street', '');
+        await prefs.setString('profile_ward', '');
         await prefs.setString('profile_district', _districtController.text.trim());
         await prefs.setString('profile_province', _provinceController.text.trim());
         
@@ -412,6 +413,68 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           });
         }
       }
+    }
+  }
+
+  void _startCccdQrScan() async {
+    final rawQrValue = await showDialog<String>(
+      context: context,
+      builder: (context) => const CccdQrScannerDialog(),
+    );
+
+    if (rawQrValue != null && rawQrValue.isNotEmpty) {
+      _parseCccdQr(rawQrValue);
+    }
+  }
+
+  void _parseCccdQr(String qrText) {
+    try {
+      final parts = qrText.split('|');
+      if (parts.length >= 6) {
+        final idNumber = parts[0].trim();
+        final fullName = parts[2].trim();
+        final dobRaw = parts[3].trim(); // DDMMYYYY format
+        final gender = parts[4].trim();
+        final address = parts[5].trim();
+        
+        // Parse dobRaw: DDMMYYYY -> DD/MM/YYYY
+        String dob = '';
+        if (dobRaw.length == 8) {
+          dob = '${dobRaw.substring(0, 2)}/${dobRaw.substring(2, 4)}/${dobRaw.substring(4)}';
+        } else {
+          dob = dobRaw;
+        }
+
+        setState(() {
+          if (idNumber.isNotEmpty) _idCardController.text = idNumber;
+          if (fullName.isNotEmpty) _fullNameController.text = fullName;
+          if (dob.isNotEmpty) _dobController.text = dob;
+          if (gender.isNotEmpty) _genderController.text = gender;
+          if (address.isNotEmpty) _parseAddress(address);
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đọc mã QR CCCD thành công! 🎉'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Mã QR không đúng định dạng CCCD!'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error parsing CCCD QR: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lỗi khi đọc mã QR: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
     }
   }
 
@@ -479,14 +542,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     if (addressParts.length >= 3) {
       final provinceName = addressParts.last;
       final districtName = addressParts[addressParts.length - 2];
-      final wardName = addressParts[addressParts.length - 3];
       
-      // Số nhà và tên đường
-      final remainingParts = addressParts.sublist(0, addressParts.length - 3);
-      String streetDetail = remainingParts.join(', ');
+      // Số nhà, tên đường và phường xã gộp chung làm địa chỉ chi tiết
+      final remainingParts = addressParts.sublist(0, addressParts.length - 2);
+      String detailedAddress = remainingParts.join(', ');
       
-      _addressController.text = streetDetail;
-      _streetController.text = ''; // Để trống hoặc gộp chung vào địa chỉ chi tiết
+      _addressController.text = detailedAddress;
+      _streetController.text = '';
+      _wardController.text = '';
       
       // Tìm kiếm Tỉnh/Thành phố tương ứng
       final matchedProvince = _provinceList.firstWhere(
@@ -501,10 +564,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           _provinceController.text = matchedProvince['title'].toString();
           _selectedProvinceId = provinceId;
           _districtController.clear();
-          _selectedDistrictId = null;
           _districtList = [];
-          _wardController.clear();
-          _wardList = [];
         });
 
         // Load Quận/Huyện từ API
@@ -521,45 +581,18 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         );
 
         if (matchedDistrict.isNotEmpty) {
-          final districtId = matchedDistrict['id'].toString();
           setState(() {
             _districtController.text = matchedDistrict['title'].toString();
-            _selectedDistrictId = districtId;
           });
-
-          // Load Phường/Xã từ API
-          final wards = await ApiService.instance.getAdministratives(districtId: districtId);
-          setState(() {
-            _wardList = wards;
-          });
-
-          // Tìm Phường/Xã tương ứng
-          final matchedWard = _wardList.firstWhere(
-            (w) => w['title'].toString().toLowerCase().contains(wardName.toLowerCase()) ||
-                   wardName.toLowerCase().contains(w['title'].toString().toLowerCase()),
-            orElse: () => {},
-          );
-
-          if (matchedWard.isNotEmpty) {
-            setState(() {
-              _wardController.text = matchedWard['title'].toString();
-            });
-          } else {
-            setState(() {
-              _wardController.text = wardName;
-            });
-          }
         } else {
           setState(() {
             _districtController.text = districtName;
-            _wardController.text = wardName;
           });
         }
       } else {
         setState(() {
           _provinceController.text = provinceName;
           _districtController.text = districtName;
-          _wardController.text = wardName;
         });
       }
     } else {
@@ -631,23 +664,43 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const Text(
-                            'Căn cước công dân (CCCD)',
+                            'CCCD',
                             style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 16),
                           ),
-                          TextButton.icon(
-                            onPressed: _startCccdOcr,
-                            icon: const Icon(Icons.document_scanner_rounded, size: 18),
-                            label: const Text(
-                              'Đọc từ ảnh CCCD',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppColors.success,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  side: const BorderSide(color: AppColors.success)),
-                            ),
+                          Wrap(
+                            spacing: 8,
+                            children: [
+                              TextButton.icon(
+                                onPressed: _startCccdQrScan,
+                                icon: const Icon(Icons.qr_code_scanner_rounded, size: 16),
+                                label: const Text(
+                                  'Quét QR',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                ),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppColors.primary,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      side: const BorderSide(color: AppColors.primary)),
+                                ),
+                              ),
+                              TextButton.icon(
+                                onPressed: _startCccdOcr,
+                                icon: const Icon(Icons.document_scanner_rounded, size: 16),
+                                label: const Text(
+                                  'Quét ảnh',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                ),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppColors.success,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      side: const BorderSide(color: AppColors.success)),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -673,34 +726,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 16),
                       ),
                       const SizedBox(height: 12),
-                      _buildTextField(_addressController, 'Số nhà', 'Nhập số nhà, số căn hộ'),
-                      const SizedBox(height: 16),
-                      _buildTextField(_streetController, 'Tên đường (Street)', 'Nhập tên đường'),
-                      const SizedBox(height: 16),
-                      _buildTextField(
-                        _wardController, 
-                        'Phường / Xã (Ward)', 
-                        _selectedProvinceId == null 
-                            ? 'Vui lòng chọn Tỉnh / Thành trước' 
-                            : (_selectedDistrictId == null 
-                                ? 'Vui lòng chọn Quận / Huyện trước' 
-                                : 'Chọn Phường / Xã'),
-                        readOnly: true,
-                        onTap: _selectedDistrictId == null
-                            ? null
-                            : () {
-                                _showSelectionBottomSheet(
-                                  title: 'Chọn Phường / Xã',
-                                  items: _wardList,
-                                  onSelected: (item) {
-                                    setState(() {
-                                      _wardController.text = item['title'].toString();
-                                    });
-                                  },
-                                );
-                              },
-                        suffixIcon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
-                      ),
+                      _buildTextField(_addressController, 'Số nhà, tên đường, phường/xã (Địa chỉ chi tiết)', 'Nhập số nhà, tên đường, phường/xã'),
                       const SizedBox(height: 16),
                       _buildTextField(
                         _districtController, 
@@ -713,14 +739,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                 _showSelectionBottomSheet(
                                   title: 'Chọn Quận / Huyện',
                                   items: _districtList,
-                                  onSelected: (item) async {
+                                  onSelected: (item) {
                                     setState(() {
                                       _districtController.text = item['title'].toString();
-                                      _selectedDistrictId = item['id'].toString();
-                                      _wardController.clear();
-                                      _wardList = [];
                                     });
-                                    await _loadWards(item['id'].toString());
                                   },
                                 );
                               },
@@ -741,10 +763,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                 _provinceController.text = item['title'].toString();
                                 _selectedProvinceId = item['id'].toString();
                                 _districtController.clear();
-                                _selectedDistrictId = null;
                                 _districtList = [];
-                                _wardController.clear();
-                                _wardList = [];
                               });
                               await _loadDistricts(item['id'].toString());
                             },
