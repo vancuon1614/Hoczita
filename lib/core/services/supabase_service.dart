@@ -324,8 +324,6 @@ class SupabaseService {
     String? idCardDate,
     String? idCardPlace,
     String? address,
-    String? street,
-    String? ward,
     String? district,
     String? province,
   }) async {
@@ -347,8 +345,6 @@ class SupabaseService {
       if (idCardDate != null) updates['id_card_date'] = idCardDate;
       if (idCardPlace != null) updates['id_card_place'] = idCardPlace;
       if (address != null) updates['address'] = address;
-      if (street != null) updates['street'] = street;
-      if (ward != null) updates['ward'] = ward;
       if (district != null) updates['district'] = district;
       if (province != null) updates['province'] = province;
 
@@ -360,7 +356,7 @@ class SupabaseService {
       return true;
     } catch (e) {
       debugPrint('Error updating profile on Supabase: $e');
-      return false;
+      rethrow;
     }
   }
 

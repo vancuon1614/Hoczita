@@ -341,25 +341,19 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         // 2. Sync to Supabase profiles table
         final supabaseService = SupabaseService.instance;
         if (supabaseService.hasSession) {
-          try {
-            await supabaseService.updateProfile(
-              fullName: _fullNameController.text.trim(),
-              phone: _phoneController.text.trim(),
-              gender: _genderController.text.trim(),
-              dob: _dobController.text.trim(),
-              pob: _pobController.text.trim(),
-              idNumber: _idCardController.text.trim(),
-              idCardDate: _idCardDateController.text.trim(),
-              idCardPlace: _idCardPlaceController.text.trim(),
-              address: _addressController.text.trim(),
-              street: '',
-              ward: '',
-              district: _districtController.text.trim(),
-              province: _provinceController.text.trim(),
-            );
-          } catch (se) {
-            debugPrint('Sync profile to Supabase error: $se');
-          }
+          await supabaseService.updateProfile(
+            fullName: _fullNameController.text.trim(),
+            phone: _phoneController.text.trim(),
+            gender: _genderController.text.trim(),
+            dob: _dobController.text.trim(),
+            pob: _pobController.text.trim(),
+            idNumber: _idCardController.text.trim(),
+            idCardDate: _idCardDateController.text.trim(),
+            idCardPlace: _idCardPlaceController.text.trim(),
+            address: _addressController.text.trim(),
+            district: _districtController.text.trim(),
+            province: _provinceController.text.trim(),
+          );
         }
         
         // 3. Sync CCCD images (Base64) to NKS Server if available
@@ -446,7 +440,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         }
 
         setState(() {
-          if (idNumber.isNotEmpty) _idCardController.text = idNumber;
+          if (idNumber.isNotEmpty) {
+            _idCardController.text = idNumber;
+            _updatePobFromCccdNumber(idNumber);
+          }
           if (fullName.isNotEmpty) _fullNameController.text = fullName;
           if (dob.isNotEmpty) _dobController.text = dob;
           if (gender.isNotEmpty) _genderController.text = gender;
@@ -494,6 +491,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       setState(() {
         if (ocrData['idNumber'] != null && ocrData['idNumber']!.isNotEmpty) {
           _idCardController.text = ocrData['idNumber']!;
+          _updatePobFromCccdNumber(ocrData['idNumber']!);
         }
         if (ocrData['fullName'] != null && ocrData['fullName']!.isNotEmpty) {
           _fullNameController.text = ocrData['fullName']!;
@@ -503,6 +501,45 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         }
         if (ocrData['gender'] != null && ocrData['gender']!.isNotEmpty) {
           _genderController.text = ocrData['gender']!;
+        }
+        if (ocrData['pob'] != null && ocrData['pob']!.isNotEmpty) {
+          final pobText = ocrData['pob']!;
+          
+          // Hàm hỗ trợ tìm kiếm Tỉnh/Thành phố khớp
+          Map<String, dynamic> findProvinceMatch(String text) {
+            final query = text.toLowerCase().trim();
+            if (query.isEmpty) return {};
+            return _provinceList.firstWhere(
+              (p) {
+                final pTitle = p['title'].toString().toLowerCase();
+                final pClean = pTitle.replaceAll('tỉnh ', '').replaceAll('thành phố ', '').trim();
+                return query.contains(pClean) || pClean.contains(query);
+              },
+              orElse: () => <String, String>{},
+            );
+          }
+
+          // 1. Thử khớp toàn bộ chuỗi Quê quán trước
+          var matchedProvince = findProvinceMatch(pobText);
+
+          // 2. Nếu không khớp, tách theo dấu phẩy và kiểm tra từng cụm địa chỉ (từ phải qua trái)
+          if (matchedProvince.isEmpty) {
+            final segments = pobText.split(',').map((e) => e.trim()).toList();
+            for (int i = segments.length - 1; i >= 0; i--) {
+              final segmentMatch = findProvinceMatch(segments[i]);
+              if (segmentMatch.isNotEmpty) {
+                matchedProvince = segmentMatch;
+                break;
+              }
+            }
+          }
+
+          // 3. Gán kết quả tìm được hoặc giữ nguyên chuỗi gốc
+          if (matchedProvince.isNotEmpty) {
+            _pobController.text = matchedProvince['title'].toString();
+          } else {
+            _pobController.text = pobText; // Giữ nguyên nếu đi hết mà không tìm thấy
+          }
         }
         if (ocrData['issueDate'] != null && ocrData['issueDate']!.isNotEmpty) {
           _idCardDateController.text = ocrData['issueDate']!;
@@ -600,6 +637,95 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     }
   }
 
+  String? _getProvinceNameFromCccdPrefix(String prefix) {
+    const map = {
+      '001': 'Hà Nội',
+      '002': 'Hà Giang',
+      '004': 'Cao Bằng',
+      '006': 'Bắc Kạn',
+      '008': 'Tuyên Quang',
+      '010': 'Lào Cai',
+      '011': 'Điện Biên',
+      '012': 'Lai Châu',
+      '014': 'Sơn La',
+      '015': 'Yên Bái',
+      '017': 'Hòa Bình',
+      '019': 'Thái Nguyên',
+      '020': 'Lạng Sơn',
+      '022': 'Quảng Ninh',
+      '024': 'Bắc Giang',
+      '025': 'Phú Thọ',
+      '026': 'Vĩnh Phúc',
+      '027': 'Bắc Ninh',
+      '030': 'Hải Dương',
+      '031': 'Hải Phòng',
+      '033': 'Hưng Yên',
+      '034': 'Thái Bình',
+      '035': 'Hà Nam',
+      '036': 'Nam Định',
+      '037': 'Ninh Bình',
+      '038': 'Thanh Hóa',
+      '040': 'Nghệ An',
+      '042': 'Hà Tĩnh',
+      '044': 'Quảng Bình',
+      '045': 'Quảng Trị',
+      '046': 'Thừa Thiên Huế',
+      '048': 'Đà Nẵng',
+      '049': 'Quảng Nam',
+      '051': 'Quảng Ngãi',
+      '052': 'Bình Định',
+      '054': 'Phú Yên',
+      '056': 'Khánh Hòa',
+      '058': 'Ninh Thuận',
+      '060': 'Bình Thuận',
+      '062': 'Kon Tum',
+      '064': 'Gia Lai',
+      '066': 'Đắk Lắk',
+      '067': 'Đắk Nông',
+      '068': 'Lâm Đồng',
+      '070': 'Bình Phước',
+      '072': 'Tây Ninh',
+      '074': 'Bình Dương',
+      '075': 'Đồng Nai',
+      '077': 'Bà Rịa - Vũng Tàu',
+      '079': 'Hồ Chí Minh',
+      '080': 'Long An',
+      '082': 'Tiền Giang',
+      '083': 'Bến Tre',
+      '084': 'Trà Vinh',
+      '086': 'Vĩnh Long',
+      '087': 'Đồng Tháp',
+      '089': 'An Giang',
+      '091': 'Kiên Giang',
+      '092': 'Cần Thơ',
+      '093': 'Hậu Giang',
+      '094': 'Sóc Trăng',
+      '095': 'Bạc Liêu',
+      '096': 'Cà Mau',
+    };
+    return map[prefix];
+  }
+
+  void _updatePobFromCccdNumber(String cccdNumber) {
+    if (cccdNumber.length >= 3) {
+      final prefix = cccdNumber.substring(0, 3);
+      final provinceName = _getProvinceNameFromCccdPrefix(prefix);
+      if (provinceName != null) {
+        final matchedProvince = _provinceList.firstWhere(
+          (p) {
+            final pTitle = p['title'].toString().toLowerCase();
+            final pClean = pTitle.replaceAll('tỉnh ', '').replaceAll('thành phố ', '').trim();
+            return pClean == provinceName.toLowerCase();
+          },
+          orElse: () => <String, String>{},
+        );
+        if (matchedProvince.isNotEmpty) {
+          _pobController.text = matchedProvince['title'].toString();
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -641,12 +767,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       const SizedBox(height: 16),
                       _buildTextField(
                         _pobController, 
-                        'Place Of Birth (Nơi sinh)', 
-                        'Chọn Tỉnh / Thành phố',
+                        'Place Of Origin (Quê quán)', 
+                        'Chọn Quê quán',
                         readOnly: true,
                         onTap: () {
                           _showSelectionBottomSheet(
-                            title: 'Chọn Nơi sinh',
+                            title: 'Chọn Quê quán',
                             items: _provinceList,
                             onSelected: (item) {
                               setState(() {

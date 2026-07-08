@@ -158,6 +158,7 @@ class _CccdOcrDialogState extends State<CccdOcrDialog> {
         'dob': frontOcr['dob'] ?? '',
         'gender': frontOcr['gender'] ?? '',
         'address': frontOcr['address'] ?? '',
+        'pob': frontOcr['pob'] ?? '',
         'issueDate': backOcr['issueDate'] ?? '',
         'issuePlace': backOcr['issuePlace'] ?? 'Cục Cảnh sát QLHC về TTXH',
         'frontBase64': frontBase64,
@@ -379,12 +380,69 @@ class _CccdOcrDialogState extends State<CccdOcrDialog> {
       address = addressParts.join(', ');
     }
 
+    // 6. Extract Place of Birth / Origin
+    int pobIndex = -1;
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i].toLowerCase();
+      // Bỏ qua các dòng tên và ngày sinh để tránh nhận diện sai lệch
+      if (line.contains('ngày') || 
+          line.contains('date of birth') || 
+          line.contains('năm sinh') ||
+          line.contains('họ') ||
+          line.contains('tên') ||
+          line.contains('name')) {
+        continue;
+      }
+      if (line.contains('quê') || 
+          line.contains('que') || 
+          line.contains('orig') || 
+          line.contains('sinh') || 
+          line.contains('birth') ||
+          line.contains('nơi đăng ký')) {
+        pobIndex = i;
+        break;
+      }
+    }
+
+    String pob = '';
+    if (pobIndex != -1) {
+      List<String> pobParts = [];
+      final currentLine = lines[pobIndex];
+      if (currentLine.contains(':')) {
+        final part = currentLine.split(':').last.trim();
+        if (part.isNotEmpty && 
+            !part.toLowerCase().contains('origin') && 
+            !part.toLowerCase().contains('quê quán') &&
+            !part.toLowerCase().contains('nơi đăng ký') &&
+            !part.toLowerCase().contains('khai sinh')) {
+          pobParts.add(part);
+        }
+      }
+      for (int j = 1; j <= 2; j++) {
+        if (pobIndex + j < lines.length) {
+          final nextLine = lines[pobIndex + j].trim();
+          if (nextLine.toLowerCase().contains('ngày') || 
+              nextLine.toLowerCase().contains('thường trú') || 
+              nextLine.toLowerCase().contains('cư trú') ||
+              nextLine.toLowerCase().contains('residence') ||
+              nextLine.toLowerCase().contains('giá trị') ||
+              nextLine.toLowerCase().contains('expiry') ||
+              nextLine.length < 3) {
+            break;
+          }
+          pobParts.add(nextLine);
+        }
+      }
+      pob = pobParts.join(', ');
+    }
+
     return {
       'idNumber': idNumber,
       'fullName': fullName,
       'dob': dob,
       'gender': gender,
       'address': address,
+      'pob': pob,
     };
   }
 

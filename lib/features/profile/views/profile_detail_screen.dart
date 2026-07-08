@@ -24,7 +24,7 @@ class ProfileDetailScreen extends ConsumerStatefulWidget {
 class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
   final SupabaseService _db = SupabaseService.instance;
   
-  final String _code = '100123456789';
+  String _code = 'HZT-GUEST';
   String _fullName = 'Chưa cập nhật';
   String _email = 'Chưa cập nhật';
   String _gender = 'Chưa cập nhật';
@@ -56,6 +56,7 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
         final profile = await _db.getProfile();
         if (profile != null && email.isNotEmpty) {
           await prefs.setString('profile_fullName_$email', profile['username']?.toString() ?? '');
+          await prefs.setString('profile_studentCode_$email', profile['student_code']?.toString() ?? '');
           await prefs.setString('profile_gender_$email', profile['gender']?.toString() ?? '');
           await prefs.setString('profile_dob_$email', profile['dob']?.toString() ?? '');
           await prefs.setString('profile_pob_$email', profile['pob']?.toString() ?? '');
@@ -105,6 +106,10 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
           ?? prefs.getString('profile_idCardPlace') 
           ?? '';
           
+      final String studentCode = prefs.getString('profile_studentCode_$email') 
+          ?? prefs.getString('profile_studentCode') 
+          ?? '';
+          
       String? avatarPath;
       if (email.isNotEmpty) {
         avatarPath = prefs.getString('profile_avatar_path_$email');
@@ -152,6 +157,18 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
       
       String formattedAddr = addressParts.isNotEmpty ? addressParts.join(', ') : '';
 
+      String code = studentCode;
+      if (code.isEmpty) {
+        code = 'HZT-GUEST';
+        final supabaseService = SupabaseService.instance;
+        if (supabaseService.hasSession) {
+          final userId = supabaseService.client.auth.currentUser?.id;
+          if (userId != null && userId.length >= 6) {
+            code = 'HZT-${userId.substring(0, 6).toUpperCase()}';
+          }
+        }
+      }
+
       setState(() {
         _email = email.isNotEmpty ? email : 'guest@hoczita.edu.vn';
         _fullName = fullName.isNotEmpty ? fullName : 'Chưa cập nhật';
@@ -165,6 +182,7 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
         _tempAddress = formattedAddr.isNotEmpty ? formattedAddr : 'Chưa cập nhật';
         _totalScore = score;
         _avatarPath = avatarPath;
+        _code = code;
         _isLoading = false;
       });
     } catch (e) {
@@ -433,7 +451,7 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
                               _buildDetailItem('Email', _email),
                               _buildDetailItem('Giới tính', _gender),
                               _buildDetailItem('Ngày sinh', _dob),
-                              _buildDetailItem('Nơi sinh', _pob),
+                              _buildDetailItem('Quê quán', _pob),
                               _buildDetailItemWithEdit(
                                 'CCCD',
                                 _idCard,
