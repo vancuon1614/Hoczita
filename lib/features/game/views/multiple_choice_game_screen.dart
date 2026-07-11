@@ -36,6 +36,8 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
   bool _isGameOver = false;
   bool _isSavingScore = false;
   late List<String?> _userAnswers;
+  bool _isPrecached = false;
+  bool _isCurrentImageReady = true;
 
   @override
   void initState() {
@@ -61,8 +63,56 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
       }
     });
 
-    _gameStopwatch.start();
-    _startQuestion();
+    if (widget.gameName == 'picture_guess') {
+      _isPrecached = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _precacheImages();
+      });
+    } else {
+      _isPrecached = true;
+      _gameStopwatch.start();
+      _startQuestion();
+    }
+  }
+
+  Future<void> _precacheImages() async {
+    try {
+      // Chỉ tải trước 2 ảnh đầu tiên để vào game lập tức (< 0.3 giây)
+      for (int i = 0; i < 2 && i < widget.questions.length; i++) {
+        final q = widget.questions[i];
+        if (q.visualAsset != null && q.visualAsset!.startsWith('http')) {
+          await precacheImage(
+            CachedNetworkImageProvider(q.visualAsset!),
+            context,
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error precaching initial images: $e');
+    }
+    if (mounted) {
+      setState(() {
+        _isPrecached = true;
+      });
+      _gameStopwatch.start();
+      _startQuestion();
+    }
+  }
+
+  void _precacheNextQuestion() {
+    // Tải trước gối đầu câu tiếp theo (cách 2 câu) trong nền
+    final nextIndex = _currentQuestionIndex + 2;
+    if (nextIndex < widget.questions.length) {
+      final nextQuestion = widget.questions[nextIndex];
+      if (nextQuestion.visualAsset != null && nextQuestion.visualAsset!.startsWith('http')) {
+        precacheImage(
+          CachedNetworkImageProvider(nextQuestion.visualAsset!),
+          context,
+        ).catchError((e) {
+          debugPrint('Background prefetch failed for index $nextIndex: $e');
+        });
+      }
+    }
   }
 
   @override
@@ -71,12 +121,35 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
     super.dispose();
   }
 
-  void _startQuestion() {
+  void _startQuestion() async {
     setState(() {
       _selectedChoiceIndex = null;
       _hasAnswered = false;
+      _isCurrentImageReady = false;
     });
-    _timerController.forward(from: 0.0);
+
+    // Kích hoạt tải trước gối đầu trong nền
+    _precacheNextQuestion();
+
+    final currentQuestion = widget.questions[_currentQuestionIndex];
+    if (currentQuestion.visualAsset != null && currentQuestion.visualAsset!.startsWith('http')) {
+      // Đợi ảnh của câu hiện tại tải xong (sẽ phản hồi ngay lập tức nếu đã được tải trước gối đầu thành công)
+      try {
+        await precacheImage(
+          CachedNetworkImageProvider(currentQuestion.visualAsset!),
+          context,
+        );
+      } catch (e) {
+        debugPrint('Failed to cache current question image: $e');
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _isCurrentImageReady = true;
+      });
+      _timerController.forward(from: 0.0);
+    }
   }
 
   void _handleAnswer(int choiceIndex, String answerValue) {
@@ -176,6 +249,49 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
 
   @override
   Widget build(BuildContext context) {
+    if (!_isPrecached) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(
+            widget.gameTitle,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.close_rounded),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                strokeWidth: 4,
+              ),
+              SizedBox(height: 24),
+              Text(
+                'Đang chuẩn bị hình ảnh câu hỏi...',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Hình ảnh đang được tải trước để chơi mượt mà nhất',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (_isGameOver) {
       return _buildSummaryView();
     }
@@ -529,7 +645,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
 
     return Expanded(
       child: GestureDetector(
-        onTap: _hasAnswered ? null : () => _handleAnswer(index, choiceValue),
+        onTap: (_hasAnswered || !_isCurrentImageReady) ? null : () => _handleAnswer(index, choiceValue),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
