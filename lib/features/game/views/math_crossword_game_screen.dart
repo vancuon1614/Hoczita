@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../utils/math_crossword_generator.dart' as gen;
 
 enum CellType { empty, number, operator, equals }
 
@@ -37,15 +37,21 @@ class CrosswordEquation {
       if (c.type == CellType.number && !c.isHint && c.userVal.isEmpty) return false;
     }
     try {
-      final a   = int.parse(cells[0].isHint ? cells[0].correctVal : cells[0].userVal);
-      final op  = cells[1].correctVal;
-      final b   = int.parse(cells[2].isHint ? cells[2].correctVal : cells[2].userVal);
-      final res = int.parse(cells[4].isHint ? cells[4].correctVal : cells[4].userVal);
+      final isRev = cells[1].correctVal == '=';
+      final aVal = cells[isRev ? 2 : 0];
+      final bVal = cells[isRev ? 4 : 2];
+      final resVal = cells[isRev ? 0 : 4];
+      final opVal = cells[isRev ? 3 : 1];
+
+      final a   = int.parse(aVal.isHint ? aVal.correctVal : aVal.userVal);
+      final op  = opVal.correctVal;
+      final b   = int.parse(bVal.isHint ? bVal.correctVal : bVal.userVal);
+      final res = int.parse(resVal.isHint ? resVal.correctVal : resVal.userVal);
       int calc;
       switch (op) {
         case '+': calc = a + b; break;
         case '-': calc = a - b; break;
-        case '*': calc = a * b; break;
+        case '*': case 'x': calc = a * b; break;
         case '/':
           if (b == 0) return false;
           calc = a ~/ b;
@@ -56,15 +62,6 @@ class CrosswordEquation {
       return calc == res;
     } catch (_) { return false; }
   }
-
-  bool get isFullyCorrect => cells.every((c) => c.isCorrect);
-}
-
-class _EqSlot {
-  final bool isHorizontal;
-  final int row;
-  final int col;
-  const _EqSlot({required this.isHorizontal, required this.row, required this.col});
 }
 
 class MathCrosswordGameScreen extends StatefulWidget {
@@ -143,427 +140,73 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
     });
   }
 
-  // ─── TEMPLATES ──────────────────────────────────────────────────────────────
-  static const _easyTemplates = <List<_EqSlot>>[
-    [
-      _EqSlot(isHorizontal: true,  row: 0, col: 0),
-      _EqSlot(isHorizontal: true,  row: 4, col: 2),
-      _EqSlot(isHorizontal: true,  row: 8, col: 4),
-      _EqSlot(isHorizontal: false, row: 0, col: 2),
-      _EqSlot(isHorizontal: false, row: 2, col: 6),
-      _EqSlot(isHorizontal: false, row: 4, col: 0),
-    ],
-    [
-      _EqSlot(isHorizontal: true,  row: 0, col: 0),
-      _EqSlot(isHorizontal: true,  row: 4, col: 0),
-      _EqSlot(isHorizontal: true,  row: 8, col: 4),
-      _EqSlot(isHorizontal: false, row: 0, col: 4),
-      _EqSlot(isHorizontal: false, row: 2, col: 0),
-      _EqSlot(isHorizontal: false, row: 4, col: 8),
-    ],
-    [
-      _EqSlot(isHorizontal: true,  row: 0, col: 0),
-      _EqSlot(isHorizontal: true,  row: 8, col: 0),
-      _EqSlot(isHorizontal: false, row: 0, col: 0),
-      _EqSlot(isHorizontal: false, row: 0, col: 2),
-      _EqSlot(isHorizontal: false, row: 0, col: 6),
-      _EqSlot(isHorizontal: false, row: 0, col: 8),
-    ],
-    [
-      _EqSlot(isHorizontal: true,  row: 0, col: 2),
-      _EqSlot(isHorizontal: true,  row: 4, col: 0),
-      _EqSlot(isHorizontal: true,  row: 8, col: 4),
-      _EqSlot(isHorizontal: false, row: 0, col: 2),
-      _EqSlot(isHorizontal: false, row: 2, col: 6),
-      _EqSlot(isHorizontal: false, row: 4, col: 0),
-    ],
-    [
-      _EqSlot(isHorizontal: true,  row: 0, col: 0),
-      _EqSlot(isHorizontal: true,  row: 4, col: 2),
-      _EqSlot(isHorizontal: true,  row: 8, col: 4),
-      _EqSlot(isHorizontal: false, row: 0, col: 4),
-      _EqSlot(isHorizontal: false, row: 2, col: 2),
-      _EqSlot(isHorizontal: false, row: 4, col: 6),
-    ],
-  ];
 
-  static const _mediumTemplates = <List<_EqSlot>>[
-    [
-      _EqSlot(isHorizontal: true,  row: 0,  col: 0),
-      _EqSlot(isHorizontal: true,  row: 2,  col: 4),
-      _EqSlot(isHorizontal: true,  row: 6,  col: 0),
-      _EqSlot(isHorizontal: true,  row: 8,  col: 6),
-      _EqSlot(isHorizontal: true,  row: 12, col: 2),
-      _EqSlot(isHorizontal: false, row: 0,  col: 0),
-      _EqSlot(isHorizontal: false, row: 0,  col: 4),
-      _EqSlot(isHorizontal: false, row: 4,  col: 8),
-      _EqSlot(isHorizontal: false, row: 2,  col: 6),
-      _EqSlot(isHorizontal: false, row: 8,  col: 12),
-    ],
-    [
-      _EqSlot(isHorizontal: true,  row: 0,  col: 0),
-      _EqSlot(isHorizontal: true,  row: 4,  col: 8),
-      _EqSlot(isHorizontal: true,  row: 6,  col: 4),
-      _EqSlot(isHorizontal: true,  row: 10, col: 0),
-      _EqSlot(isHorizontal: true,  row: 12, col: 6),
-      _EqSlot(isHorizontal: false, row: 0,  col: 0),
-      _EqSlot(isHorizontal: false, row: 0,  col: 4),
-      _EqSlot(isHorizontal: false, row: 0,  col: 8),
-      _EqSlot(isHorizontal: false, row: 0,  col: 12),
-      _EqSlot(isHorizontal: false, row: 4,  col: 6),
-    ],
-    [
-      _EqSlot(isHorizontal: true,  row: 0,  col: 0),
-      _EqSlot(isHorizontal: true,  row: 2,  col: 0),
-      _EqSlot(isHorizontal: true,  row: 4,  col: 4),
-      _EqSlot(isHorizontal: true,  row: 8,  col: 6),
-      _EqSlot(isHorizontal: true,  row: 12, col: 8),
-      _EqSlot(isHorizontal: false, row: 0,  col: 0),
-      _EqSlot(isHorizontal: false, row: 0,  col: 4),
-      _EqSlot(isHorizontal: false, row: 0,  col: 8),
-      _EqSlot(isHorizontal: false, row: 4,  col: 10),
-      _EqSlot(isHorizontal: false, row: 8,  col: 12),
-    ],
-    [
-      _EqSlot(isHorizontal: true,  row: 0,  col: 4),
-      _EqSlot(isHorizontal: true,  row: 4,  col: 0),
-      _EqSlot(isHorizontal: true,  row: 6,  col: 8),
-      _EqSlot(isHorizontal: true,  row: 8,  col: 2),
-      _EqSlot(isHorizontal: true,  row: 12, col: 4),
-      _EqSlot(isHorizontal: false, row: 0,  col: 4),
-      _EqSlot(isHorizontal: false, row: 0,  col: 8),
-      _EqSlot(isHorizontal: false, row: 4,  col: 0),
-      _EqSlot(isHorizontal: false, row: 4,  col: 12),
-      _EqSlot(isHorizontal: false, row: 8,  col: 6),
-    ],
-    [
-      _EqSlot(isHorizontal: true,  row: 0,  col: 0),
-      _EqSlot(isHorizontal: true,  row: 4,  col: 6),
-      _EqSlot(isHorizontal: true,  row: 8,  col: 4),
-      _EqSlot(isHorizontal: true,  row: 10, col: 0),
-      _EqSlot(isHorizontal: true,  row: 12, col: 8),
-      _EqSlot(isHorizontal: false, row: 0,  col: 0),
-      _EqSlot(isHorizontal: false, row: 0,  col: 4),
-      _EqSlot(isHorizontal: false, row: 2,  col: 8),
-      _EqSlot(isHorizontal: false, row: 6,  col: 12),
-      _EqSlot(isHorizontal: false, row: 8,  col: 2),
-    ],
-  ];
 
-  static const _hardTemplates = <List<_EqSlot>>[
-    [
-      _EqSlot(isHorizontal: true,  row: 0,  col: 0),
-      _EqSlot(isHorizontal: true,  row: 2,  col: 4),
-      _EqSlot(isHorizontal: true,  row: 4,  col: 8),
-      _EqSlot(isHorizontal: true,  row: 8,  col: 0),
-      _EqSlot(isHorizontal: true,  row: 10, col: 6),
-      _EqSlot(isHorizontal: true,  row: 14, col: 2),
-      _EqSlot(isHorizontal: true,  row: 16, col: 10),
-      _EqSlot(isHorizontal: false, row: 0,  col: 0),
-      _EqSlot(isHorizontal: false, row: 0,  col: 4),
-      _EqSlot(isHorizontal: false, row: 0,  col: 8),
-      _EqSlot(isHorizontal: false, row: 0,  col: 12),
-      _EqSlot(isHorizontal: false, row: 4,  col: 16),
-      _EqSlot(isHorizontal: false, row: 8,  col: 2),
-      _EqSlot(isHorizontal: false, row: 12, col: 6),
-    ],
-    [
-      _EqSlot(isHorizontal: true,  row: 0,  col: 0),
-      _EqSlot(isHorizontal: true,  row: 0,  col: 8),
-      _EqSlot(isHorizontal: true,  row: 4,  col: 4),
-      _EqSlot(isHorizontal: true,  row: 8,  col: 0),
-      _EqSlot(isHorizontal: true,  row: 8,  col: 10),
-      _EqSlot(isHorizontal: true,  row: 12, col: 6),
-      _EqSlot(isHorizontal: true,  row: 16, col: 8),
-      _EqSlot(isHorizontal: false, row: 0,  col: 0),
-      _EqSlot(isHorizontal: false, row: 0,  col: 8),
-      _EqSlot(isHorizontal: false, row: 0,  col: 16),
-      _EqSlot(isHorizontal: false, row: 4,  col: 4),
-      _EqSlot(isHorizontal: false, row: 4,  col: 12),
-      _EqSlot(isHorizontal: false, row: 8,  col: 2),
-      _EqSlot(isHorizontal: false, row: 12, col: 10),
-    ],
-    [
-      _EqSlot(isHorizontal: true,  row: 0,  col: 0),
-      _EqSlot(isHorizontal: true,  row: 2,  col: 0),
-      _EqSlot(isHorizontal: true,  row: 4,  col: 4),
-      _EqSlot(isHorizontal: true,  row: 6,  col: 8),
-      _EqSlot(isHorizontal: true,  row: 10, col: 4),
-      _EqSlot(isHorizontal: true,  row: 14, col: 0),
-      _EqSlot(isHorizontal: true,  row: 16, col: 8),
-      _EqSlot(isHorizontal: false, row: 0,  col: 0),
-      _EqSlot(isHorizontal: false, row: 0,  col: 4),
-      _EqSlot(isHorizontal: false, row: 0,  col: 8),
-      _EqSlot(isHorizontal: false, row: 4,  col: 12),
-      _EqSlot(isHorizontal: false, row: 6,  col: 16),
-      _EqSlot(isHorizontal: false, row: 10, col: 2),
-      _EqSlot(isHorizontal: false, row: 12, col: 6),
-    ],
-    [
-      _EqSlot(isHorizontal: true,  row: 0,  col: 4),
-      _EqSlot(isHorizontal: true,  row: 4,  col: 0),
-      _EqSlot(isHorizontal: true,  row: 6,  col: 8),
-      _EqSlot(isHorizontal: true,  row: 10, col: 0),
-      _EqSlot(isHorizontal: true,  row: 12, col: 6),
-      _EqSlot(isHorizontal: true,  row: 14, col: 12),
-      _EqSlot(isHorizontal: true,  row: 16, col: 2),
-      _EqSlot(isHorizontal: false, row: 0,  col: 0),
-      _EqSlot(isHorizontal: false, row: 0,  col: 4),
-      _EqSlot(isHorizontal: false, row: 0,  col: 8),
-      _EqSlot(isHorizontal: false, row: 0,  col: 12),
-      _EqSlot(isHorizontal: false, row: 0,  col: 16),
-      _EqSlot(isHorizontal: false, row: 4,  col: 2),
-      _EqSlot(isHorizontal: false, row: 8,  col: 10),
-    ],
-    [
-      _EqSlot(isHorizontal: true,  row: 0,  col: 0),
-      _EqSlot(isHorizontal: true,  row: 2,  col: 8),
-      _EqSlot(isHorizontal: true,  row: 6,  col: 4),
-      _EqSlot(isHorizontal: true,  row: 8,  col: 0),
-      _EqSlot(isHorizontal: true,  row: 10, col: 10),
-      _EqSlot(isHorizontal: true,  row: 14, col: 4),
-      _EqSlot(isHorizontal: true,  row: 16, col: 0),
-      _EqSlot(isHorizontal: false, row: 0,  col: 0),
-      _EqSlot(isHorizontal: false, row: 0,  col: 4),
-      _EqSlot(isHorizontal: false, row: 0,  col: 8),
-      _EqSlot(isHorizontal: false, row: 2,  col: 12),
-      _EqSlot(isHorizontal: false, row: 4,  col: 16),
-      _EqSlot(isHorizontal: false, row: 6,  col: 2),
-      _EqSlot(isHorizontal: false, row: 12, col: 6),
-    ],
-    [
-      _EqSlot(isHorizontal: true,  row: 0,  col: 0),
-      _EqSlot(isHorizontal: true,  row: 4,  col: 6),
-      _EqSlot(isHorizontal: true,  row: 6,  col: 0),
-      _EqSlot(isHorizontal: true,  row: 8,  col: 10),
-      _EqSlot(isHorizontal: true,  row: 10, col: 2),
-      _EqSlot(isHorizontal: true,  row: 12, col: 8),
-      _EqSlot(isHorizontal: true,  row: 16, col: 4),
-      _EqSlot(isHorizontal: false, row: 0,  col: 2),
-      _EqSlot(isHorizontal: false, row: 0,  col: 6),
-      _EqSlot(isHorizontal: false, row: 0,  col: 10),
-      _EqSlot(isHorizontal: false, row: 4,  col: 0),
-      _EqSlot(isHorizontal: false, row: 2,  col: 14),
-      _EqSlot(isHorizontal: false, row: 8,  col: 4),
-      _EqSlot(isHorizontal: false, row: 12, col: 12),
-    ],
-  ];
-
-  // ─── GENERATE PUZZLE ────────────────────────────────────────────────────────
   void _generatePuzzle(int difficulty) {
-    final rand = Random();
     _equations.clear();
-    final List<List<_EqSlot>> pool;
-    final int gs;
+    
+    gen.Difficulty genDifficulty;
     switch (difficulty) {
-      case 5:  gs = 9;  pool = _easyTemplates;   break;
-      case 10: gs = 13; pool = _mediumTemplates;  break;
-      default: gs = 17; pool = _hardTemplates;
-    }
-    _gridRows = gs; _gridCols = gs;
-
-    for (int attempt = 0; attempt < 30; attempt++) {
-      _grid = List.generate(gs, (r) => List.generate(gs,
-          (c) => CrosswordCell(row: r, col: c, type: CellType.empty, correctVal: '')));
-      _equations.clear();
-      if (_fillSlots(pool[rand.nextInt(pool.length)], rand, difficulty)) {
-        _assignHints(rand, difficulty);
-        return;
-      }
-    }
-    // Fallback
-    _gridRows = 9; _gridCols = 9;
-    _grid = List.generate(9, (r) => List.generate(9,
-        (c) => CrosswordCell(row: r, col: c, type: CellType.empty, correctVal: '')));
-    _equations.clear();
-    _fillSlots(_easyTemplates[0], rand, 5);
-    _assignHints(rand, difficulty);
-  }
-
-  List<({int row, int col})>? _slotPositions(_EqSlot slot) {
-    final res = <({int row, int col})>[];
-    for (int i = 0; i < 5; i++) {
-      final r = slot.isHorizontal ? slot.row : slot.row + i;
-      final c = slot.isHorizontal ? slot.col + i : slot.col;
-      if (r < 0 || r >= _gridRows || c < 0 || c >= _gridCols) return null;
-      res.add((row: r, col: c));
-    }
-    return res;
-  }
-
-  bool _fillSlots(List<_EqSlot> slots, Random rand, int difficulty) {
-    final cellVals = List.generate(_gridRows, (_) => List<String?>.filled(_gridCols, null));
-    final List<String> opPool;
-    if (difficulty == 5) {
-      opPool = ['+', '+', '+', '-', '-'];
-    } else if (difficulty == 10) {
-      opPool = ['+', '+', '-', '-', '*', '/'];
-    } else {
-      opPool = ['+', '-', '*', '*', '/', '/'];
+      case 5:
+        genDifficulty = gen.Difficulty.easy;
+        break;
+      case 10:
+        genDifficulty = gen.Difficulty.medium;
+        break;
+      default:
+        genDifficulty = gen.Difficulty.hard;
     }
 
-    for (final slot in slots) {
-      final positions = _slotPositions(slot);
-      if (positions == null) return false;
-      final existA  = cellVals[positions[0].row][positions[0].col];
-      final existB  = cellVals[positions[2].row][positions[2].col];
-      final existC  = cellVals[positions[4].row][positions[4].col];
-      final existOp = cellVals[positions[1].row][positions[1].col];
-      final existEq = cellVals[positions[3].row][positions[3].col];
-      if (existOp != null && !_isOp(existOp)) return false;
-      if (existEq != null && existEq != '=') return false;
+    final puzzle = gen.generatePuzzle(genDifficulty);
+    _gridRows = puzzle.gridSize;
+    _gridCols = puzzle.gridSize;
 
-      bool placed = false;
-      for (int t = 0; t < 40 && !placed; t++) {
-        final op = existOp ?? opPool[rand.nextInt(opPool.length)];
-        int? a = existA != null ? int.tryParse(existA) : null;
-        int? b = existB != null ? int.tryParse(existB) : null;
-        int? c = existC != null ? int.tryParse(existC) : null;
-
-        if (a == null && b == null && c == null) {
-          final v = _rEq(op, rand); if (v == null) continue; a=v[0]; b=v[1]; c=v[2];
-        } else if (a != null && b == null && c == null) {
-          final v = _fA(a, op, rand); if (v == null) continue; b=v[1]; c=v[2];
-        } else if (b != null && a == null && c == null) {
-          final v = _fB(b, op, rand); if (v == null) continue; a=v[0]; c=v[2];
-        } else if (c != null && a == null && b == null) {
-          final v = _fC(c, op, rand); if (v == null) continue; a=v[0]; b=v[1];
-        } else if (a != null && b != null && c == null) {
-          c = _app(a, b, op);
-        } else if (a != null && c != null && b == null) {
-          b = _rvB(a, c, op);
-        } else if (b != null && c != null && a == null) {
-          a = _rvA(b, c, op);
-        } else if (a != null && b != null && c != null) {
-          if (_app(a, b, op) != c) continue;
+    // Build the grid of CrosswordCell
+    _grid = List.generate(
+      _gridRows,
+      (r) => List.generate(_gridCols, (c) {
+        final cell = puzzle.grid[r][c];
+        
+        // Map PuzzleCellType to CellType
+        CellType mappedType;
+        switch (cell.type) {
+          case gen.PuzzleCellType.number:
+            mappedType = CellType.number;
+            break;
+          case gen.PuzzleCellType.operator:
+            mappedType = CellType.operator;
+            break;
+          case gen.PuzzleCellType.equals:
+            mappedType = CellType.equals;
+            break;
+          default:
+            mappedType = CellType.empty;
         }
 
-        if (a == null || b == null || c == null) continue;
-        if (a <= 0 || b <= 0 || c <= 0 || a > 99 || b > 99 || c > 99) continue;
+        return CrosswordCell(
+          row: r,
+          col: c,
+          type: mappedType,
+          correctVal: cell.value,
+          userVal: cell.userValue,
+          isHint: cell.isLocked,
+        );
+      }),
+    );
 
-        void sN(int idx, int val) {
-          final p = positions[idx]; final s = val.toString();
-          cellVals[p.row][p.col] = s;
-          _grid[p.row][p.col] = CrosswordCell(row: p.row, col: p.col, type: CellType.number, correctVal: s);
-        }
-        void sO(int idx, String val, CellType ct) {
-          final p = positions[idx];
-          cellVals[p.row][p.col] = val;
-          _grid[p.row][p.col] = CrosswordCell(row: p.row, col: p.col, type: ct, correctVal: val);
-        }
-        sN(0, a); sO(1, op, CellType.operator); sN(2, b); sO(3, '=', CellType.equals); sN(4, c);
-        _equations.add(CrosswordEquation(cells: [
-          _grid[positions[0].row][positions[0].col],
-          _grid[positions[1].row][positions[1].col],
-          _grid[positions[2].row][positions[2].col],
-          _grid[positions[3].row][positions[3].col],
-          _grid[positions[4].row][positions[4].col],
-        ]));
-        placed = true;
+    // Build the equations
+    for (final eq in puzzle.equations) {
+      final cells = <CrosswordCell>[];
+      for (int i = 0; i < 5; i++) {
+        final r = eq.orientation == gen.CrosswordOrientation.horizontal ? eq.r : eq.r + i;
+        final c = eq.orientation == gen.CrosswordOrientation.horizontal ? eq.c + i : eq.c;
+        cells.add(_grid[r][c]);
       }
-      if (!placed) return false;
+      _equations.add(CrosswordEquation(cells: cells));
     }
-    return true;
   }
 
-  bool _isOp(String s) => s == '+' || s == '-' || s == '*' || s == '/';
 
-  int? _app(int a, int b, String op) {
-    switch (op) {
-      case '+': return a + b;
-      case '-': return a - b > 0 ? a - b : null;
-      case '*': return a * b;
-      case '/': return (b > 0 && a % b == 0) ? a ~/ b : null;
-    }
-    return null;
-  }
-
-  List<int>? _rEq(String op, Random rand) {
-    switch (op) {
-      case '+': { final a=rand.nextInt(18)+1,b=rand.nextInt(18)+1; final c=a+b; return c<=99?[a,b,c]:null; }
-      case '-': { final c=rand.nextInt(15)+1,b=rand.nextInt(15)+1; final a=b+c; return a<=99?[a,b,c]:null; }
-      case '*': { final a=rand.nextInt(9)+2,b=rand.nextInt(9)+2; final c=a*b; return c<=99?[a,b,c]:null; }
-      case '/': { final b=rand.nextInt(8)+2,c=rand.nextInt(9)+1; final a=b*c; return a<=99?[a,b,c]:null; }
-    }
-    return null;
-  }
-
-  List<int>? _fA(int a, String op, Random rand) {
-    for (int i=0;i<10;i++) {
-      switch(op) {
-        case '+': { final b=rand.nextInt(18)+1; final c=a+b; if(c<=99) return [a,b,c]; break; }
-        case '-': { if(a<2) break; final b=rand.nextInt(a-1)+1; final c=a-b; if(c>0) return [a,b,c]; break; }
-        case '*': { final b=rand.nextInt(9)+2; final c=a*b; if(c<=99) return [a,b,c]; break; }
-        case '/': { final ds=List.generate(9,(i)=>i+2).where((d)=>a%d==0).toList(); if(ds.isEmpty) break; final b=ds[rand.nextInt(ds.length)]; return [a,b,a~/b]; }
-      }
-    }
-    return null;
-  }
-
-  List<int>? _fB(int b, String op, Random rand) {
-    for (int i=0;i<10;i++) {
-      switch(op) {
-        case '+': { final a=rand.nextInt(18)+1; final c=a+b; if(c<=99) return [a,b,c]; break; }
-        case '-': { final a=b+rand.nextInt(15)+1; final c=a-b; if(a<=99&&c>0) return [a,b,c]; break; }
-        case '*': { final a=rand.nextInt(9)+2; final c=a*b; if(c<=99) return [a,b,c]; break; }
-        case '/': { final a=b*(rand.nextInt(9)+1); if(a<=99) return [a,b,a~/b]; break; }
-      }
-    }
-    return null;
-  }
-
-  List<int>? _fC(int c, String op, Random rand) {
-    for (int i=0;i<10;i++) {
-      switch(op) {
-        case '+': { if(c<2) break; final b=rand.nextInt(c-1)+1; return [c-b,b,c]; }
-        case '-': { final b=rand.nextInt(15)+1; final a=c+b; if(a<=99) return [a,b,c]; break; }
-        case '*': { final fs=List.generate(9,(i)=>i+2).where((f)=>c%f==0&&(c~/f)>=2&&(c~/f)<=10).toList(); if(fs.isEmpty) break; final b2=fs[rand.nextInt(fs.length)]; return [c~/b2,b2,c]; }
-        case '/': { final b=rand.nextInt(8)+2; final a=b*c; if(a<=99) return [a,b,c]; break; }
-      }
-    }
-    return null;
-  }
-
-  int? _rvB(int a, int c, String op) {
-    switch (op) {
-      case '+': return (c-a)>0?c-a:null;
-      case '-': return (a-c)>0?a-c:null;
-      case '*': return (c>0&&c%a==0)?c~/a:null;
-      case '/': return null;
-    }
-    return null;
-  }
-
-  int? _rvA(int b, int c, String op) {
-    switch (op) {
-      case '+': return (c-b)>0?c-b:null;
-      case '-': return (c+b)<=99?c+b:null;
-      case '*': return (c>0&&c%b==0)?c~/b:null;
-      case '/': return (b*c)<=99?b*c:null;
-    }
-    return null;
-  }
-
-  void _assignHints(Random rand, int difficulty) {
-    final all = <CrosswordCell>[];
-    for (int r=0;r<_gridRows;r++) {
-      for (int c=0;c<_gridCols;c++) {
-        if (_grid[r][c].type == CellType.number) all.add(_grid[r][c]);
-      }
-    }
-    all.shuffle(rand);
-    final total = all.length;
-    int hintCount;
-    if (difficulty == 5) {
-      hintCount = (total * 0.44).round();
-    } else if (difficulty == 10) {
-      hintCount = (total * (0.30 + rand.nextDouble() * 0.10)).round();
-    } else {
-      hintCount = (total * (0.12 + rand.nextDouble() * 0.07)).round();
-    }
-    hintCount = hintCount.clamp(1, total);
-    for (int i=0;i<hintCount;i++) { all[i].isHint = true; }
-  }
 
   bool _checkAllEquationsSatisfied() {
     // 1. Check if all number cells are filled
@@ -705,7 +348,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Thoát Trò Chơi?'),
-        content: const Text('Tiến trình chơi hiện tại của bé sẽ không được lưu lại.'),
+        content: const Text('Tiến trình chơi hiện tại của bạn sẽ không được lưu lại.'),
         actions: [
           TextButton(
             onPressed: () {
@@ -751,25 +394,26 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
         ),
         actions: [
           Container(
-            width: 90, // Fixed width to prevent shifting layout
-            margin: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
-            padding: const EdgeInsets.symmetric(vertical: 6),
+            width: 76, // Shrunk to fit the smaller size nicely
+            margin: const EdgeInsets.only(right: 12, top: 10, bottom: 10), // Adjusted margin to center vertically
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
             decoration: BoxDecoration(
               color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Icon(Icons.timer_outlined, size: 14, color: AppColors.primary),
-                const SizedBox(width: 4),
-                SizedBox(
-                  width: 50, // Fixed width for text area to prevent any shaking/shifting
+                const SizedBox(width: 2),
+                const Icon(Icons.timer_outlined, size: 12, color: AppColors.primary), // Shrunk icon size
+                const SizedBox(width: 4), // Shrunk spacing
+                Expanded(
                   child: Text(
                     _elapsedTimeString,
-                    textAlign: TextAlign.center,
+                    textAlign: TextAlign.left,
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 11, // Shrunk font size
                       fontWeight: FontWeight.bold,
                       color: AppColors.primary,
                       fontFeatures: [FontFeature.tabularFigures()],
@@ -995,14 +639,14 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Kích thước lưới ô chữ sẽ thay đổi theo số lượng phép tính bé chọn.',
+                'Kích thước lưới ô chữ sẽ thay đổi theo số lượng phép tính bạn chọn.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 40),
               _buildDifficultyButton(
                 title: 'Dễ (5 Phép Tính)',
-                subtitle: 'Lưới ô chữ 5x5 - Phù hợp cho bé mới bắt đầu',
+                subtitle: 'Lưới ô chữ 5x5 - Phù hợp để bắt đầu',
                 difficulty: 5,
                 color: Colors.green,
               ),
@@ -1089,31 +733,64 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
   }
 
   Widget _buildCrosswordGrid() {
+    // Pre-calculate satisfied equations once per rebuild to prevent O(N*M) heavy string parses
+    final satisfiedEquations = <CrosswordEquation>{};
+    for (final eq in _equations) {
+      if (eq.isSatisfied) {
+        satisfiedEquations.add(eq);
+      }
+    }
+
+    int minRow = _gridRows;
+    int maxRow = -1;
+    int minCol = _gridCols;
+    int maxCol = -1;
+
+    for (int r = 0; r < _gridRows; r++) {
+      for (int c = 0; c < _gridCols; c++) {
+        if (_grid[r][c].type != CellType.empty) {
+          if (r < minRow) minRow = r;
+          if (r > maxRow) maxRow = r;
+          if (c < minCol) minCol = c;
+          if (c > maxCol) maxCol = c;
+        }
+      }
+    }
+
+    // Fallback if no active cells found
+    if (maxRow == -1) {
+      minRow = 0;
+      maxRow = _gridRows - 1;
+      minCol = 0;
+      maxCol = _gridCols - 1;
+    }
+
     return Column(
       mainAxisSize: MainAxisSize.min,
-      children: List.generate(_gridRows, (r) {
+      children: List.generate(maxRow - minRow + 1, (index) {
+        final r = minRow + index;
         return Row(
           mainAxisSize: MainAxisSize.min,
-          children: List.generate(_gridCols, (c) {
-            return _buildCellItem(_grid[r][c]);
+          children: List.generate(maxCol - minCol + 1, (indexCol) {
+            final c = minCol + indexCol;
+            return _buildCellItem(_grid[r][c], satisfiedEquations);
           }),
         );
       }),
     );
   }
 
-  Widget _buildCellItem(CrosswordCell cell) {
+  Widget _buildCellItem(CrosswordCell cell, Set<CrosswordEquation> satisfiedEquations) {
     if (cell.type == CellType.empty) {
-      return const SizedBox(width: 44, height: 44);
+      return const SizedBox(width: 45, height: 45);
     }
 
     // Check if this cell is part of any fully satisfied/correct equations
     bool isCellPartofCorrectEquation = false;
-    for (var eq in _equations) {
-      if (eq.isSatisfied) {
-        if (eq.cells.contains(cell)) {
-          isCellPartofCorrectEquation = true;
-        }
+    for (var eq in satisfiedEquations) {
+      if (eq.cells.contains(cell)) {
+        isCellPartofCorrectEquation = true;
+        break;
       }
     }
 
@@ -1249,7 +926,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
               const SizedBox(height: 8),
               
               Text(
-                'Bé đã giải thành công toàn bộ ô chữ toán học trong $_elapsedTimeString.',
+                'Chúc mừng! Bạn đã giải thành công toàn bộ ô chữ toán học trong $_elapsedTimeString.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 16,
@@ -1334,30 +1011,36 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
               const Spacer(),
               
               // Action Button
-              ElevatedButton(
-                onPressed: _isSavingScore
-                    ? null
-                    : () {
-                        Navigator.pop(context); // Go back to GameTab
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+              Center(
+                child: SizedBox(
+                  width: 220,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: _isSavingScore
+                        ? null
+                        : () {
+                            Navigator.pop(context); // Go back to GameTab
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                    child: _isSavingScore
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Text(
+                            'Quay lại danh mục',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
                   ),
                 ),
-                child: _isSavingScore
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                      )
-                    : const Text(
-                        'Quay lại danh mục',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
               ),
             ],
           ),

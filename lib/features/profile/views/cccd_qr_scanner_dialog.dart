@@ -78,22 +78,22 @@ class _CccdQrScannerDialogState extends State<CccdQrScannerDialog> {
                     // Top dark bar
                     Positioned(
                       top: 0, left: 0, right: 0, bottom: 380,
-                      child: Container(color: Colors.black.withOpacity(0.5)),
+                      child: Container(color: Colors.black.withValues(alpha: 0.5)),
                     ),
                     // Bottom dark bar
                     Positioned(
                       top: 380, left: 0, right: 0, bottom: 0,
-                      child: Container(color: Colors.black.withOpacity(0.5)),
+                      child: Container(color: Colors.black.withValues(alpha: 0.5)),
                     ),
                     // Left dark bar
                     Positioned(
                       top: 100, left: 0, right: 280 + 35, bottom: 100,
-                      child: Container(color: Colors.black.withOpacity(0.5)),
+                      child: Container(color: Colors.black.withValues(alpha: 0.5)),
                     ),
                     // Right dark bar
                     Positioned(
                       top: 100, left: 280 + 35, right: 0, bottom: 100,
-                      child: Container(color: Colors.black.withOpacity(0.5)),
+                      child: Container(color: Colors.black.withValues(alpha: 0.5)),
                     ),
                   ],
                 ),

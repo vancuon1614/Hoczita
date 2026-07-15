@@ -59,7 +59,7 @@ class SupabaseService {
       final response = await client.auth.signInWithPassword(
         email: cleanEmail, 
         password: cleanPassword,
-      );
+      ).timeout(const Duration(seconds: 15));
       return response.user != null;
     } catch (e) {
       debugPrint('Sign in error: $e');

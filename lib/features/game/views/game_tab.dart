@@ -9,6 +9,7 @@ import 'multiple_choice_game_screen.dart';
 import 'memory_match_game_screen.dart';
 import 'math_crossword_game_screen.dart';
 import 'english_crossword_game_screen.dart';
+import 'word_scramble_game_screen.dart';
 
 
 class GameTab extends ConsumerStatefulWidget {
@@ -29,6 +30,7 @@ class _GameTabState extends ConsumerState<GameTab> {
     'comparison': 0,
     'math_crossword': 0,
     'english_crossword': 0,
+    'word_scramble': 0,
   };
   bool _isLoading = true;
 
@@ -55,6 +57,7 @@ class _GameTabState extends ConsumerState<GameTab> {
         'comparison': 0,
         'math_crossword': 0,
         'english_crossword': 0,
+        'word_scramble': 0,
       };
 
       for (final scoreEntry in scores) {
@@ -198,7 +201,6 @@ class _GameTabState extends ConsumerState<GameTab> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
           _buildGameCard(
             context: context,
             title: 'Ô Chữ Tiếng Anh',
@@ -212,7 +214,20 @@ class _GameTabState extends ConsumerState<GameTab> {
               const EnglishCrosswordGameScreen(),
             ),
           ),
-          const SizedBox(height: 100), // Avoid floating nav bar overlap
+          const SizedBox(height: 20),
+          _buildGameCard(
+            context: context,
+            title: 'Sắp Xếp Từ Vựng',
+            subtitle: 'Sắp xếp các chữ cái bị xáo trộn thành từ tiếng Anh hoàn chỉnh trong 10 giây.',
+            icon: Icons.shuffle_rounded,
+            color: Colors.deepOrange,
+            stars: _highestStars['word_scramble'] ?? 0,
+            animationType: GameAnimationType.pulse,
+            imagePath: 'ImageFolder/wordscramble.webp',
+            onTap: () => _playGame(
+              const WordScrambleGameScreen(),
+            ),
+          ),
         ],
       ),
     );
@@ -292,7 +307,6 @@ class _GameTabState extends ConsumerState<GameTab> {
               const MathCrosswordGameScreen(),
             ),
           ),
-          const SizedBox(height: 100), // Avoid floating nav bar overlap
         ],
       ),
     );

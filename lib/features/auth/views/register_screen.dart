@@ -59,9 +59,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           }
           
           messenger.showSnackBar(
-            const SnackBar(content: Text('Đăng ký tài khoản thành công! 🎉')),
+            const SnackBar(
+              content: Text('Đăng ký thành công! Hệ thống đã gửi email xác nhận. Vui lòng kiểm tra hộp thư của bạn.'),
+              duration: Duration(seconds: 4),
+            ),
           );
-          navigator.pop(); // Quay lại MainScreen
+          navigator.pop(); // Quay lại LoginScreen
         } else {
           final errorMessage = ref.read(authProvider).errorMessage ?? 'Đăng ký thất bại.';
           _showErrorDialog(errorMessage);

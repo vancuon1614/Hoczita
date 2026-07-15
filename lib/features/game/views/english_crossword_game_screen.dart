@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../models/english_crossword_level.dart';
+import '../utils/english_crossword_generator.dart';
 
 class EnglishCrosswordCell {
   final int row;
@@ -379,7 +380,7 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Thoát trò chơi?'),
-        content: const Text('Bé có chắc muốn thoát không? Điểm số lượt chơi này sẽ không được lưu lại đâu nhé.'),
+        content: const Text('Bạn có chắc muốn thoát không? Điểm số lượt chơi này sẽ không được lưu lại đâu nhé.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -659,12 +660,11 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
     final level = _activeLevel;
     if (level != null) {
       // Find the first word that starts at this cell
-      final startingWord = level.words.firstWhere(
-        (w) => w.row == cell.row && w.col == cell.col,
-        orElse: () => level.words.first,
-      );
-      if (startingWord.row == cell.row && startingWord.col == cell.col) {
-        wordStartIndex = _wordNumbers[startingWord];
+      for (final w in level.words) {
+        if (w.row == cell.row && w.col == cell.col) {
+          wordStartIndex = _wordNumbers[w];
+          break;
+        }
       }
     }
 
@@ -838,7 +838,7 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                'Bé đã giải thành công toàn bộ ô chữ Tiếng Anh trong $_elapsedTimeString!',
+                'Chúc mừng! Bạn đã giải thành công toàn bộ ô chữ Tiếng Anh trong $_elapsedTimeString!',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 16,
@@ -916,30 +916,36 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                 ],
               ),
               const SizedBox(height: 48),
-              ElevatedButton(
-                onPressed: _isSavingScore
-                    ? null
-                    : () {
-                        Navigator.pop(context);
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+              Center(
+                child: SizedBox(
+                  width: 220,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: _isSavingScore
+                        ? null
+                        : () {
+                            Navigator.pop(context);
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                    child: _isSavingScore
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Text(
+                            'Quay lại danh mục',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
                   ),
                 ),
-                child: _isSavingScore
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                      )
-                    : const Text(
-                        'Quay lại danh mục',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
               ),
             ],
           ),
@@ -1138,21 +1144,21 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
               const SizedBox(height: 40),
               _buildDifficultyButton(
                 title: 'Dễ (Easy)',
-                subtitle: 'Ô chữ 5 từ ngắn (7x7) - Thích hợp cho bé làm quen',
+                subtitle: 'Ô chữ 5 từ ngắn (7x7) - Thích hợp để làm quen từ vựng mới',
                 difficulty: CrosswordDifficulty.easy,
                 color: Colors.green,
               ),
               const SizedBox(height: 16),
               _buildDifficultyButton(
                 title: 'Trung Bình (Medium)',
-                subtitle: 'Ô chữ 10 từ vừa (11x11) - Rèn luyện ghi nhớ từ vựng tốt hơn',
+                subtitle: 'Ô chữ 10 từ vừa (11x11) - Rèn luyện ghi nhớ tốt hơn',
                 difficulty: CrosswordDifficulty.medium,
                 color: Colors.orange,
               ),
               const SizedBox(height: 16),
               _buildDifficultyButton(
                 title: 'Khó (Hard)',
-                subtitle: 'Ô chữ 20 từ dài (14x14) - Thử thách trí tuệ siêu việt của bé',
+                subtitle: 'Ô chữ 20 từ dài (14x14) - Thử thách trí tuệ siêu việt',
                 difficulty: CrosswordDifficulty.hard,
                 color: Colors.red,
               ),
@@ -1358,171 +1364,21 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
     WordClue('JUICE', 'Nước ép'),
   ];
 
-  static const _easyTemplates = <List<_EnglishSlot>>[
-    [
-      _EnglishSlot(row: 1, col: 1, length: 5, isAcross: true),
-      _EnglishSlot(row: 1, col: 3, length: 5, isAcross: false),
-      _EnglishSlot(row: 3, col: 2, length: 6, isAcross: true),
-      _EnglishSlot(row: 3, col: 5, length: 5, isAcross: false),
-      _EnglishSlot(row: 5, col: 4, length: 5, isAcross: true),
-      _EnglishSlot(row: 5, col: 7, length: 4, isAcross: false),
-    ],
-    [
-      _EnglishSlot(row: 2, col: 1, length: 5, isAcross: true),
-      _EnglishSlot(row: 0, col: 2, length: 5, isAcross: false),
-      _EnglishSlot(row: 4, col: 2, length: 5, isAcross: true),
-      _EnglishSlot(row: 2, col: 4, length: 5, isAcross: false),
-      _EnglishSlot(row: 6, col: 3, length: 5, isAcross: true),
-    ],
-    [
-      _EnglishSlot(row: 1, col: 1, length: 5, isAcross: false),
-      _EnglishSlot(row: 3, col: 0, length: 5, isAcross: true),
-      _EnglishSlot(row: 2, col: 3, length: 5, isAcross: false),
-      _EnglishSlot(row: 5, col: 2, length: 5, isAcross: true),
-      _EnglishSlot(row: 4, col: 5, length: 5, isAcross: false),
-    ],
-    [
-      _EnglishSlot(row: 1, col: 2, length: 5, isAcross: true),
-      _EnglishSlot(row: 0, col: 4, length: 5, isAcross: false),
-      _EnglishSlot(row: 3, col: 1, length: 6, isAcross: true),
-      _EnglishSlot(row: 2, col: 2, length: 5, isAcross: false),
-      _EnglishSlot(row: 5, col: 2, length: 5, isAcross: true),
-    ],
-  ];
 
-  static const _mediumTemplates = <List<_EnglishSlot>>[
-    [
-      _EnglishSlot(row: 1, col: 2, length: 6, isAcross: true),
-      _EnglishSlot(row: 1, col: 4, length: 5, isAcross: false),
-      _EnglishSlot(row: 3, col: 3, length: 5, isAcross: true),
-      _EnglishSlot(row: 3, col: 6, length: 6, isAcross: false),
-      _EnglishSlot(row: 5, col: 5, length: 6, isAcross: true),
-      _EnglishSlot(row: 5, col: 8, length: 4, isAcross: false),
-      _EnglishSlot(row: 7, col: 7, length: 5, isAcross: true),
-      _EnglishSlot(row: 7, col: 10, length: 5, isAcross: false),
-      _EnglishSlot(row: 9, col: 9, length: 4, isAcross: true),
-    ],
-    [
-      _EnglishSlot(row: 2, col: 1, length: 6, isAcross: true),
-      _EnglishSlot(row: 0, col: 3, length: 5, isAcross: false),
-      _EnglishSlot(row: 4, col: 2, length: 5, isAcross: true),
-      _EnglishSlot(row: 4, col: 5, length: 5, isAcross: false),
-      _EnglishSlot(row: 6, col: 4, length: 6, isAcross: true),
-      _EnglishSlot(row: 6, col: 7, length: 4, isAcross: false),
-      _EnglishSlot(row: 8, col: 6, length: 5, isAcross: true),
-      _EnglishSlot(row: 8, col: 9, length: 5, isAcross: false),
-      _EnglishSlot(row: 10, col: 8, length: 5, isAcross: true),
-    ],
-  ];
-
-  static const _hardTemplates = <List<_EnglishSlot>>[
-    [
-      _EnglishSlot(row: 1, col: 1, length: 5, isAcross: true),
-      _EnglishSlot(row: 1, col: 3, length: 5, isAcross: false),
-      _EnglishSlot(row: 3, col: 2, length: 6, isAcross: true),
-      _EnglishSlot(row: 3, col: 5, length: 5, isAcross: false),
-      _EnglishSlot(row: 5, col: 4, length: 5, isAcross: true),
-      _EnglishSlot(row: 5, col: 7, length: 6, isAcross: false),
-      _EnglishSlot(row: 7, col: 6, length: 6, isAcross: true),
-      _EnglishSlot(row: 7, col: 9, length: 5, isAcross: false),
-      _EnglishSlot(row: 9, col: 8, length: 5, isAcross: true),
-      _EnglishSlot(row: 9, col: 11, length: 5, isAcross: false),
-      _EnglishSlot(row: 11, col: 10, length: 6, isAcross: true),
-      _EnglishSlot(row: 11, col: 13, length: 4, isAcross: false),
-      _EnglishSlot(row: 13, col: 11, length: 5, isAcross: true),
-    ],
-    [
-      _EnglishSlot(row: 2, col: 2, length: 5, isAcross: false),
-      _EnglishSlot(row: 4, col: 1, length: 6, isAcross: true),
-      _EnglishSlot(row: 4, col: 4, length: 5, isAcross: false),
-      _EnglishSlot(row: 6, col: 3, length: 5, isAcross: true),
-      _EnglishSlot(row: 6, col: 6, length: 5, isAcross: false),
-      _EnglishSlot(row: 8, col: 5, length: 6, isAcross: true),
-      _EnglishSlot(row: 8, col: 8, length: 5, isAcross: false),
-      _EnglishSlot(row: 10, col: 7, length: 5, isAcross: true),
-      _EnglishSlot(row: 10, col: 10, length: 6, isAcross: false),
-      _EnglishSlot(row: 12, col: 9, length: 6, isAcross: true),
-      _EnglishSlot(row: 12, col: 12, length: 5, isAcross: false),
-      _EnglishSlot(row: 14, col: 11, length: 5, isAcross: true),
-    ],
-  ];
 
   void _generateCrossword(CrosswordDifficulty diff) {
-    final rand = Random();
-    final List<List<_EnglishSlot>> pool;
-    final int gs;
-    switch (diff) {
-      case CrosswordDifficulty.easy:
-        gs = 9;
-        pool = _easyTemplates;
-        break;
-      case CrosswordDifficulty.medium:
-        gs = 13;
-        pool = _mediumTemplates;
-        break;
-      case CrosswordDifficulty.hard:
-        gs = 17;
-        pool = _hardTemplates;
-        break;
-    }
-    _gridRows = gs;
-    _gridCols = gs;
+    // Generate crossword organically using the dynamic generator
+    final generatedLevel = EnglishCrosswordGenerator.generate(
+      difficulty: diff,
+      vocabPool: _vocabPool,
+    );
 
-    for (int attempt = 0; attempt < 50; attempt++) {
-      final template = pool[rand.nextInt(pool.length)];
-      final filledWords = _solveTemplate(template, rand);
-      if (filledWords != null) {
-        final generatedLevel = EnglishCrosswordLevel(
-          id: rand.nextInt(1000000),
-          difficulty: diff,
-          rows: gs,
-          cols: gs,
-          words: filledWords,
-        );
-        
-        setState(() {
-          _selectedDifficulty = diff;
-          _activeLevel = generatedLevel;
-          _isPlaying = true;
-          _isGameOver = false;
-          _isSavingScore = false;
-          _selectedCellRow = null;
-          _selectedCellCol = null;
-          _selectedWord = null;
-          _correctWords.clear();
-          _hintCells.clear();
-        });
-        
-        _calculateWordNumbers(generatedLevel);
-        _initializeGrid(generatedLevel);
-        _stopwatch.reset();
-        _stopwatch.start();
-        _startTimer();
-        
-        if (generatedLevel.words.isNotEmpty) {
-          final firstWord = generatedLevel.words.first;
-          setState(() {
-            _selectedWord = firstWord;
-            _selectedCellRow = firstWord.row;
-            _selectedCellCol = firstWord.col;
-          });
-        }
-        
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _keyboardFocusNode.requestFocus();
-        });
-        return;
-      }
-    }
-    
-    final fallbackLevels = EnglishCrosswordLevel.getPredefinedLevels()
-        .where((l) => l.difficulty == diff)
-        .toList();
-    final fallbackLevel = fallbackLevels[rand.nextInt(fallbackLevels.length)];
-    
+    _gridRows = generatedLevel.rows;
+    _gridCols = generatedLevel.cols;
+
     setState(() {
       _selectedDifficulty = diff;
-      _activeLevel = fallbackLevel;
+      _activeLevel = generatedLevel;
       _isPlaying = true;
       _isGameOver = false;
       _isSavingScore = false;
@@ -1532,22 +1388,22 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
       _correctWords.clear();
       _hintCells.clear();
     });
-    
-    _calculateWordNumbers(fallbackLevel);
-    _initializeGrid(fallbackLevel);
+
+    _calculateWordNumbers(generatedLevel);
+    _initializeGrid(generatedLevel);
     _stopwatch.reset();
     _stopwatch.start();
     _startTimer();
-    
-    if (fallbackLevel.words.isNotEmpty) {
-      final firstWord = fallbackLevel.words.first;
+
+    if (generatedLevel.words.isNotEmpty) {
+      final firstWord = generatedLevel.words.first;
       setState(() {
         _selectedWord = firstWord;
         _selectedCellRow = firstWord.row;
         _selectedCellCol = firstWord.col;
       });
     }
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _keyboardFocusNode.requestFocus();
     });
@@ -1580,112 +1436,10 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
     }
   }
 
-  List<EnglishCrosswordWord>? _solveTemplate(List<_EnglishSlot> slots, Random rand) {
-    final inters = _findIntersections(slots);
-    
-    final List<List<WordClue>> candidatesBySlot = [];
-    for (final s in slots) {
-      final cands = _vocabPool.where((w) => w.word.length == s.length).toList();
-      cands.shuffle(rand);
-      candidatesBySlot.add(cands);
-    }
-    
-    final List<String?> currentWords = List.filled(slots.length, null);
-    final Set<String> usedWords = {};
-    
-    bool solve(int slotIdx) {
-      if (slotIdx == slots.length) return true;
-      final slotInters = inters[slotIdx];
-      
-      for (final w in candidatesBySlot[slotIdx]) {
-        if (usedWords.contains(w.word)) continue;
-        
-        bool conflict = false;
-        for (final intersection in slotInters) {
-          if (intersection.otherSlotIdx < slotIdx) {
-            final otherWord = currentWords[intersection.otherSlotIdx]!;
-            if (w.word[intersection.charIdx] != otherWord[intersection.otherCharIdx]) {
-              conflict = true;
-              break;
-            }
-          }
-        }
-        
-        if (!conflict) {
-          currentWords[slotIdx] = w.word;
-          usedWords.add(w.word);
-          if (solve(slotIdx + 1)) return true;
-          usedWords.remove(w.word);
-          currentWords[slotIdx] = null;
-        }
-      }
-      return false;
-    }
-    
-    if (solve(0)) {
-      final List<EnglishCrosswordWord> result = [];
-      for (int i = 0; i < slots.length; i++) {
-        final wordText = currentWords[i]!;
-        final clueItem = _vocabPool.firstWhere((w) => w.word == wordText);
-        result.add(EnglishCrosswordWord(
-          word: wordText,
-          clue: clueItem.clue,
-          row: slots[i].row,
-          col: slots[i].col,
-          isAcross: slots[i].isAcross,
-        ));
-      }
-      return result;
-    }
-    
-    return null;
-  }
-
-  List<List<_Intersection>> _findIntersections(List<_EnglishSlot> slots) {
-    final intersections = List.generate(slots.length, (_) => <_Intersection>[]);
-    for (int i = 0; i < slots.length; i++) {
-      for (int j = i + 1; j < slots.length; j++) {
-        final s1 = slots[i];
-        final s2 = slots[j];
-        if (s1.isAcross != s2.isAcross) {
-          final a = s1.isAcross ? s1 : s2;
-          final d = s1.isAcross ? s2 : s1;
-          final idxA = slots.indexOf(a);
-          final idxD = slots.indexOf(d);
-          
-          if (d.row <= a.row && a.row < d.row + d.length &&
-              a.col <= d.col && d.col < a.col + a.length) {
-            final charIdxA = d.col - a.col;
-            final charIdxD = a.row - d.row;
-            intersections[idxA].add(_Intersection(idxD, charIdxA, charIdxD));
-            intersections[idxD].add(_Intersection(idxA, charIdxD, charIdxA));
-          }
-        }
-      }
-    }
-    return intersections;
-  }
-
 }
-
 
 class WordClue {
   final String word;
   final String clue;
   const WordClue(this.word, this.clue);
-}
-
-class _EnglishSlot {
-  final int row;
-  final int col;
-  final int length;
-  final bool isAcross;
-  const _EnglishSlot({required this.row, required this.col, required this.length, required this.isAcross});
-}
-
-class _Intersection {
-  final int otherSlotIdx;
-  final int charIdx;
-  final int otherCharIdx;
-  _Intersection(this.otherSlotIdx, this.charIdx, this.otherCharIdx);
 }

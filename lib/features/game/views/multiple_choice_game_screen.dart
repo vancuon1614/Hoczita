@@ -827,7 +827,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
               ),
 
               // Detailed results table
-              const SizedBox(height: 16),
+              const SizedBox(height: 40),
               const Text(
                 'Chi Tiết Kết Quả 📊',
                 style: TextStyle(
@@ -836,35 +836,41 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                   color: AppColors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               _buildResultsTable(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 28),
               
               // End game action button
-              ElevatedButton(
-                onPressed: _isSavingScore
-                    ? null
-                    : () {
-                        Navigator.pop(context); // Quay về GameTab
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+              Center(
+                child: SizedBox(
+                  width: 220,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: _isSavingScore
+                        ? null
+                        : () {
+                            Navigator.pop(context); // Quay về GameTab
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                    child: _isSavingScore
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Text(
+                            'Quay lại danh mục',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
                   ),
                 ),
-                child: _isSavingScore
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                      )
-                    : const Text(
-                        'Quay lại danh mục',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
               ),
             ],
           ),
@@ -874,51 +880,56 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
   }
 
   Widget _buildResultsTable() {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 5,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        childAspectRatio: 1.15,
-      ),
-      itemCount: widget.questions.length,
-      itemBuilder: (context, index) {
-        final question = widget.questions[index];
-        final userAnswer = _userAnswers[index];
-        final isCorrect = userAnswer == question.correctAnswer;
-
-        final Color color = isCorrect ? AppColors.success : AppColors.error;
-
-        return InkWell(
-          onTap: () => _showQuestionDetailDialog(index),
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: color, width: 2.0),
-              boxShadow: [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.05),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              '${index + 1}',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
+    return Center(
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 280),
+        child: GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 5,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: 1.0,
           ),
-        );
-      },
+          itemCount: widget.questions.length,
+          itemBuilder: (context, index) {
+            final question = widget.questions[index];
+            final userAnswer = _userAnswers[index];
+            final isCorrect = userAnswer == question.correctAnswer;
+
+            final Color color = isCorrect ? AppColors.success : AppColors.error;
+
+            return InkWell(
+              onTap: () => _showQuestionDetailDialog(index),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: color, width: 2.0),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '${index + 1}',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 

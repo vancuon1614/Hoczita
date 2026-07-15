@@ -512,30 +512,36 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
               const Spacer(),
               
               // End game action button
-              ElevatedButton(
-                onPressed: _isSavingScore
-                    ? null
-                    : () {
-                        Navigator.pop(context); // Quay về GameTab
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+              Center(
+                child: SizedBox(
+                  width: 220,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: _isSavingScore
+                        ? null
+                        : () {
+                            Navigator.pop(context); // Quay về GameTab
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                    child: _isSavingScore
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Text(
+                            'Quay lại danh mục',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
                   ),
                 ),
-                child: _isSavingScore
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                      )
-                    : const Text(
-                        'Quay lại danh mục',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
               ),
             ],
           ),

@@ -149,7 +149,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     final isLoggedIn = authState.status == AuthStatus.authenticated;
 
     return Scaffold(
-      extendBody: true,
+      extendBody: false,
       body: IndexedStack(
         index: _selectedIndex,
         children: _tabs,

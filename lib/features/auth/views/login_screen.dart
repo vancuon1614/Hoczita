@@ -181,16 +181,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   // }
 
   void _showErrorDialog(String message) {
+    final lowerMsg = message.toLowerCase();
+    final isNetworkOrServerError = lowerMsg.contains('503') ||
+        lowerMsg.contains('connection') ||
+        lowerMsg.contains('timeout') ||
+        lowerMsg.contains('kết nối') ||
+        lowerMsg.contains('máy chủ') ||
+        lowerMsg.contains('mạng') ||
+        lowerMsg.contains('failed host lookup');
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Lỗi Đăng Nhập'),
-        content: Text(message),
+        title: Text(isNetworkOrServerError ? 'Lỗi Kết Nối Máy Chủ' : 'Lỗi Đăng Nhập'),
+        content: Text(isNetworkOrServerError
+            ? '$message\n\nHiện tại máy chủ đang gặp sự cố hoặc đang bảo trì. Bạn có muốn tiếp tục sử dụng ứng dụng ở chế độ Demo ngoại tuyến (Offline) không?'
+            : message),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Đồng ý'),
+            child: Text(isNetworkOrServerError ? 'Hủy' : 'Đồng ý'),
           ),
+          if (isNetworkOrServerError)
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context); // Close dialog
+                ref.read(authProvider.notifier).enterDemoMode();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Đã kích hoạt Chế độ Demo Offline! 🚀')),
+                );
+                Navigator.pop(context); // Return to MainScreen
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Chế độ Offline'),
+            ),
         ],
       ),
     );

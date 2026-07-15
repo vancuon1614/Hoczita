@@ -183,6 +183,10 @@ class AuthNotifier extends Notifier<AuthState> {
       } else if (lowerMsg.contains('email_not_confirmed') || 
                  lowerMsg.contains('email not confirmed')) {
         errMsg = 'Tài khoản đã được tạo nhưng chưa xác nhận Email. Bạn hãy check hòm thư để xác nhận, hoặc tắt tính năng bắt buộc xác nhận Email trên Supabase Dashboard nhé!';
+      } else if (lowerMsg.contains('timeout') || lowerMsg.contains('time out') || lowerMsg.contains('timed out')) {
+        errMsg = 'Kết nối đến máy chủ thất bại (quá thời gian chờ).';
+      } else if (lowerMsg.contains('socketexception') || lowerMsg.contains('failed host lookup') || lowerMsg.contains('network_error') || lowerMsg.contains('503')) {
+        errMsg = 'Không có kết nối mạng hoặc máy chủ hiện đang bảo trì (503).';
       }
       state = AuthState(
         status: AuthStatus.unauthenticated,
@@ -198,9 +202,7 @@ class AuthNotifier extends Notifier<AuthState> {
       final success = await _service.signUp(email: email, password: password, username: username);
       if (success) {
         state = AuthState(
-          status: AuthStatus.authenticated,
-          email: _service.currentUserEmail,
-          username: _service.currentUsername,
+          status: AuthStatus.unauthenticated,
         );
         return true;
       } else {
