@@ -293,16 +293,16 @@ class _OpenCell {
 
 Puzzle generatePuzzle(Difficulty difficulty) {
   int targetCount = 6;
-  int gridSize = 13; // Increased from 11 to 13
+  int gridSize = 9; 
   List<String> allowedOps = ['+', '-'];
 
   if (difficulty == Difficulty.medium) {
     targetCount = 12;
-    gridSize = 17; // Increased from 15 to 17
+    gridSize = 13; 
     allowedOps = ['+', '-', 'x'];
   } else if (difficulty == Difficulty.hard) {
     targetCount = 20;
-    gridSize = 21; // Increased from 19 to 21
+    gridSize = 17; 
     allowedOps = ['+', '-', 'x', '/'];
   }
 
