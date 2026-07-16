@@ -637,30 +637,21 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Kích thước lưới ô chữ sẽ thay đổi theo số lượng phép tính bạn chọn.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 16),
               _buildDifficultyButton(
                 title: 'Dễ (5 Phép Tính)',
-                subtitle: 'Lưới ô chữ 9x9 - Phù hợp để bắt đầu',
                 difficulty: 5,
                 color: Colors.green,
               ),
               const SizedBox(height: 16),
               _buildDifficultyButton(
                 title: 'Trung Bình (10 Phép Tính)',
-                subtitle: 'Lưới ô chữ 13x13 - Thách thức tư duy tính toán nhanh',
                 difficulty: 10,
                 color: Colors.orange,
               ),
               const SizedBox(height: 16),
               _buildDifficultyButton(
                 title: 'Khó (20 Phép Tính)',
-                subtitle: 'Lưới ô chữ 17x17 - Đỉnh cao toán học crossword',
                 difficulty: 20,
                 color: Colors.red,
               ),
@@ -673,7 +664,6 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
 
   Widget _buildDifficultyButton({
     required String title,
-    required String subtitle,
     required int difficulty,
     required Color color,
   }) {
@@ -715,11 +705,6 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
                       Text(
                         title,
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                       ),
                     ],
                   ),
