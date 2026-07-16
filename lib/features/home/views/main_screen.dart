@@ -6,6 +6,7 @@ import '../../auth/views/login_screen.dart';
 import '../../learn/views/learn_tab.dart';
 import '../../game/views/game_tab.dart';
 import '../../profile/views/profile_tab.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
@@ -62,31 +63,31 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                   color: AppColors.accent.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.lock_rounded,
                   color: AppColors.accent,
                   size: 32,
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               Text(
                 'Tính Năng Giới Hạn',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
-                      fontSize: 22,
+                      fontSize: 21,
                     ),
               ),
-              const SizedBox(height: 12),
-              const Text(
+              SizedBox(height: 12),
+              Text(
                 'Để tham gia chơi Game tích điểm và xuất hiện trên Bảng xếp hạng thành viên, bạn cần phải đăng nhập tài khoản.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: GoogleFonts.baloo2(
                   color: AppColors.textSecondary,
-                  fontSize: 15,
+                  fontSize: 14,
                   height: 1.4,
                 ),
               ),
-              const SizedBox(height: 30),
+              SizedBox(height: 30),
               Row(
                 children: [
                   Expanded(
@@ -99,16 +100,16 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                         ),
                         side: const BorderSide(color: AppColors.border),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Để sau',
-                        style: TextStyle(
+                        style: GoogleFonts.baloo2(
                           color: AppColors.textSecondary,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
@@ -123,7 +124,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
-                      child: const Text('Đăng nhập'),
+                      child: Text('Đăng nhập'),
                     ),
                   ),
                 ],
@@ -309,12 +310,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 AnimatedDefaultTextStyle(
                   duration: const Duration(milliseconds: 200),
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontFamily: 'Outfit',
+                  style: GoogleFonts.baloo2(
+                    fontSize: 11,
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                     color: isSelected
                         ? AppColors.primary

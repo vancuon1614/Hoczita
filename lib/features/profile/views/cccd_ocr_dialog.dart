@@ -5,6 +5,7 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
 import '../../../core/theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class CccdOcrDialog extends StatefulWidget {
   const CccdOcrDialog({super.key});
@@ -61,16 +62,16 @@ class _CccdOcrDialogState extends State<CccdOcrDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const Icon(Icons.camera_alt_rounded, color: AppColors.primary),
-                title: const Text('Chụp ảnh từ Camera'),
+                leading: Icon(Icons.camera_alt_rounded, color: AppColors.primary),
+                title: Text('Chụp ảnh từ Camera'),
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage(ImageSource.camera, isFront);
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.photo_library_rounded, color: AppColors.primary),
-                title: const Text('Chọn ảnh từ Thư viện'),
+                leading: Icon(Icons.photo_library_rounded, color: AppColors.primary),
+                title: Text('Chọn ảnh từ Thư viện'),
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage(ImageSource.gallery, isFront);
@@ -547,25 +548,25 @@ class _CccdOcrDialogState extends State<CccdOcrDialog> {
               : Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.add_photo_alternate_rounded,
                       size: 40,
                       color: AppColors.primary,
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text(
                       title,
-                      style: const TextStyle(
-                        fontSize: 13,
+                      style: GoogleFonts.baloo2(
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
+                    SizedBox(height: 4),
+                    Text(
                       'Tải ảnh lên',
-                      style: TextStyle(
-                        fontSize: 11,
+                      style: GoogleFonts.baloo2(
+                        fontSize: 9,
                         color: AppColors.textSecondary,
                       ),
                     ),
@@ -591,28 +592,28 @@ class _CccdOcrDialogState extends State<CccdOcrDialog> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Đọc Thông Tin CCCD 💳',
-                  style: TextStyle(
-                    fontSize: 18,
+                  style: GoogleFonts.baloo2(
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
                   ),
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
+                  icon: Icon(Icons.close_rounded, color: AppColors.textSecondary),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 )
               ],
             ),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: 8),
+            Text(
               'Bé vui lòng tải ảnh thẻ Căn cước công dân rõ nét để hệ thống tự động nhận dạng thông tin.',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              style: GoogleFonts.baloo2(fontSize: 11, color: AppColors.textSecondary),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             Row(
               children: [
                 _buildImageSelector(
@@ -620,7 +621,7 @@ class _CccdOcrDialogState extends State<CccdOcrDialog> {
                   imageFile: _frontImage,
                   onTap: () => _showImagePickerSource(true),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 _buildImageSelector(
                   title: 'Mặt sau',
                   imageFile: _backImage,
@@ -628,7 +629,7 @@ class _CccdOcrDialogState extends State<CccdOcrDialog> {
                 ),
               ],
             ),
-            const SizedBox(height: 32),
+            SizedBox(height: 32),
             ElevatedButton(
               onPressed: _isLoading ? null : _processOcr,
               style: ElevatedButton.styleFrom(
@@ -641,7 +642,7 @@ class _CccdOcrDialogState extends State<CccdOcrDialog> {
                 elevation: 0,
               ),
               child: _isLoading
-                  ? const SizedBox(
+                  ? SizedBox(
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(
@@ -649,10 +650,10 @@ class _CccdOcrDialogState extends State<CccdOcrDialog> {
                         strokeWidth: 2,
                       ),
                     )
-                  : const Text(
+                  : Text(
                       'Bắt đầu đọc thông tin',
-                      style: TextStyle(
-                        fontSize: 15,
+                      style: GoogleFonts.baloo2(
+                        fontSize: 13,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

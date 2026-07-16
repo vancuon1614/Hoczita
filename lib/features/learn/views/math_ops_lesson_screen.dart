@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class MathOpsLessonScreen extends StatefulWidget {
   const MathOpsLessonScreen({super.key});
@@ -94,12 +95,12 @@ class _MathOpsLessonScreenState extends State<MathOpsLessonScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Thêm bớt vui nhộn',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: GoogleFonts.baloo2(fontWeight: FontWeight.bold),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          icon: Icon(Icons.arrow_back_ios_new_rounded),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -112,19 +113,19 @@ class _MathOpsLessonScreenState extends State<MathOpsLessonScreen> {
               // Progress indicator showing current question number
               Row(
                 children: [
-                  const Icon(Icons.psychology_rounded, color: AppColors.primary, size: 24),
-                  const SizedBox(width: 8),
+                  Icon(Icons.psychology_rounded, color: AppColors.primary, size: 24),
+                  SizedBox(width: 8),
                   Text(
                     'Câu số $_currentQuestion',
-                    style: const TextStyle(
-                      fontSize: 18,
+                    style: GoogleFonts.baloo2(
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
 
               // Question Prompt Card
               Expanded(
@@ -139,28 +140,28 @@ class _MathOpsLessonScreenState extends State<MathOpsLessonScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text(
+                      Text(
                         'Bé hãy giải phép tính sau nhé:',
-                        style: TextStyle(
-                          fontSize: 20,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textSecondary,
                         ),
                       ),
-                      const SizedBox(height: 32),
+                      SizedBox(height: 32),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Text(
                             '$_num1 $_operator $_num2 =',
-                            style: const TextStyle(
-                              fontSize: 48,
+                            style: GoogleFonts.baloo2(
+                              fontSize: 46,
                               fontWeight: FontWeight.bold,
                               color: AppColors.textPrimary,
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          SizedBox(width: 16),
                           Container(
                             width: 70,
                             height: 70,
@@ -173,10 +174,10 @@ class _MathOpsLessonScreenState extends State<MathOpsLessonScreen> {
                               ),
                             ),
                             alignment: Alignment.center,
-                            child: const Text(
+                            child: Text(
                               '?',
-                              style: TextStyle(
-                                fontSize: 36,
+                              style: GoogleFonts.baloo2(
+                                fontSize: 34,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.primary,
                               ),
@@ -188,7 +189,7 @@ class _MathOpsLessonScreenState extends State<MathOpsLessonScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
 
               // Answer choices Grid (2x2)
               Column(
@@ -198,18 +199,18 @@ class _MathOpsLessonScreenState extends State<MathOpsLessonScreen> {
                     child: Row(
                       children: [
                         _buildChoiceButton(0),
-                        const SizedBox(width: 16),
+                        SizedBox(width: 16),
                         _buildChoiceButton(1),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   SizedBox(
                     height: 68,
                     child: Row(
                       children: [
                         _buildChoiceButton(2),
-                        const SizedBox(width: 16),
+                        SizedBox(width: 16),
                         _buildChoiceButton(3),
                       ],
                     ),
@@ -268,8 +269,8 @@ class _MathOpsLessonScreenState extends State<MathOpsLessonScreen> {
           alignment: Alignment.center,
           child: Text(
             choiceValue.toString(),
-            style: TextStyle(
-              fontSize: 32,
+            style: GoogleFonts.baloo2(
+              fontSize: 30,
               fontWeight: FontWeight.bold,
               color: textColor,
             ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AdvisingBookingScreen extends StatefulWidget {
   const AdvisingBookingScreen({super.key});
@@ -165,7 +166,7 @@ class _AdvisingBookingScreenState extends State<AdvisingBookingScreen> {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Row(
+        title: Row(
           children: [
             Icon(Icons.check_circle_rounded, color: AppColors.success, size: 28),
             SizedBox(width: 10),
@@ -176,14 +177,14 @@ class _AdvisingBookingScreenState extends State<AdvisingBookingScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Lịch đặt tư vấn 1:1 của bạn đã được ghi nhận thành công.',
-              style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Text(
               '📧 Email thông báo đã được gửi cho Admin (vanncuong1614@gmail.com) và Khách hàng (${_emailController.text}).',
-              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              style: GoogleFonts.baloo2(fontSize: 11, color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -198,7 +199,7 @@ class _AdvisingBookingScreenState extends State<AdvisingBookingScreen> {
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text('Đóng'),
+            child: Text('Đóng'),
           ),
         ],
       ),
@@ -213,9 +214,9 @@ class _AdvisingBookingScreenState extends State<AdvisingBookingScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Đặt Lịch Tư Vấn 1:1 📅',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: GoogleFonts.baloo2(fontWeight: FontWeight.bold),
         ),
       ),
       body: SafeArea(
@@ -226,18 +227,18 @@ class _AdvisingBookingScreenState extends State<AdvisingBookingScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
+                Text(
                   'Bé/Phụ huynh vui lòng để lại thông tin đặt lịch để được giáo viên liên hệ tư vấn trực tiếp 1:1 nhé!',
-                  style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.4),
+                  style: GoogleFonts.baloo2(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
 
                 // Dropdown khóa học
-                const Text(
+                Text(
                   'Chọn Khóa Học Tư Vấn',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
@@ -248,7 +249,7 @@ class _AdvisingBookingScreenState extends State<AdvisingBookingScreen> {
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: _selectedCourse,
-                      hint: const Text('Chọn khóa học...'),
+                      hint: Text('Chọn khóa học...'),
                       isExpanded: true,
                       borderRadius: BorderRadius.circular(16),
                       items: _courses.map((course) {
@@ -265,14 +266,14 @@ class _AdvisingBookingScreenState extends State<AdvisingBookingScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
 
                 // Thời gian hẹn tư vấn
-                const Text(
+                Text(
                   'Chọn Thời Gian Hẹn Gặp',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 InkWell(
                   onTap: _selectDateTime,
                   borderRadius: BorderRadius.circular(16),
@@ -285,13 +286,13 @@ class _AdvisingBookingScreenState extends State<AdvisingBookingScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.calendar_today_rounded, color: AppColors.primary, size: 20),
-                        const SizedBox(width: 12),
+                        Icon(Icons.calendar_today_rounded, color: AppColors.primary, size: 20),
+                        SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             formattedTime,
-                            style: TextStyle(
-                              fontSize: 14,
+                            style: GoogleFonts.baloo2(
+                              fontSize: 12,
                               color: _selectedDateTime == null ? AppColors.textSecondary : AppColors.textPrimary,
                               fontWeight: _selectedDateTime == null ? FontWeight.normal : FontWeight.bold,
                             ),
@@ -301,7 +302,7 @@ class _AdvisingBookingScreenState extends State<AdvisingBookingScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
 
                 // Họ tên
                 _buildFieldTitle('Họ và Tên'),
@@ -313,7 +314,7 @@ class _AdvisingBookingScreenState extends State<AdvisingBookingScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
 
                 // SĐT
                 _buildFieldTitle('Số Điện Thoại'),
@@ -327,7 +328,7 @@ class _AdvisingBookingScreenState extends State<AdvisingBookingScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
 
                 // Email
                 _buildFieldTitle('Email'),
@@ -341,7 +342,7 @@ class _AdvisingBookingScreenState extends State<AdvisingBookingScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
 
                 // Ghi chú
                 _buildFieldTitle('Ghi Chú'),
@@ -350,7 +351,7 @@ class _AdvisingBookingScreenState extends State<AdvisingBookingScreen> {
                   maxLines: 4,
                   decoration: _buildInputDecoration('Bổ sung ghi chú cần thiết (nếu có)...'),
                 ),
-                const SizedBox(height: 32),
+                SizedBox(height: 32),
 
                 // Button submit
                 ElevatedButton(
@@ -363,17 +364,17 @@ class _AdvisingBookingScreenState extends State<AdvisingBookingScreen> {
                     elevation: 0,
                   ),
                   child: _isSaving
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 24,
                           height: 24,
                           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                         )
-                      : const Text(
+                      : Text(
                           'Đăng Ký Đặt Lịch',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, fontSize: 14),
                         ),
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
               ],
             ),
           ),
@@ -387,7 +388,7 @@ class _AdvisingBookingScreenState extends State<AdvisingBookingScreen> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+        style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
       ),
     );
   }
@@ -395,7 +396,7 @@ class _AdvisingBookingScreenState extends State<AdvisingBookingScreen> {
   InputDecoration _buildInputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+      hintStyle: GoogleFonts.baloo2(color: AppColors.textSecondary, fontSize: 12),
       filled: true,
       fillColor: Colors.white,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),

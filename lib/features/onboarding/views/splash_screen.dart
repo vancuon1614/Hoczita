@@ -130,7 +130,7 @@ class _SplashScreenState extends State<SplashScreen> {
           SafeArea(
             child: Column(
               children: [
-                const SizedBox(height: 40),
+                SizedBox(height: 40),
                 // Logo & App Name
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -141,17 +141,17 @@ class _SplashScreenState extends State<SplashScreen> {
                         color: AppColors.primary,
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.rocket_launch_rounded,
                         color: Colors.white,
                         size: 32,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Text(
                       'HocZiTa',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontSize: 28,
+                            fontSize: 26,
                             color: AppColors.primary,
                             letterSpacing: 1.2,
                           ),
@@ -188,21 +188,21 @@ class _SplashScreenState extends State<SplashScreen> {
                                 color: step.accentColor,
                               ),
                             ),
-                            const SizedBox(height: 50),
+                            SizedBox(height: 50),
                             Text(
                               step.title,
                               textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    fontSize: 24,
+                                    fontSize: 22,
                                     fontWeight: FontWeight.bold,
                                   ),
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: 16),
                             Text(
                               step.description,
                               textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    fontSize: 16,
+                                    fontSize: 14,
                                     height: 1.5,
                                   ),
                             ),
@@ -232,7 +232,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 40),
+                SizedBox(height: 40),
 
                 // "Bỏ qua" button
                 Padding(
@@ -245,7 +245,7 @@ class _SplashScreenState extends State<SplashScreen> {
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text('Bắt đầu học ngay'),
@@ -256,7 +256,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 40),
+                SizedBox(height: 40),
               ],
             ),
           ),

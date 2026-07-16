@@ -6,6 +6,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../../core/services/supabase_service.dart';
 import 'counting_lesson_screen.dart';
 import 'math_ops_lesson_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 
 class LearnTab extends ConsumerWidget {
@@ -44,20 +45,20 @@ class LearnTab extends ConsumerWidget {
                         children: [
                           Text(
                             'Hello, $username! 👋',
-                            style: const TextStyle(
+                            style: GoogleFonts.baloo2(
                               color: Colors.white,
-                              fontSize: 22,
+                              fontSize: 21,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text(
                             isLoggedIn
                                 ? 'Hãy bắt đầu rèn luyện hôm nay!'
                                 : 'Đăng nhập để lưu lại tiến trình học',
-                            style: TextStyle(
+                            style: GoogleFonts.baloo2(
                               color: Colors.white.withValues(alpha: 0.8),
-                              fontSize: 14,
+                              fontSize: 13,
                             ),
                           ),
                         ],
@@ -78,15 +79,15 @@ class LearnTab extends ConsumerWidget {
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(
+                                  Icon(
                                     Icons.stars_rounded,
                                     color: AppColors.accent,
                                     size: 20,
                                   ),
-                                  const SizedBox(width: 6),
+                                  SizedBox(width: 6),
                                   Text(
                                     '$points điểm',
-                                    style: const TextStyle(
+                                    style: GoogleFonts.baloo2(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -108,25 +109,25 @@ class LearnTab extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   // Main Title
-                  const Text(
+                  Text(
                     'Toán Lớp 1 📚',
-                    style: TextStyle(
-                      fontSize: 24,
+                    style: GoogleFonts.baloo2(
+                      fontSize: 23,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
+                  SizedBox(height: 8),
+                  Text(
                     'Lựa chọn nội dung học tập để rèn luyện tư duy không giới hạn thời gian.',
-                    style: TextStyle(
+                    style: GoogleFonts.baloo2(
                       color: AppColors.textSecondary,
-                      fontSize: 14,
+                      fontSize: 13,
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
 
                   // Lesson card 1: Counting (Using mathcount.gif animation)
                   _buildLessonCard(
@@ -147,7 +148,7 @@ class LearnTab extends ConsumerWidget {
                       );
                     },
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
 
                   // Lesson card 2: Math operations (Using thembotvuinhon.gif animation)
                   _buildLessonCard(
@@ -168,7 +169,7 @@ class LearnTab extends ConsumerWidget {
                       );
                     },
                   ),
-                  const SizedBox(height: 40),
+                  SizedBox(height: 40),
                 ],
               ),
             ),
@@ -233,7 +234,7 @@ class LearnTab extends ConsumerWidget {
                           animationType: animationType,
                         ),
                 ),
-                const SizedBox(width: 20),
+                SizedBox(width: 20),
                 // Texts
                 Expanded(
                   child: Column(
@@ -241,17 +242,17 @@ class LearnTab extends ConsumerWidget {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
-                          fontSize: 18,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 17,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         subtitle,
-                        style: const TextStyle(
-                          fontSize: 13,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 12,
                           color: AppColors.textSecondary,
                           height: 1.3,
                         ),
@@ -259,8 +260,8 @@ class LearnTab extends ConsumerWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                const Icon(
+                SizedBox(width: 8),
+                Icon(
                   Icons.arrow_forward_ios_rounded,
                   size: 16,
                   color: AppColors.textSecondary,

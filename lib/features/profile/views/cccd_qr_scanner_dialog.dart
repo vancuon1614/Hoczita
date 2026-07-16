@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../core/theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class CccdQrScannerDialog extends StatefulWidget {
   const CccdQrScannerDialog({super.key});
@@ -106,25 +107,25 @@ class _CccdQrScannerDialogState extends State<CccdQrScannerDialog> {
                 right: 20,
                 child: Column(
                   children: [
-                    const Text(
+                    Text(
                       'Quét QR Căn cước công dân 💳',
-                      style: TextStyle(
+                      style: GoogleFonts.baloo2(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.black54,
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Di chuyển camera để mã QR nằm giữa khung hình',
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                        style: GoogleFonts.baloo2(color: Colors.white70, fontSize: 10),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -150,9 +151,9 @@ class _CccdQrScannerDialogState extends State<CccdQrScannerDialog> {
                           builder: (context, state, child) {
                             switch (state) {
                               case TorchState.off:
-                                return const Icon(Icons.flash_off_rounded, color: Colors.white);
+                                return Icon(Icons.flash_off_rounded, color: Colors.white);
                               case TorchState.on:
-                                return const Icon(Icons.flash_on_rounded, color: Colors.yellow);
+                                return Icon(Icons.flash_on_rounded, color: Colors.yellow);
                             }
                           },
                         ),
@@ -165,7 +166,7 @@ class _CccdQrScannerDialogState extends State<CccdQrScannerDialog> {
                       radius: 26,
                       backgroundColor: Colors.black87,
                       child: IconButton(
-                        icon: const Icon(Icons.close_rounded, color: Colors.white),
+                        icon: Icon(Icons.close_rounded, color: Colors.white),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ),

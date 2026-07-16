@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class ChangePasswordScreen extends ConsumerStatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -62,36 +63,36 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Tạo mật khẩu ngẫu nhiên',
-                          style: TextStyle(
-                            fontSize: 18,
+                          style: GoogleFonts.baloo2(
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
+                          icon: Icon(Icons.close_rounded, color: AppColors.textSecondary),
                           onPressed: () => Navigator.pop(context),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     
                     // Slider for length
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Số lượng ký tự:',
-                          style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                          style: GoogleFonts.baloo2(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                         ),
                         Text(
                           '${_genLength.toInt()} ký tự',
-                          style: const TextStyle(
+                          style: GoogleFonts.baloo2(
                             fontWeight: FontWeight.bold,
                             color: AppColors.primary,
-                            fontSize: 15,
+                            fontSize: 13,
                           ),
                         ),
                       ],
@@ -112,7 +113,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                     
                     // Options grid or list
                     CheckboxListTile(
-                      title: const Text('Ký tự hoa (A-Z)', style: TextStyle(fontSize: 14)),
+                      title: Text('Ký tự hoa (A-Z)', style: GoogleFonts.baloo2(fontSize: 12)),
                       value: _genUppercase,
                       activeColor: AppColors.primary,
                       onChanged: (val) {
@@ -124,7 +125,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                       dense: true,
                     ),
                     CheckboxListTile(
-                      title: const Text('Ký tự thường (a-z)', style: TextStyle(fontSize: 14)),
+                      title: Text('Ký tự thường (a-z)', style: GoogleFonts.baloo2(fontSize: 12)),
                       value: _genLowercase,
                       activeColor: AppColors.primary,
                       onChanged: (val) {
@@ -136,7 +137,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                       dense: true,
                     ),
                     CheckboxListTile(
-                      title: const Text('Ký tự số (0-9)', style: TextStyle(fontSize: 14)),
+                      title: Text('Ký tự số (0-9)', style: GoogleFonts.baloo2(fontSize: 12)),
                       value: _genNumbers,
                       activeColor: AppColors.primary,
                       onChanged: (val) {
@@ -148,7 +149,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                       dense: true,
                     ),
                     CheckboxListTile(
-                      title: const Text('Ký tự đặc biệt (!@#...)', style: TextStyle(fontSize: 14)),
+                      title: Text('Ký tự đặc biệt (!@#...)', style: GoogleFonts.baloo2(fontSize: 12)),
                       value: _genSpecial,
                       activeColor: AppColors.primary,
                       onChanged: (val) {
@@ -159,7 +160,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                       controlAffinity: ListTileControlAffinity.leading,
                       dense: true,
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: 20),
                     
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
@@ -186,9 +187,9 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                           ),
                         );
                       },
-                      child: const Text(
+                      child: Text(
                         'Tạo & áp dụng mật khẩu',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                     ),
                   ],
@@ -304,18 +305,18 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Đổi mật khẩu',
-          style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+          style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
         ),
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : SafeArea(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24.0),
@@ -332,15 +333,15 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
                         ),
-                        child: const Row(
+                        child: Row(
                           children: [
                             Icon(Icons.shield_rounded, color: AppColors.primary, size: 36),
                             SizedBox(width: 12),
                             Expanded(
                               child: Text(
                                 'Mật khẩu mới của bạn cần có độ bảo mật cao để bảo vệ tài khoản tốt nhất.',
-                                style: TextStyle(
-                                  fontSize: 13,
+                                style: GoogleFonts.baloo2(
+                                  fontSize: 11,
                                   color: AppColors.primary,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -349,7 +350,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
 
                       // Old Password Input
                       TextFormField(
@@ -377,7 +378,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 18),
+                      SizedBox(height: 18),
 
                       // New Password Input
                       TextFormField(
@@ -391,7 +392,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                             children: [
                               IconButton(
                                 tooltip: 'Tạo mật khẩu ngẫu nhiên',
-                                icon: const Icon(
+                                icon: Icon(
                                   Icons.auto_awesome_rounded,
                                   color: AppColors.primary,
                                 ),
@@ -421,7 +422,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 18),
+                      SizedBox(height: 18),
 
                       // Confirm New Password Input
                       TextFormField(
@@ -452,22 +453,22 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
 
                       // Confirm checkbox
                       CheckboxListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: const Text(
+                        title: Text(
                           'Xác nhận tôi đã lưu / ghi nhớ mật khẩu mới này',
-                          style: TextStyle(
-                            fontSize: 14,
+                          style: GoogleFonts.baloo2(
+                            fontSize: 12,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
                           ),
                         ),
-                        subtitle: const Text(
+                        subtitle: Text(
                           'Mật khẩu sẽ thay đổi và bạn cần mật khẩu này cho lần đăng nhập sau.',
-                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          style: GoogleFonts.baloo2(fontSize: 10, color: AppColors.textSecondary),
                         ),
                         value: _isConfirmedSaved,
                         activeColor: AppColors.primary,
@@ -478,7 +479,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                         },
                         controlAffinity: ListTileControlAffinity.leading,
                       ),
-                      const SizedBox(height: 32),
+                      SizedBox(height: 32),
 
                       // Submit Button
                       SizedBox(
@@ -493,9 +494,9 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                             elevation: canSubmit ? 2 : 0,
                           ),
                           onPressed: canSubmit ? _updatePassword : null,
-                          child: const Text(
+                          child: Text(
                             'Cập nhật mật khẩu',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            style: GoogleFonts.baloo2(fontSize: 14, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),

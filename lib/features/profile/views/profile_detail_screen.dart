@@ -13,6 +13,7 @@ import '../../auth/providers/auth_provider.dart';
 import 'edit_profile_screen.dart';
 import 'crop_avatar_screen.dart';
 import 'change_password_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class ProfileDetailScreen extends ConsumerStatefulWidget {
   const ProfileDetailScreen({super.key});
@@ -226,22 +227,22 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const Icon(Icons.camera_alt_rounded, color: AppColors.primary),
-                title: const Text('Chụp ảnh mới', style: TextStyle(fontWeight: FontWeight.bold)),
+                leading: Icon(Icons.camera_alt_rounded, color: AppColors.primary),
+                title: Text('Chụp ảnh mới', style: GoogleFonts.baloo2(fontWeight: FontWeight.bold)),
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage(ImageSource.camera);
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.photo_library_rounded, color: AppColors.primary),
-                title: const Text('Chọn từ thư viện', style: TextStyle(fontWeight: FontWeight.bold)),
+                leading: Icon(Icons.photo_library_rounded, color: AppColors.primary),
+                title: Text('Chọn từ thư viện', style: GoogleFonts.baloo2(fontWeight: FontWeight.bold)),
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage(ImageSource.gallery);
                 },
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
             ],
           ),
         );
@@ -343,12 +344,12 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit_square, color: AppColors.textPrimary),
+            icon: Icon(Icons.edit_square, color: AppColors.textPrimary),
             onPressed: _navigateToEditProfile,
             tooltip: 'Chỉnh sửa hồ sơ',
           ),
@@ -357,12 +358,12 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
         elevation: 0,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : SafeArea(
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     
                     // Avatar stack section
                     Center(
@@ -385,7 +386,7 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
                                     : null,
                                 child: _avatarPath != null && _avatarPath!.isNotEmpty
                                     ? null
-                                    : const Icon(
+                                    : Icon(
                                         Icons.person_rounded,
                                         size: 72,
                                         color: AppColors.primary,
@@ -402,7 +403,7 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
                                   color: Colors.white,
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(
+                                child: Icon(
                                   Icons.star_rounded,
                                   color: Colors.black,
                                   size: 28,
@@ -413,18 +414,18 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     
                     // Score
                     Text(
                       '$_totalScore điểm',
-                      style: const TextStyle(
-                        fontSize: 18,
+                      style: GoogleFonts.baloo2(
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     
                     // Stacked profile boxes
                     Padding(
@@ -468,17 +469,17 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
                       ),
                     ),
                     
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     
                     // Security section
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
                           'BẢO MẬT & TÀI KHOẢN',
-                          style: TextStyle(
-                            fontSize: 12,
+                          style: GoogleFonts.baloo2(
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textSecondary,
                             letterSpacing: 1.0,
@@ -507,7 +508,7 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
                           child: InkWell(
                             borderRadius: BorderRadius.circular(16),
                             onTap: _navigateToChangePassword,
-                            child: const Padding(
+                            child: Padding(
                               padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
                               child: Row(
                                 children: [
@@ -519,8 +520,8 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
                                       children: [
                                         Text(
                                           'Đổi mật khẩu',
-                                          style: TextStyle(
-                                            fontSize: 15,
+                                          style: GoogleFonts.baloo2(
+                                            fontSize: 13,
                                             fontWeight: FontWeight.bold,
                                             color: AppColors.textPrimary,
                                           ),
@@ -528,8 +529,8 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
                                         SizedBox(height: 2),
                                         Text(
                                           'Cập nhật mật khẩu bảo mật tài khoản',
-                                          style: TextStyle(
-                                            fontSize: 12,
+                                          style: GoogleFonts.baloo2(
+                                            fontSize: 10,
                                             color: AppColors.textSecondary,
                                           ),
                                         ),
@@ -544,7 +545,7 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                   ],
                 ),
               ),
@@ -569,17 +570,17 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
         children: [
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 12,
+            style: GoogleFonts.baloo2(
+              fontSize: 10,
               color: AppColors.textSecondary,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 15,
+            style: GoogleFonts.baloo2(
+              fontSize: 13,
               color: AppColors.textPrimary,
               fontWeight: FontWeight.bold,
             ),
@@ -615,27 +616,27 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
-                    fontSize: 12,
+                  style: GoogleFonts.baloo2(
+                    fontSize: 10,
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   value,
-                  style: const TextStyle(
-                    fontSize: 15,
+                  style: GoogleFonts.baloo2(
+                    fontSize: 13,
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 if (subtext.isNotEmpty) ...[
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     subtext,
-                    style: const TextStyle(
-                      fontSize: 11,
+                    style: GoogleFonts.baloo2(
+                      fontSize: 9,
                       color: AppColors.textSecondary,
                     ),
                   ),
@@ -644,7 +645,7 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.edit_square, color: AppColors.textSecondary, size: 20),
+            icon: Icon(Icons.edit_square, color: AppColors.textSecondary, size: 20),
             onPressed: onEdit,
           ),
         ],

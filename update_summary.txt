@@ -1,0 +1,55 @@
+BAO CAO CAP NHAT GIAO DIEN (UPDATE SUMMARY)
+
+1. TONG QUAN
+Cac thay doi trong ban cap nhat tap trung vao viec dieu chinh giao dien, dong bo font chu Baloo 2 toan he thong, tang giam kich co chu hop ly, va dong bo van phong mo ta do kho giua cac tro choi.
+
+2. CHI TIET CONG VIEC DA THUC HIEN
+
+2.1. Thay doi Font chu toan he thong (GoogleFonts.baloo2)
+- Da chuyen toan bo cau hinh textTheme trong file lib/core/theme/app_theme.dart sang GoogleFonts.baloo2.
+- Viet script (update_fonts.dart) de quet toan bo thu muc lib/**/*.dart, tu dong thay the cac tu khoa "TextStyle" va "GoogleFonts.outfit" sang "GoogleFonts.baloo2".
+- Xu ly triet de tat ca cac loi bien dich (173 loi) lien quan den tu khoa "const" bi xung dot sau khi cap nhat sang GoogleFonts.baloo2.
+- Lenh da su dung:
+  + dart run update_fonts.dart
+  + (Get-ChildItem -Path lib -Recurse -Filter *.dart) | ForEach-Object { (Get-Content $_.FullName) -replace 'const GoogleFonts.baloo2', 'GoogleFonts.baloo2' | Set-Content $_.FullName }
+  + dart fix --apply
+
+2.2. Dieu chinh kich co chu (Font Size)
+- Buoc 1: Giam dong loat 2 don vi (fontSize - 2) cho toan bo ung dung thong qua script update_fonts.dart. Cac co chu tu 6 tro xuong duoc giu nguyen de dam bao hien thi.
+- Buoc 2: Tang 1 don vi (fontSize + 1) danh rieng cho 4 "trang ben ngoai" (outer pages) thong qua script increase_outer_fonts.dart de giup de doc hon, bao gom:
+  + lib/features/home/views/main_screen.dart
+  + lib/features/learn/views/learn_tab.dart
+  + lib/features/game/views/game_tab.dart
+  + lib/features/profile/views/profile_tab.dart
+- Lenh da su dung:
+  + dart run increase_outer_fonts.dart
+
+2.3. Dong bo van phong mo ta do kho cac man choi
+- Dong bo noi dung mo ta (subtitle) cua 3 do kho (Khoi dong, Tap trung, Thu thach) trong 2 tro choi Sắp xếp từ vựng (Word Scramble) va Ô chữ tiếng Anh (English Crossword) de giong voi van phong cua Ô chữ toán học (Math Crossword).
+- Noi dung da doi:
+  + Khoi dong: "Lam quen nhe nhang voi..."
+  + Tap trung: "Tang cuong thu thach voi..."
+  + Thu thach: "Danh cho nguoi choi nang cao voi..."
+- Cac file da thay doi:
+  + lib/features/game/views/english_crossword_game_screen.dart
+  + lib/features/game/views/word_scramble_game_screen.dart
+
+2.4. Cai thien loi bien dich
+- Phat hien va sua cac loi Invalid constant value trong file lib/features/game/views/multiple_choice_game_screen.dart.
+- Phat hien va sua loi goi sai ten AnimatedDefaultTextStyle trong lib/features/home/views/main_screen.dart.
+- Lenh kiem tra: 
+  + flutter analyze (ket qua: no issues)
+
+3. QUAN LY FILE TAP LENH (SCRIPTS)
+- Cac script chay 1 lan de fix font chu (update_fonts.dart, increase_outer_fonts.dart) da duoc xoa bo de don dep du an do khong con nhu cau tai su dung.
+
+4. QUAN LY MA NGUON (GIT)
+- Tao nhanh (branch) moi voi ten "new_design" de luu tru phien ban cap nhat giao dien nay.
+- Lenh da su dung:
+  + git checkout -b new_design
+  + git add .
+  + git commit -m "UI: Apply Baloo 2 globally, adjust font sizes, sync difficulty descriptions"
+
+5. BIEN DICH UNG DUNG (BUILD APK)
+- Lenh da su dung:
+  + flutter build apk

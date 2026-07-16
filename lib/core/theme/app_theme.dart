@@ -46,14 +46,14 @@ class AppTheme {
         error: AppColors.error,
       ),
       textTheme: GoogleFonts.outfitTextTheme().copyWith(
-        titleLarge: GoogleFonts.outfit(
+        titleLarge: GoogleFonts.baloo2(
           color: AppColors.textPrimary,
           fontWeight: FontWeight.bold,
         ),
-        bodyLarge: GoogleFonts.outfit(
+        bodyLarge: GoogleFonts.baloo2(
           color: AppColors.textPrimary,
         ),
-        bodyMedium: GoogleFonts.outfit(
+        bodyMedium: GoogleFonts.baloo2(
           color: AppColors.textSecondary,
         ),
       ),
@@ -71,8 +71,8 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          textStyle: GoogleFonts.outfit(
-            fontSize: 16,
+          textStyle: GoogleFonts.baloo2(
+            fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -97,8 +97,8 @@ class AppTheme {
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: AppColors.error),
         ),
-        labelStyle: GoogleFonts.outfit(color: AppColors.textSecondary),
-        hintStyle: GoogleFonts.outfit(color: AppColors.textSecondary.withValues(alpha: 0.5)),
+        labelStyle: GoogleFonts.baloo2(color: AppColors.textSecondary),
+        hintStyle: GoogleFonts.baloo2(color: AppColors.textSecondary.withValues(alpha: 0.5)),
       ),
     );
   }

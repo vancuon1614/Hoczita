@@ -10,6 +10,7 @@ import 'memory_match_game_screen.dart';
 import 'math_crossword_game_screen.dart';
 import 'english_crossword_game_screen.dart';
 import 'word_scramble_game_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 
 class GameTab extends ConsumerStatefulWidget {
@@ -103,9 +104,9 @@ class _GameTabState extends ConsumerState<GameTab> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text(
+          title: Text(
             'Hệ thống Mini-Game 🎮',
-            style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
           ),
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(60),
@@ -123,7 +124,7 @@ class _GameTabState extends ConsumerState<GameTab> {
                 indicatorSize: TabBarIndicatorSize.tab,
                 labelColor: Colors.white,
                 unselectedLabelColor: AppColors.textSecondary,
-                labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                labelStyle: GoogleFonts.baloo2(fontWeight: FontWeight.bold, fontSize: 14),
                 dividerColor: Colors.transparent,
                 tabs: const [
                   Tab(text: 'Ngoại ngữ 🇬🇧'),
@@ -134,7 +135,7 @@ class _GameTabState extends ConsumerState<GameTab> {
           ),
         ),
         body: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? Center(child: CircularProgressIndicator())
             : TabBarView(
                 children: [
                   _buildLanguageGames(context),
@@ -169,7 +170,7 @@ class _GameTabState extends ConsumerState<GameTab> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           _buildGameCard(
             context: context,
             title: 'Memory Match',
@@ -183,7 +184,7 @@ class _GameTabState extends ConsumerState<GameTab> {
               const MemoryMatchGameScreen(),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           _buildGameCard(
             context: context,
             title: 'Picture Guess',
@@ -214,7 +215,7 @@ class _GameTabState extends ConsumerState<GameTab> {
               const EnglishCrosswordGameScreen(),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           _buildGameCard(
             context: context,
             title: 'Sắp Xếp Từ Vựng',
@@ -257,7 +258,7 @@ class _GameTabState extends ConsumerState<GameTab> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           _buildGameCard(
             context: context,
             title: 'Thêm Bớt Vui Nhộn',
@@ -275,7 +276,7 @@ class _GameTabState extends ConsumerState<GameTab> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           _buildGameCard(
             context: context,
             title: 'So Sánh Trái Phải',
@@ -293,7 +294,7 @@ class _GameTabState extends ConsumerState<GameTab> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           _buildGameCard(
             context: context,
             title: 'Ô Chữ Toán Học',
@@ -362,7 +363,7 @@ class _GameTabState extends ConsumerState<GameTab> {
                           width: 52,
                           height: 52,
                           fit: BoxFit.contain,
-                          placeholder: (context, url) => const SizedBox(
+                          placeholder: (context, url) => SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
@@ -397,7 +398,7 @@ class _GameTabState extends ConsumerState<GameTab> {
                               animationType: animationType,
                             ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 // Texts
                 Expanded(
                   child: Column(
@@ -411,8 +412,8 @@ class _GameTabState extends ConsumerState<GameTab> {
                               title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 17,
+                              style: GoogleFonts.baloo2(
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.textPrimary,
                               ),
@@ -431,11 +432,11 @@ class _GameTabState extends ConsumerState<GameTab> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Text(
                         subtitle,
-                        style: const TextStyle(
-                          fontSize: 13,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 12,
                           color: AppColors.textSecondary,
                           height: 1.3,
                         ),

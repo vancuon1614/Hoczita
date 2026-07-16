@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../utils/math_crossword_generator.dart' as gen;
@@ -347,15 +348,15 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Thoát Trò Chơi?'),
-        content: const Text('Tiến trình chơi hiện tại của bạn sẽ không được lưu lại.'),
+        title: Text('Thoát Trò Chơi?'),
+        content: Text('Tiến trình chơi hiện tại của bạn sẽ không được lưu lại.'),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               _stopwatch.start();
             },
-            child: const Text('Chơi tiếp'),
+            child: Text('Chơi tiếp'),
           ),
           TextButton(
             onPressed: () {
@@ -363,7 +364,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
               Navigator.pop(context); // quit game screen
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Thoát'),
+            child: Text('Thoát'),
           ),
         ],
       ),
@@ -384,12 +385,12 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Math Crossword 🔢',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: GoogleFonts.baloo2(fontWeight: FontWeight.bold),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
+          icon: Icon(Icons.close_rounded),
           onPressed: _showQuitConfirmation,
         ),
         actions: [
@@ -405,15 +406,15 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(width: 2),
-                const Icon(Icons.timer_outlined, size: 12, color: AppColors.primary), // Shrunk icon size
-                const SizedBox(width: 4), // Shrunk spacing
+                SizedBox(width: 2),
+                Icon(Icons.timer_outlined, size: 12, color: AppColors.primary), // Shrunk icon size
+                SizedBox(width: 4), // Shrunk spacing
                 Expanded(
                   child: Text(
                     _elapsedTimeString,
                     textAlign: TextAlign.left,
-                    style: const TextStyle(
-                      fontSize: 11, // Shrunk font size
+                    style: GoogleFonts.baloo2(
+                      fontSize: 9, // Shrunk font size
                       fontWeight: FontWeight.bold,
                       color: AppColors.primary,
                       fontFeatures: [FontFeature.tabularFigures()],
@@ -442,12 +443,12 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
                     Expanded(
                       child: Column(
                         children: [
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                             child: Text(
                               'Điền các chữ số còn thiếu sao cho các phép tính hàng ngang và hàng dọc đều đúng nhé!',
                               textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                              style: GoogleFonts.baloo2(fontSize: 11, color: AppColors.textSecondary),
                             ),
                           ),
                           Expanded(child: _buildGridContainer()),
@@ -460,12 +461,12 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
                 )
               : Column(
                   children: [
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                       child: Text(
                         'Điền các chữ số còn thiếu sao cho các phép tính hàng ngang và hàng dọc đều đúng nhé!',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                        style: GoogleFonts.baloo2(fontSize: 12, color: AppColors.textSecondary),
                       ),
                     ),
                     Expanded(child: _buildGridContainer()),
@@ -537,15 +538,15 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
           children: [
             Row(
               children: [
-                const Text(
+                Text(
                   'Nhập số:',
-                  style: TextStyle(
-                    fontSize: 15,
+                  style: GoogleFonts.baloo2(
+                    fontSize: 13,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Container(
                   width: 60,
                   height: 32,
@@ -557,8 +558,8 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
                   alignment: Alignment.center,
                   child: Text(
                     currentValue.isEmpty ? '-' : currentValue,
-                    style: const TextStyle(
-                      fontSize: 16,
+                    style: GoogleFonts.baloo2(
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: AppColors.primary,
                     ),
@@ -566,7 +567,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
                 ),
               ],
             ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           ...keys.map((row) {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
@@ -588,11 +589,11 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
                           ),
                           alignment: Alignment.center,
                           child: key == 'backspace'
-                              ? const Icon(Icons.backspace_outlined, color: AppColors.textPrimary, size: 18)
+                              ? Icon(Icons.backspace_outlined, color: AppColors.textPrimary, size: 18)
                               : Text(
                                   key,
-                                  style: const TextStyle(
-                                    fontSize: 18,
+                                  style: GoogleFonts.baloo2(
+                                    fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                     color: AppColors.textPrimary,
                                   ),
@@ -613,47 +614,90 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
 
   Widget _buildDifficultySelection() {
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FA), // Light bluish-white background like the image
       appBar: AppBar(
-        title: const Text(
-          'Math Crossword 🔢',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.black87),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Math Crossword',
+              style: GoogleFonts.baloo2(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: const Color(0xFF2C3E50),
+              ),
+            ),
+            SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.blueGrey.shade100,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(Icons.grid_4x4_rounded, size: 20, color: Colors.blueGrey),
+            ),
+          ],
         ),
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.grid_on_rounded,
-                size: 80,
-                color: AppColors.primary,
+              // 3D Grid Icon
+              Center(
+                child: Image.asset(
+                  'ImageFolder/mathcount.gif', 
+                  height: 120,
+                  errorBuilder: (context, error, stackTrace) => Icon(
+                    Icons.grid_on_rounded,
+                    size: 80,
+                    color: AppColors.primary,
+                  ),
+                ),
               ),
-              const SizedBox(height: 16),
-              const Text(
+              SizedBox(height: 24),
+              Text(
                 'Chọn Số Lượng Phép Tính',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                style: GoogleFonts.baloo2(
+                  fontSize: 22, 
+                  fontWeight: FontWeight.w600, 
+                  color: const Color(0xFF2C3E50),
+                ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 32),
               _buildDifficultyButton(
-                title: 'Dễ (5 Phép Tính)',
+                title: 'Khởi động',
+                subtitle: 'Làm quen nhẹ nhàng với 5 bài tập.',
                 difficulty: 5,
-                color: Colors.green,
+                backgroundColor: const Color(0xFFE4F3E4),
+                iconColor: const Color(0xFF4CAF50),
+                stars: 1,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               _buildDifficultyButton(
-                title: 'Trung Bình (10 Phép Tính)',
+                title: 'Tập trung',
+                subtitle: 'Tăng cường thử thách với 10 bài tập.',
                 difficulty: 10,
-                color: Colors.orange,
+                backgroundColor: const Color(0xFFFDEBCE),
+                iconColor: const Color(0xFFF59E0B),
+                stars: 2,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               _buildDifficultyButton(
-                title: 'Khó (20 Phép Tính)',
+                title: 'Thử thách',
+                subtitle: 'Dành cho người chơi nâng cao với 20 bài tập.',
                 difficulty: 20,
-                color: Colors.red,
+                backgroundColor: const Color(0xFFFFE5E5),
+                iconColor: const Color(0xFFEF4444),
+                stars: 3,
               ),
             ],
           ),
@@ -664,19 +708,21 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
 
   Widget _buildDifficultyButton({
     required String title,
+    required String subtitle,
     required int difficulty,
-    required Color color,
+    required Color backgroundColor,
+    required Color iconColor,
+    required int stars,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 8,
-            offset: const Offset(0, 3),
+            offset: const Offset(0, 4),
           )
         ],
       ),
@@ -686,27 +732,62 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
           onTap: () => _selectDifficulty(difficulty),
           borderRadius: BorderRadius.circular(20),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
             child: Row(
               children: [
+                // Circular play icon
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
+                    color: iconColor,
                     shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: iconColor.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
-                  child: Icon(Icons.play_arrow_rounded, color: color, size: 28),
+                  child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                        style: GoogleFonts.baloo2(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF1E293B), // Dark text
+                        ),
+                      ),
+                      Text(
+                        subtitle,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 10,
+                          color: const Color(0xFF334155),
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
+                  ),
+                ),
+                // Stars
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(
+                    3,
+                    (index) => Padding(
+                      padding: const EdgeInsets.only(left: 2),
+                      child: Icon(
+                        Icons.star_rounded,
+                        color: index < stars ? iconColor.withValues(alpha: 0.6) : Colors.transparent,
+                        size: 20,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -767,7 +848,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
 
   Widget _buildCellItem(CrosswordCell cell, Set<CrosswordEquation> satisfiedEquations) {
     if (cell.type == CellType.empty) {
-      return const SizedBox(width: 45, height: 45);
+      return SizedBox(width: 45, height: 45);
     }
 
     // Check if this cell is part of any fully satisfied/correct equations
@@ -831,8 +912,8 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
           alignment: Alignment.center,
           child: Text(
             cell.userVal,
-            style: TextStyle(
-              fontSize: 16,
+            style: GoogleFonts.baloo2(
+              fontSize: 14,
               fontWeight: FontWeight.bold,
               color: textColor,
             ),
@@ -861,7 +942,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
       alignment: Alignment.center,
       child: Text(
         displayText,
-        style: TextStyle(
+        style: GoogleFonts.baloo2(
           fontSize: cell.type == CellType.number ? 16 : 18,
           fontWeight: cell.type == CellType.number ? FontWeight.bold : FontWeight.w900,
           color: textColor,
@@ -890,35 +971,35 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
                     color: Color(0xFFFFF9E6),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.emoji_events_rounded,
                     color: Colors.amber,
                     size: 80,
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               
-              const Text(
+              Text(
                 'Giải Ô Chữ Hoàn Tất! 🎉',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 26,
+                style: GoogleFonts.baloo2(
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               
               Text(
                 'Chúc mừng! Bạn đã giải thành công toàn bộ ô chữ toán học trong $_elapsedTimeString.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 16,
+                style: GoogleFonts.baloo2(
+                  fontSize: 14,
                   color: AppColors.textSecondary,
                 ),
               ),
-              const SizedBox(height: 32),
+              SizedBox(height: 32),
 
               // Stars Display
               Row(
@@ -940,7 +1021,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
                   );
                 }),
               ),
-              const SizedBox(height: 40),
+              SizedBox(height: 40),
 
               // Time & Score Cards
               Row(
@@ -954,20 +1035,20 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
                       ),
                       child: Column(
                         children: [
-                          const Text(
+                          Text(
                             'Thời gian',
-                            style: TextStyle(fontSize: 13, color: AppColors.primary),
+                            style: GoogleFonts.baloo2(fontSize: 11, color: AppColors.primary),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text(
                             _elapsedTimeString,
-                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primary),
+                            style: GoogleFonts.baloo2(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16),
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -977,14 +1058,14 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
                       ),
                       child: Column(
                         children: [
-                          const Text(
+                          Text(
                             'Điểm cộng',
-                            style: TextStyle(fontSize: 13, color: AppColors.success),
+                            style: GoogleFonts.baloo2(fontSize: 11, color: AppColors.success),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text(
                             '+$_score',
-                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.success),
+                            style: GoogleFonts.baloo2(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.success),
                           ),
                         ],
                       ),
@@ -1015,14 +1096,14 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
                       ),
                     ),
                     child: _isSavingScore
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                           )
-                        : const Text(
+                        : Text(
                             'Quay lại danh mục',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, fontSize: 14),
                           ),
                   ),
                 ),

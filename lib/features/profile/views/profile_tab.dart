@@ -9,6 +9,7 @@ import '../../../core/services/api_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../learn/views/advising_booking_screen.dart';
 import 'profile_detail_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class ProfileTab extends ConsumerStatefulWidget {
   const ProfileTab({super.key});
@@ -171,16 +172,16 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Hồ sơ của bạn',
-          style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+          style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
         ),
         actions: [
           IconButton(
             onPressed: () {
               ref.read(authProvider.notifier).signOut();
             },
-            icon: const Icon(Icons.logout_rounded, color: AppColors.error),
+            icon: Icon(Icons.logout_rounded, color: AppColors.error),
             tooltip: 'Đăng xuất',
           ),
         ],
@@ -197,7 +198,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             children: [
               // User info card
               _buildUserCard(username, email),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
 
               // 1:1 Advising Booking Banner
               Container(
@@ -225,7 +226,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                       );
                     },
                     borderRadius: BorderRadius.circular(24),
-                    child: const Padding(
+                    child: Padding(
                       padding: EdgeInsets.all(24),
                       child: Row(
                         children: [
@@ -235,18 +236,18 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                               children: [
                                 Text(
                                   'Tư Vấn 1:1 Với Giáo Viên 🧑‍🏫',
-                                  style: TextStyle(
+                                  style: GoogleFonts.baloo2(
                                     color: Colors.white,
-                                    fontSize: 18,
+                                    fontSize: 17,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                                 SizedBox(height: 8),
                                 Text(
                                   'Đặt lịch hẹn trực tiếp để nhận lộ trình học tập tối ưu riêng biệt cho bé.',
-                                  style: TextStyle(
+                                  style: GoogleFonts.baloo2(
                                     color: Colors.white70,
-                                    fontSize: 13,
+                                    fontSize: 12,
                                   ),
                                 ),
                               ],
@@ -264,7 +265,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
 
               // Filter Dropdowns Row
               Row(
@@ -281,9 +282,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String?>(
                           value: _selectedGameFilter,
-                          hint: const Text('Tất cả trò chơi', style: TextStyle(fontSize: 13)),
+                          hint: Text('Tất cả trò chơi', style: GoogleFonts.baloo2(fontSize: 12)),
                           isExpanded: true,
-                          style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+                          style: GoogleFonts.baloo2(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.bold),
                           borderRadius: BorderRadius.circular(12),
                           items: const [
                             DropdownMenuItem<String?>(
@@ -329,7 +330,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   // Time Filter
                   Expanded(
                     child: Container(
@@ -343,7 +344,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                         child: DropdownButton<String>(
                           value: _selectedTimeFilter,
                           isExpanded: true,
-                          style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+                          style: GoogleFonts.baloo2(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.bold),
                           borderRadius: BorderRadius.circular(12),
                           items: const [
                             DropdownMenuItem<String>(
@@ -373,33 +374,33 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
 
               // Leaderboard header
               Row(
                 children: [
-                  const Icon(Icons.emoji_events_rounded, color: AppColors.accent, size: 24),
-                  const SizedBox(width: 8),
+                  Icon(Icons.emoji_events_rounded, color: AppColors.accent, size: 24),
+                  SizedBox(width: 8),
                   Text(
                     _selectedTimeFilter == 'month'
                         ? 'Bảng Xếp Hạng Tháng 🏆'
                         : (_selectedTimeFilter == 'year' ? 'Bảng Xếp Hạng Năm 🏆' : 'Bảng Xếp Hạng Tổng Hợp 🏆'),
-                    style: const TextStyle(
-                      fontSize: 18,
+                    style: GoogleFonts.baloo2(
+                      fontSize: 17,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
 
               // Leaderboard List
               FutureBuilder<List<Map<String, dynamic>>>(
                 future: _leaderboardFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
+                    return Center(
                       child: Padding(
                         padding: EdgeInsets.symmetric(vertical: 40),
                         child: CircularProgressIndicator(),
@@ -407,12 +408,12 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     );
                   }
                   if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-                    return const Center(
+                    return Center(
                       child: Padding(
                         padding: EdgeInsets.symmetric(vertical: 40),
                         child: Text(
                           'Chưa có dữ liệu bảng xếp hạng.',
-                          style: TextStyle(color: AppColors.textSecondary),
+                          style: GoogleFonts.baloo2(color: AppColors.textSecondary),
                         ),
                       ),
                     );
@@ -464,7 +465,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                 alignment: Alignment.center,
                                 child: Text(
                                   rank.toString(),
-                                  style: TextStyle(
+                                  style: GoogleFonts.baloo2(
                                     fontWeight: FontWeight.bold,
                                     color: medalColor == Colors.transparent
                                         ? AppColors.primary
@@ -472,16 +473,16 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 16),
+                              SizedBox(width: 16),
 
                               // Name
                               Expanded(
                                 child: Text(
                                   user,
-                                  style: TextStyle(
+                                  style: GoogleFonts.baloo2(
                                     fontWeight: rank <= 3 ? FontWeight.bold : FontWeight.normal,
                                     color: AppColors.textPrimary,
-                                    fontSize: 16,
+                                    fontSize: 15,
                                   ),
                                 ),
                               ),
@@ -489,7 +490,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                               // Score
                               Text(
                                 '$score điểm',
-                                style: const TextStyle(
+                                style: GoogleFonts.baloo2(
                                   fontWeight: FontWeight.bold,
                                   color: AppColors.primary,
                                 ),
@@ -574,13 +575,13 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
               alignment: Alignment.center,
               child: avatarImage != null
                   ? null
-                  : const Icon(
+                  : Icon(
                       Icons.person_rounded,
                       size: 40,
                       color: AppColors.primary,
                     ),
             ),
-            const SizedBox(width: 20),
+            SizedBox(width: 20),
   
             // User details
             Expanded(
@@ -589,23 +590,23 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 children: [
                   Text(
                     displayName,
-                    style: const TextStyle(
-                      fontSize: 20,
+                    style: GoogleFonts.baloo2(
+                      fontSize: 19,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     email,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 13,
+                    style: GoogleFonts.baloo2(
+                      fontSize: 12,
                       color: Colors.white.withValues(alpha: 0.8),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   // Score info
                   FutureBuilder<int>(
                     future: _totalScoreFuture,
@@ -620,13 +621,13 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.stars_rounded, color: AppColors.accent, size: 16),
-                            const SizedBox(width: 6),
+                            Icon(Icons.stars_rounded, color: AppColors.accent, size: 16),
+                            SizedBox(width: 6),
                             Text(
                               '$points điểm tích lũy',
-                              style: const TextStyle(
+                              style: GoogleFonts.baloo2(
                                 color: Colors.white,
-                                fontSize: 12,
+                                fontSize: 11,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),

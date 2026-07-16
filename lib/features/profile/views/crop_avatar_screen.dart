@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class CropAvatarScreen extends StatefulWidget {
   final String imagePath;
@@ -235,12 +236,12 @@ class _CropAvatarScreenState extends State<CropAvatarScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: const Text(
+        title: Text(
           'Căn chỉnh ảnh',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: GoogleFonts.baloo2(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         centerTitle: true,
@@ -251,7 +252,7 @@ class _CropAvatarScreenState extends State<CropAvatarScreen> {
           children: [
             Expanded(
               child: _isLoadingImageSize
-                  ? const Center(
+                  ? Center(
                       child: CircularProgressIndicator(
                         color: AppColors.primary,
                       ),
@@ -326,12 +327,12 @@ class _CropAvatarScreenState extends State<CropAvatarScreen> {
             ),
             
             // Zoom instruction text
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               child: Text(
                 'Kéo khung tròn để di chuyển vùng chọn, dùng thanh trượt dưới đây để thay đổi kích thước khung cắt.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white70, fontSize: 13),
+                style: GoogleFonts.baloo2(color: Colors.white70, fontSize: 11),
               ),
             ),
             
@@ -343,13 +344,13 @@ class _CropAvatarScreenState extends State<CropAvatarScreen> {
                 children: [
                   IconButton(
                     onPressed: _isLoadingImageSize ? null : () => _rotateImage(clockwise: false),
-                    icon: const Icon(Icons.rotate_left_rounded, color: Colors.white, size: 28),
+                    icon: Icon(Icons.rotate_left_rounded, color: Colors.white, size: 28),
                     tooltip: 'Xoay trái',
                   ),
-                  const SizedBox(width: 32),
+                  SizedBox(width: 32),
                   IconButton(
                     onPressed: _isLoadingImageSize ? null : () => _rotateImage(clockwise: true),
-                    icon: const Icon(Icons.rotate_right_rounded, color: Colors.white, size: 28),
+                    icon: Icon(Icons.rotate_right_rounded, color: Colors.white, size: 28),
                     tooltip: 'Xoay phải',
                   ),
                 ],
@@ -361,7 +362,7 @@ class _CropAvatarScreenState extends State<CropAvatarScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 4.0),
               child: Row(
                 children: [
-                  const Icon(Icons.zoom_out_rounded, color: Colors.white70, size: 20),
+                  Icon(Icons.zoom_out_rounded, color: Colors.white70, size: 20),
                   Expanded(
                     child: Slider(
                       value: _circleRadius.clamp(_minRadius, _maxRadius),
@@ -382,7 +383,7 @@ class _CropAvatarScreenState extends State<CropAvatarScreen> {
                             },
                     ),
                   ),
-                  const Icon(Icons.zoom_in_rounded, color: Colors.white70, size: 20),
+                  Icon(Icons.zoom_in_rounded, color: Colors.white70, size: 20),
                 ],
               ),
             ),
@@ -403,13 +404,13 @@ class _CropAvatarScreenState extends State<CropAvatarScreen> {
                         ),
                       ),
                       onPressed: _isSaving ? null : () => Navigator.pop(context),
-                      child: const Text(
+                      child: Text(
                         'Hủy',
-                        style: TextStyle(color: Colors.white, fontSize: 15),
+                        style: GoogleFonts.baloo2(color: Colors.white, fontSize: 13),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
@@ -422,14 +423,14 @@ class _CropAvatarScreenState extends State<CropAvatarScreen> {
                       ),
                       onPressed: _isSaving ? null : _cropAndSaveImage,
                       child: _isSaving
-                          ? const SizedBox(
+                          ? SizedBox(
                               height: 20,
                               width: 20,
                               child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                             )
-                          : const Text(
+                          : Text(
                               'Lưu ảnh',
-                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                              style: GoogleFonts.baloo2(fontSize: 13, fontWeight: FontWeight.bold),
                             ),
                     ),
                   ),

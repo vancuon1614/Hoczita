@@ -7,6 +7,7 @@ import '../../../core/services/supabase_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'cccd_ocr_dialog.dart';
 import 'cccd_qr_scanner_dialog.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -234,20 +235,20 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       Text(
                         title,
-                        style: const TextStyle(
-                          fontSize: 18,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       TextField(
                         decoration: InputDecoration(
                           hintText: 'Tìm kiếm...',
-                          prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textSecondary),
+                          prefixIcon: Icon(Icons.search_rounded, color: AppColors.textSecondary),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -267,10 +268,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           });
                         },
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       Expanded(
                         child: filteredItems.isEmpty
-                            ? const Center(
+                            ? Center(
                                 child: Text('Không tìm thấy kết quả nào'),
                               )
                             : ListView.builder(
@@ -281,7 +282,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                   return ListTile(
                                     title: Text(
                                       item['title'].toString(),
-                                      style: const TextStyle(
+                                      style: GoogleFonts.baloo2(
                                         color: AppColors.textPrimary,
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -290,7 +291,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                       onSelected(item);
                                       Navigator.pop(context);
                                     },
-                                    trailing: const Icon(
+                                    trailing: Icon(
                                       Icons.arrow_forward_ios_rounded,
                                       size: 14,
                                       color: AppColors.textSecondary,
@@ -730,14 +731,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Cập nhật thông tin',
-          style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+          style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
         ),
         centerTitle: true,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : SafeArea(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(20.0),
@@ -747,24 +748,24 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _buildTextField(_fullNameController, 'Họ tên', 'Nhập họ và tên'),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       _buildTextField(_emailController, 'Email', 'Nhập email address', keyboardType: TextInputType.emailAddress, readOnly: true),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       _buildTextField(_phoneController, 'Phone', 'Nhập số điện thoại', keyboardType: TextInputType.phone),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       _buildTextField(_genderController, 'Gender (Giới tính)', 'NAM / NỮ'),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       _buildTextField(
                         _dobController,
                         'Date Of Birth (Ngày sinh)',
                         'Chọn ngày sinh',
                         onTap: () => _selectDate(context, _dobController),
                         suffixIcon: IconButton(
-                          icon: const Icon(Icons.calendar_month_rounded, color: AppColors.primary),
+                          icon: Icon(Icons.calendar_month_rounded, color: AppColors.primary),
                           onPressed: () => _selectDate(context, _dobController),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       _buildTextField(
                         _pobController, 
                         'Place Of Origin (Quê quán)', 
@@ -781,27 +782,27 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                             },
                           );
                         },
-                        suffixIcon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
+                        suffixIcon: Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       
                       const Divider(height: 32),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             'CCCD',
-                            style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 16),
+                            style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 14),
                           ),
                           Wrap(
                             spacing: 8,
                             children: [
                               TextButton.icon(
                                 onPressed: _startCccdQrScan,
-                                icon: const Icon(Icons.qr_code_scanner_rounded, size: 16),
-                                label: const Text(
+                                icon: Icon(Icons.qr_code_scanner_rounded, size: 16),
+                                label: Text(
                                   'Quét QR',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                  style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, fontSize: 10),
                                 ),
                                 style: TextButton.styleFrom(
                                   foregroundColor: AppColors.primary,
@@ -813,10 +814,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                               ),
                               TextButton.icon(
                                 onPressed: _startCccdOcr,
-                                icon: const Icon(Icons.document_scanner_rounded, size: 16),
-                                label: const Text(
+                                icon: Icon(Icons.document_scanner_rounded, size: 16),
+                                label: Text(
                                   'Quét ảnh',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                  style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, fontSize: 10),
                                 ),
                                 style: TextButton.styleFrom(
                                   foregroundColor: AppColors.success,
@@ -830,30 +831,30 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       _buildTextField(_idCardController, 'Số CCCD', 'Nhập số CCCD'),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       _buildTextField(
                         _idCardDateController,
                         'Ngày cấp CCCD',
                         'Chọn ngày cấp CCCD',
                         onTap: () => _selectDate(context, _idCardDateController),
                         suffixIcon: IconButton(
-                          icon: const Icon(Icons.calendar_month_rounded, color: AppColors.primary),
+                          icon: Icon(Icons.calendar_month_rounded, color: AppColors.primary),
                           onPressed: () => _selectDate(context, _idCardDateController),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       _buildTextField(_idCardPlaceController, 'Nơi cấp CCCD', 'Ví dụ: Cục Cảnh sát QLHC về TTXH'),
                       
                       const Divider(height: 32),
-                      const Text(
+                      Text(
                         'Địa chỉ cư trú',
-                        style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 16),
+                        style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 14),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       _buildTextField(_addressController, 'Số nhà, tên đường, phường/xã (Địa chỉ chi tiết)', 'Nhập số nhà, tên đường, phường/xã'),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       _buildTextField(
                         _districtController, 
                         'Quận / Huyện (District)', 
@@ -872,9 +873,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                   },
                                 );
                               },
-                        suffixIcon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
+                        suffixIcon: Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       _buildTextField(
                         _provinceController, 
                         'Tỉnh / Thành phố (Province)', 
@@ -895,10 +896,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                             },
                           );
                         },
-                        suffixIcon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
+                        suffixIcon: Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
                       ),
                       
-                      const SizedBox(height: 32),
+                      SizedBox(height: 32),
                       SizedBox(
                         height: 50,
                         child: ElevatedButton(
@@ -910,13 +911,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                             ),
                           ),
                           onPressed: _saveProfileData,
-                          child: const Text(
+                          child: Text(
                             'Lưu thay đổi',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            style: GoogleFonts.baloo2(fontSize: 14, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
                     ],
                   ),
                 ),

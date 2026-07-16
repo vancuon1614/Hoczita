@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../models/game_question.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class MultipleChoiceGameScreen extends StatefulWidget {
   final String gameName;
@@ -254,17 +255,17 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
         appBar: AppBar(
           title: Text(
             widget.gameTitle,
-            style: const TextStyle(fontWeight: FontWeight.bold),
+            style: GoogleFonts.baloo2(fontWeight: FontWeight.bold),
           ),
           leading: IconButton(
-            icon: const Icon(Icons.close_rounded),
+            icon: Icon(Icons.close_rounded),
             onPressed: () => Navigator.pop(context),
           ),
         ),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
+            children: [
               CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                 strokeWidth: 4,
@@ -272,8 +273,8 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
               SizedBox(height: 24),
               Text(
                 'Đang chuẩn bị hình ảnh câu hỏi...',
-                style: TextStyle(
-                  fontSize: 16,
+                style: GoogleFonts.baloo2(
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textSecondary,
                 ),
@@ -281,8 +282,8 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
               SizedBox(height: 8),
               Text(
                 'Hình ảnh đang được tải trước để chơi mượt mà nhất',
-                style: TextStyle(
-                  fontSize: 13,
+                style: GoogleFonts.baloo2(
+                  fontSize: 11,
                   color: AppColors.textSecondary,
                 ),
               ),
@@ -310,10 +311,10 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
       appBar: AppBar(
         title: Text(
           widget.gameTitle,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: GoogleFonts.baloo2(fontWeight: FontWeight.bold),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
+          icon: Icon(Icons.close_rounded),
           onPressed: () => _showQuitConfirmation(),
         ),
       ),
@@ -329,8 +330,8 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                 children: [
                   Text(
                     'Câu hỏi ${_currentQuestionIndex + 1}/${widget.questions.length}',
-                    style: const TextStyle(
-                      fontSize: 16,
+                    style: GoogleFonts.baloo2(
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textSecondary,
                     ),
@@ -347,8 +348,8 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                       ),
                       Text(
                         (6 - (_timerController.value * 6).floor()).toString(),
-                        style: TextStyle(
-                          fontSize: 16,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: timerColor,
                         ),
@@ -357,7 +358,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               
               // Top linear progress bar
               ClipRRect(
@@ -369,7 +370,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                   minHeight: 8,
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
 
               // Question/Prompt Card
               Expanded(
@@ -400,7 +401,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
 
               // Answer options Grid (supports dynamic number of choices)
               Expanded(
@@ -422,11 +423,11 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
         fit: BoxFit.contain,
         placeholder: (context, url) => SizedBox(
           height: height,
-          child: const Center(
+          child: Center(
             child: CircularProgressIndicator(strokeWidth: 2.5),
           ),
         ),
-        errorWidget: (context, url, error) => const Icon(
+        errorWidget: (context, url, error) => Icon(
           Icons.broken_image_rounded,
           color: AppColors.error,
           size: 48,
@@ -437,7 +438,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
         asset,
         height: height,
         fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) => const Icon(
+        errorBuilder: (context, error, stackTrace) => Icon(
           Icons.broken_image_rounded,
           color: AppColors.error,
           size: 48,
@@ -455,7 +456,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
       return Text(
         asset,
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: adjustedFontSize),
+        style: GoogleFonts.baloo2(fontSize: adjustedFontSize),
       );
     }
   }
@@ -469,13 +470,13 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
           Text(
             question.prompt,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 18,
+            style: GoogleFonts.baloo2(
+              fontSize: 16,
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Row(
             children: [
               // Left panel
@@ -488,10 +489,10 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                     border: Border.all(color: AppColors.border),
                   ),
                   alignment: Alignment.center,
-                  child: _buildVisualAsset(question.comparisonLeft!, height: 100.0, fontSize: 48.0),
+                  child: _buildVisualAsset(question.comparisonLeft!, height: 100.0, fontSize: 46),
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: 16),
               // Right panel
               Expanded(
                 child: Container(
@@ -502,7 +503,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                     border: Border.all(color: AppColors.border),
                   ),
                   alignment: Alignment.center,
-                  child: _buildVisualAsset(question.comparisonRight!, height: 100.0, fontSize: 48.0),
+                  child: _buildVisualAsset(question.comparisonRight!, height: 100.0, fontSize: 46),
                 ),
               ),
             ],
@@ -516,14 +517,14 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         if (question.visualAsset != null) ...[
-          _buildVisualAsset(question.visualAsset!, height: 140.0, fontSize: 54.0),
-          const SizedBox(height: 20),
+          _buildVisualAsset(question.visualAsset!, height: 140.0, fontSize: 52),
+          SizedBox(height: 20),
         ],
         Text(
           question.prompt,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 22,
+          style: GoogleFonts.baloo2(
+            fontSize: 20,
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
             height: 1.3,
@@ -542,12 +543,12 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
             child: Row(
               children: [
                 _buildChoiceButton(0, question, choices[0]),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 _buildChoiceButton(1, question, choices[1]),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Expanded(
             child: Row(
               children: [
@@ -567,17 +568,17 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
             child: Row(
               children: [
                 _buildChoiceButton(0, question),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 _buildChoiceButton(1, question),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Expanded(
             child: Row(
               children: [
                 _buildChoiceButton(2, question),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 _buildChoiceButton(3, question),
               ],
             ),
@@ -591,12 +592,12 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
             child: Row(
               children: [
                 _buildChoiceButton(0, question),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 _buildChoiceButton(1, question),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Expanded(
             child: Row(
               children: [
@@ -610,7 +611,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
       return Row(
         children: [
           _buildChoiceButton(0, question),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           _buildChoiceButton(1, question),
         ],
       );
@@ -666,8 +667,8 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
           child: Text(
             choiceValue,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 20,
+            style: GoogleFonts.baloo2(
+              fontSize: 18,
               fontWeight: FontWeight.bold,
               color: textColor,
             ),
@@ -682,15 +683,15 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Thoát Trò Chơi?'),
-        content: const Text('Tiến trình chơi và điểm số của lượt này sẽ không được lưu lại.'),
+        title: Text('Thoát Trò Chơi?'),
+        content: Text('Tiến trình chơi và điểm số của lượt này sẽ không được lưu lại.'),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.pop(context); // Đóng dialog
               _timerController.forward(); // Tiếp tục đếm ngược
             },
-            child: const Text('Chơi tiếp'),
+            child: Text('Chơi tiếp'),
           ),
           TextButton(
             onPressed: () {
@@ -698,7 +699,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
               Navigator.pop(context); // Thoát game
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Thoát'),
+            child: Text('Thoát'),
           ),
         ],
       ),
@@ -730,28 +731,28 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               
               Text(
                 stars > 0 ? 'Tuyệt Vời! 🎉' : 'Cố Gắng Lên Bé Ơi!',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 22,
+                style: GoogleFonts.baloo2(
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               
               Text(
                 'Bé đã trả lời đúng $_correctAnswersCount/${widget.questions.length} câu đố trong $_elapsedTimeString.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 14,
+                style: GoogleFonts.baloo2(
+                  fontSize: 12,
                   color: AppColors.textSecondary,
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
 
               // Animated Star Rating
               Row(
@@ -773,7 +774,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                   );
                 }),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
 
               // Time & Score Cards
               Row(
@@ -787,20 +788,20 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                       ),
                       child: Column(
                         children: [
-                          const Text(
+                          Text(
                             'Thời gian',
-                            style: TextStyle(fontSize: 12, color: AppColors.primary),
+                            style: GoogleFonts.baloo2(fontSize: 10, color: AppColors.primary),
                           ),
-                          const SizedBox(height: 2),
+                          SizedBox(height: 2),
                           Text(
                             _elapsedTimeString,
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
+                            style: GoogleFonts.baloo2(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16),
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -810,14 +811,14 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                       ),
                       child: Column(
                         children: [
-                          const Text(
+                          Text(
                             'Điểm cộng',
-                            style: TextStyle(fontSize: 12, color: AppColors.success),
+                            style: GoogleFonts.baloo2(fontSize: 10, color: AppColors.success),
                           ),
-                          const SizedBox(height: 2),
+                          SizedBox(height: 2),
                           Text(
                             '+$_score',
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.success),
+                            style: GoogleFonts.baloo2(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.success),
                           ),
                         ],
                       ),
@@ -827,18 +828,18 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
               ),
 
               // Detailed results table
-              const SizedBox(height: 40),
-              const Text(
+              SizedBox(height: 40),
+              Text(
                 'Chi Tiết Kết Quả 📊',
-                style: TextStyle(
-                  fontSize: 16,
+                style: GoogleFonts.baloo2(
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               _buildResultsTable(),
-              const SizedBox(height: 28),
+              SizedBox(height: 28),
               
               // End game action button
               Center(
@@ -860,14 +861,14 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                       ),
                     ),
                     child: _isSavingScore
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                           )
-                        : const Text(
+                        : Text(
                             'Quay lại danh mục',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, fontSize: 14),
                           ),
                   ),
                 ),
@@ -919,8 +920,8 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                 alignment: Alignment.center,
                 child: Text(
                   '${index + 1}',
-                  style: TextStyle(
-                    fontSize: 16,
+                  style: GoogleFonts.baloo2(
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: color,
                   ),
@@ -957,19 +958,19 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                   children: [
                     Text(
                       'Câu hỏi ${index + 1}',
-                      style: const TextStyle(
-                        fontSize: 18,
+                      style: GoogleFonts.baloo2(
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close_rounded),
+                      icon: Icon(Icons.close_rounded),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -980,8 +981,8 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                   child: Column(
                     children: [
                       if (question.visualAsset != null) ...[
-                        _buildVisualAsset(question.visualAsset!, height: 80.0, fontSize: 36.0),
-                        const SizedBox(height: 12),
+                        _buildVisualAsset(question.visualAsset!, height: 80.0, fontSize: 34),
+                        SizedBox(height: 12),
                       ],
                       if (question.comparisonLeft != null && question.comparisonRight != null) ...[
                         Row(
@@ -995,10 +996,10 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                                   border: Border.all(color: AppColors.border),
                                 ),
                                 alignment: Alignment.center,
-                                child: _buildVisualAsset(question.comparisonLeft!, height: 60.0, fontSize: 32.0),
+                                child: _buildVisualAsset(question.comparisonLeft!, height: 60.0, fontSize: 30),
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: 12),
                             Expanded(
                               child: Container(
                                 height: 80,
@@ -1008,18 +1009,18 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                                   border: Border.all(color: AppColors.border),
                                 ),
                                 alignment: Alignment.center,
-                                child: _buildVisualAsset(question.comparisonRight!, height: 60.0, fontSize: 32.0),
+                                child: _buildVisualAsset(question.comparisonRight!, height: 60.0, fontSize: 30),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                       ],
                       Text(
                         question.prompt,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
                         ),
@@ -1027,16 +1028,16 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                const Text(
+                SizedBox(height: 16),
+                Text(
                   'Các đáp án:',
-                  style: TextStyle(
-                    fontSize: 14,
+                  style: GoogleFonts.baloo2(
+                    fontSize: 12,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Column(
                   children: choices.map((choice) {
                     final isCorrectAnswer = choice == question.correctAnswer;
@@ -1051,12 +1052,12 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                       itemBgColor = AppColors.success.withValues(alpha: 0.12);
                       itemBorderColor = AppColors.success;
                       itemTextColor = AppColors.success;
-                      suffixIcon = const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20);
+                      suffixIcon = Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20);
                     } else if (isUserSelection) {
                       itemBgColor = AppColors.error.withValues(alpha: 0.12);
                       itemBorderColor = AppColors.error;
                       itemTextColor = AppColors.error;
-                      suffixIcon = const Icon(Icons.cancel_rounded, color: AppColors.error, size: 20);
+                      suffixIcon = Icon(Icons.cancel_rounded, color: AppColors.error, size: 20);
                     }
 
                     return Container(
@@ -1072,8 +1073,8 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                           Expanded(
                             child: Text(
                               choice,
-                              style: TextStyle(
-                                fontSize: 14,
+                              style: GoogleFonts.baloo2(
+                                fontSize: 12,
                                 fontWeight: (isCorrectAnswer || isUserSelection)
                                     ? FontWeight.bold
                                     : FontWeight.normal,
@@ -1088,7 +1089,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                   }).toList(),
                 ),
                 if (userAnswer == null) ...[
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
@@ -1096,15 +1097,15 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.timer_outlined, color: Colors.orange, size: 16),
                         SizedBox(width: 8),
                         Text(
                           'Bé đã không chọn đáp án (Hết giờ ⏳)',
-                          style: TextStyle(
-                            fontSize: 12,
+                          style: GoogleFonts.baloo2(
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: Colors.orange,
                           ),

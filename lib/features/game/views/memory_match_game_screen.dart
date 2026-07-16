@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../constants/game_content.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class MemoryCard {
   final int id;
@@ -224,12 +225,12 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Memory Match 🇬🇧',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: GoogleFonts.baloo2(fontWeight: FontWeight.bold),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
+          icon: Icon(Icons.close_rounded),
           onPressed: () => _showQuitConfirmation(),
         ),
          actions: [
@@ -244,15 +245,15 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.timer_outlined, size: 14, color: AppColors.primary),
-                const SizedBox(width: 4),
+                Icon(Icons.timer_outlined, size: 14, color: AppColors.primary),
+                SizedBox(width: 4),
                 SizedBox(
                   width: 50, // Fixed width for text area to prevent any shaking/shifting
                   child: Text(
                     _elapsedTimeString,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 13,
+                    style: GoogleFonts.baloo2(
+                      fontSize: 11,
                       fontWeight: FontWeight.bold,
                       color: AppColors.primary,
                       fontFeatures: [FontFeature.tabularFigures()],
@@ -270,15 +271,15 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
+              Text(
                 'Lật ghép các cặp từ tiếng Anh tương ứng với nghĩa tiếng Việt:',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
+                style: GoogleFonts.baloo2(
+                  fontSize: 12,
                   color: AppColors.textSecondary,
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               // 4x4 Grid
               Expanded(
                 child: GridView.builder(
@@ -335,13 +336,13 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
             ? Text(
                 card.text,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: GoogleFonts.baloo2(
                   fontSize: card.text.length > 8 ? 12 : 14,
                   fontWeight: FontWeight.bold,
                   color: card.isMatched ? AppColors.success : AppColors.primary,
                 ),
               )
-            : const Icon(
+            : Icon(
                 Icons.help_outline_rounded,
                 color: Colors.white,
                 size: 28,
@@ -355,15 +356,15 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Thoát Trò Chơi?'),
-        content: const Text('Tiến trình chơi hiện tại của bạn sẽ không được lưu lại.'),
+        title: Text('Thoát Trò Chơi?'),
+        content: Text('Tiến trình chơi hiện tại của bạn sẽ không được lưu lại.'),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.pop(context); // Đóng dialog
               _stopwatch.start(); // Tiếp tục bấm giờ
             },
-            child: const Text('Chơi tiếp'),
+            child: Text('Chơi tiếp'),
           ),
           TextButton(
             onPressed: () {
@@ -371,7 +372,7 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
               Navigator.pop(context); // Thoát game
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Thoát'),
+            child: Text('Thoát'),
           ),
         ],
       ),
@@ -406,35 +407,35 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
                     color: Color(0xFFFFF9E6),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.emoji_events_rounded,
                     color: Colors.amber,
                     size: 80,
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               
-              const Text(
+              Text(
                 'Xuất Sắc! 🎉',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 28,
+                style: GoogleFonts.baloo2(
+                  fontSize: 26,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               
               Text(
                 'Bé đã ghép hoàn tất 8 cặp từ trong $_elapsedTimeString.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 16,
+                style: GoogleFonts.baloo2(
+                  fontSize: 14,
                   color: AppColors.textSecondary,
                 ),
               ),
-              const SizedBox(height: 32),
+              SizedBox(height: 32),
 
               // Stars Display
               Row(
@@ -456,7 +457,7 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
                   );
                 }),
               ),
-              const SizedBox(height: 40),
+              SizedBox(height: 40),
 
               // Time & Score Cards
               Row(
@@ -470,20 +471,20 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
                       ),
                       child: Column(
                         children: [
-                          const Text(
+                          Text(
                             'Thời gian',
-                            style: TextStyle(fontSize: 13, color: AppColors.primary),
+                            style: GoogleFonts.baloo2(fontSize: 11, color: AppColors.primary),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text(
                             _elapsedTimeString,
-                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primary),
+                            style: GoogleFonts.baloo2(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16),
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -493,14 +494,14 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
                       ),
                       child: Column(
                         children: [
-                          const Text(
+                          Text(
                             'Điểm cộng',
-                            style: TextStyle(fontSize: 13, color: AppColors.success),
+                            style: GoogleFonts.baloo2(fontSize: 11, color: AppColors.success),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text(
                             '+$_score',
-                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.success),
+                            style: GoogleFonts.baloo2(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.success),
                           ),
                         ],
                       ),
@@ -531,14 +532,14 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
                       ),
                     ),
                     child: _isSavingScore
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                           )
-                        : const Text(
+                        : Text(
                             'Quay lại danh mục',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, fontSize: 14),
                           ),
                   ),
                 ),

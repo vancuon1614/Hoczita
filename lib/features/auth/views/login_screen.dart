@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'register_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -216,7 +217,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Chế độ Offline'),
+              child: Text('Chế độ Offline'),
             ),
         ],
       ),
@@ -289,19 +290,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Text(
                       'Chọn tài khoản',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontSize: 20,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     if (_savedEmails.isEmpty)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.symmetric(vertical: 24),
                         child: Text(
                           'Không có tài khoản nào được lưu',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: AppColors.textSecondary),
+                          style: GoogleFonts.baloo2(color: AppColors.textSecondary),
                         ),
                       )
                     else
@@ -324,20 +325,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                               title: Text(
                                 username,
-                                style: const TextStyle(
+                                style: GoogleFonts.baloo2(
                                   fontWeight: FontWeight.bold,
                                   color: AppColors.textPrimary,
                                 ),
                               ),
                               subtitle: Text(
                                 email,
-                                style: const TextStyle(
+                                style: GoogleFonts.baloo2(
                                   color: AppColors.textSecondary,
-                                  fontSize: 12,
+                                  fontSize: 10,
                                 ),
                               ),
                               trailing: IconButton(
-                                icon: const Icon(
+                                icon: Icon(
                                   Icons.delete_outline_rounded,
                                   color: AppColors.error,
                                 ),
@@ -370,8 +371,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         });
                         Navigator.pop(context);
                       },
-                      icon: const Icon(Icons.add_rounded),
-                      label: const Text('Sử dụng tài khoản khác'),
+                      icon: Icon(Icons.add_rounded),
+                      label: Text('Sử dụng tài khoản khác'),
                     ),
                   ],
                 ),
@@ -412,7 +413,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
             child: _buildAvatarWidget(email, 20, 24),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -420,20 +421,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               children: [
                 Text(
                   username,
-                  style: const TextStyle(
+                  style: GoogleFonts.baloo2(
                     color: AppColors.primary,
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                    fontSize: 14,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(
                   email,
-                  style: const TextStyle(
+                  style: GoogleFonts.baloo2(
                     color: AppColors.textSecondary,
-                    fontSize: 12,
+                    fontSize: 10,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -442,7 +443,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
           IconButton(
-            icon: const Icon(
+            icon: Icon(
               Icons.swap_horiz_rounded,
               color: Colors.black87,
               size: 24,
@@ -472,7 +473,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SizedBox(height: 40),
+                    SizedBox(height: 40),
                     // Brand Title Logo "HocZiTa"
                     Center(
                       child: Column(
@@ -484,17 +485,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               color: AppColors.primaryLight,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.school_rounded,
                               size: 48,
                               color: AppColors.primary,
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          const Text(
+                          SizedBox(height: 12),
+                          Text(
                             'HocZiTa',
-                            style: TextStyle(
-                              fontSize: 28,
+                            style: GoogleFonts.baloo2(
+                              fontSize: 26,
                               fontWeight: FontWeight.w900,
                               color: AppColors.primary,
                               letterSpacing: 1.2,
@@ -503,51 +504,51 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     
                     // Heading logo or Saved Account Greeting
                     if (_showSavedMode && _savedEmail != null) ...[
                       Center(
                         child: Text(
                           _getGreeting(),
-                          style: const TextStyle(
-                            fontSize: 16,
+                          style: GoogleFonts.baloo2(
+                            fontSize: 14,
                             color: AppColors.textSecondary,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Center(
                         child: Text(
                           _emailToUsername[_savedEmail] ?? _savedEmail!.split('@')[0],
-                          style: const TextStyle(
-                            fontSize: 20,
+                          style: GoogleFonts.baloo2(
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: AppColors.primary,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       Center(child: _buildSavedAccountCard()),
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20),
                     ] else ...[
-                      const Text(
+                      Text(
                         'Chào mừng quay lại!',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 20,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      const Text(
+                      SizedBox(height: 6),
+                      Text(
                         'Đăng nhập để tiếp tục học và tích lũy điểm số.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                        style: GoogleFonts.baloo2(color: AppColors.textSecondary, fontSize: 11),
                       ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
                     ],
 
                     // Email Input (only if NOT in saved mode)
@@ -556,7 +557,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
                         inputFormatters: [FilteringTextInputFormatter.deny(RegExp(r'\s'))],
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Địa chỉ Email',
                           hintText: 'email@domain.com',
                           prefixIcon: Icon(Icons.email_outlined, color: AppColors.textSecondary),
@@ -575,7 +576,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20),
                     ],
 
                     // Password Input
@@ -584,7 +585,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       obscureText: _obscurePassword,
                       decoration: InputDecoration(
                         labelText: 'Mật khẩu',
-                        prefixIcon: const Icon(Icons.lock_outlined, color: AppColors.textSecondary),
+                        prefixIcon: Icon(Icons.lock_outlined, color: AppColors.textSecondary),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
@@ -610,7 +611,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 30),
+                    SizedBox(height: 30),
 
                     // Login Button (240px wide, centered)
                     Center(
@@ -624,16 +625,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             foregroundColor: Colors.white,
                           ),
                           child: isLoading
-                              ? const SizedBox(
+                              ? SizedBox(
                                   height: 20,
                                   width: 20,
                                   child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                                 )
-                              : const Text('Đăng nhập'),
+                              : Text('Đăng nhập'),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
 
                     // Offline Demo Shortcut (Commented out per user choice)
                     /*
@@ -646,26 +647,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         side: const BorderSide(color: AppColors.accent, width: 1.5),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.bolt_rounded, color: AppColors.accent),
                           SizedBox(width: 8),
                           Text(
                             'Chế độ Demo Offline (Không cần mạng)',
-                            style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.bold),
+                            style: GoogleFonts.baloo2(color: AppColors.accent, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     */
 
                     // Register redirect
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text('Chưa có tài khoản? ', style: TextStyle(color: AppColors.textSecondary)),
+                        Text('Chưa có tài khoản? ', style: GoogleFonts.baloo2(color: AppColors.textSecondary)),
                         GestureDetector(
                           onTap: () {
                             Navigator.pushReplacement(
@@ -673,9 +674,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               MaterialPageRoute(builder: (context) => const RegisterScreen()),
                             );
                           },
-                          child: const Text(
+                          child: Text(
                             'Đăng ký ngay',
-                            style: TextStyle(
+                            style: GoogleFonts.baloo2(
                               color: AppColors.primary,
                               fontWeight: FontWeight.bold,
                             ),
@@ -683,7 +684,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 40),
+                    SizedBox(height: 40),
                   ],
                 ),
               ),

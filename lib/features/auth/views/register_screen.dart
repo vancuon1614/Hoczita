@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -77,12 +78,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Lỗi Đăng Ký'),
+        title: Text('Lỗi Đăng Ký'),
         content: Text(message),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Đồng ý'),
+            child: Text('Đồng ý'),
           ),
         ],
       ),
@@ -107,7 +108,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SizedBox(height: 40),
+                    SizedBox(height: 40),
                     // Brand Title Logo "HocZiTa"
                     Center(
                       child: Column(
@@ -119,17 +120,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               color: AppColors.primaryLight,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.school_rounded,
                               size: 48,
                               color: AppColors.primary,
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          const Text(
+                          SizedBox(height: 12),
+                          Text(
                             'HocZiTa',
-                            style: TextStyle(
-                              fontSize: 28,
+                            style: GoogleFonts.baloo2(
+                              fontSize: 26,
                               fontWeight: FontWeight.w900,
                               color: AppColors.primary,
                               letterSpacing: 1.2,
@@ -138,28 +139,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    const Text(
+                    SizedBox(height: 24),
+                    Text(
                       'Tạo tài khoản mới',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 20,
+                      style: GoogleFonts.baloo2(
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    const Text(
+                    SizedBox(height: 6),
+                    Text(
                       'Đăng ký tài khoản để học tập và tích lũy điểm số.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                      style: GoogleFonts.baloo2(color: AppColors.textSecondary, fontSize: 11),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
 
                     // Username Input
                     TextFormField(
                       controller: _usernameController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Tên người dùng (Username)',
                         prefixIcon: Icon(Icons.person_outline_rounded, color: AppColors.textSecondary),
                       ),
@@ -173,14 +174,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: 20),
 
                     // Email Input
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       inputFormatters: [FilteringTextInputFormatter.deny(RegExp(r'\s'))],
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Địa chỉ Email',
                         prefixIcon: Icon(Icons.email_outlined, color: AppColors.textSecondary),
                       ),
@@ -198,7 +199,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: 20),
 
                     // Password Input
                     TextFormField(
@@ -206,7 +207,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       obscureText: _obscurePassword,
                       decoration: InputDecoration(
                         labelText: 'Mật khẩu',
-                        prefixIcon: const Icon(Icons.lock_outlined, color: AppColors.textSecondary),
+                        prefixIcon: Icon(Icons.lock_outlined, color: AppColors.textSecondary),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
@@ -232,13 +233,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: 20),
 
                     // Confirm Password Input
                     TextFormField(
                       controller: _confirmPasswordController,
                       obscureText: _obscurePassword,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Xác nhận mật khẩu',
                         prefixIcon: Icon(Icons.lock_outline, color: AppColors.textSecondary),
                       ),
@@ -255,7 +256,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 32),
+                    SizedBox(height: 32),
 
                     // Register Button (240px wide, centered inside the 280px form)
                     Center(
@@ -269,22 +270,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             foregroundColor: Colors.white,
                           ),
                           child: isLoading
-                              ? const SizedBox(
+                              ? SizedBox(
                                   height: 20,
                                   width: 20,
                                   child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                                 )
-                              : const Text('Đăng ký tài khoản'),
+                              : Text('Đăng ký tài khoản'),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
 
                     // Login redirect
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text('Đã có tài khoản? ', style: TextStyle(color: AppColors.textSecondary)),
+                        Text('Đã có tài khoản? ', style: GoogleFonts.baloo2(color: AppColors.textSecondary)),
                         GestureDetector(
                           onTap: () {
                             Navigator.pushReplacement(
@@ -292,9 +293,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               MaterialPageRoute(builder: (context) => const LoginScreen()),
                             );
                           },
-                          child: const Text(
+                          child: Text(
                             'Đăng nhập ngay',
-                            style: TextStyle(
+                            style: GoogleFonts.baloo2(
                               color: AppColors.primary,
                               fontWeight: FontWeight.bold,
                             ),
@@ -302,7 +303,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 40),
+                    SizedBox(height: 40),
                   ],
                 ),
               ),

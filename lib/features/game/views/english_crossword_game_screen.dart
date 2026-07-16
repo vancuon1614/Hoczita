@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../models/english_crossword_level.dart';
@@ -379,12 +380,12 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Thoát trò chơi?'),
-        content: const Text('Bạn có chắc muốn thoát không? Điểm số lượt chơi này sẽ không được lưu lại đâu nhé.'),
+        title: Text('Thoát trò chơi?'),
+        content: Text('Bạn có chắc muốn thoát không? Điểm số lượt chơi này sẽ không được lưu lại đâu nhé.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Chơi tiếp'),
+            child: Text('Chơi tiếp'),
           ),
           TextButton(
             onPressed: () {
@@ -392,7 +393,7 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
               Navigator.pop(context); // quit game screen
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Thoát'),
+            child: Text('Thoát'),
           ),
         ],
       ),
@@ -452,12 +453,12 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
       onKeyEvent: _handleKeyEvent,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text(
+          title: Text(
             'English Crossword 🇬🇧',
-            style: TextStyle(fontWeight: FontWeight.bold),
+            style: GoogleFonts.baloo2(fontWeight: FontWeight.bold),
           ),
           leading: IconButton(
-            icon: const Icon(Icons.close_rounded),
+            icon: Icon(Icons.close_rounded),
             onPressed: _showQuitConfirmation,
           ),
           actions: [
@@ -472,15 +473,15 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.timer_outlined, size: 14, color: AppColors.primary),
-                  const SizedBox(width: 4),
+                  Icon(Icons.timer_outlined, size: 14, color: AppColors.primary),
+                  SizedBox(width: 4),
                   SizedBox(
                     width: 50, // Fixed width for text area to prevent any shaking/shifting
                     child: Text(
                       _elapsedTimeString,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 13,
+                      style: GoogleFonts.baloo2(
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: AppColors.primary,
                         fontFeatures: [FontFeature.tabularFigures()],
@@ -559,15 +560,15 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_ios_rounded, color: AppColors.primary, size: 20),
+            icon: Icon(Icons.arrow_back_ios_rounded, color: AppColors.primary, size: 20),
             onPressed: () => _navigateClue(false),
           ),
           Expanded(
             child: Text(
               clueText,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
+              style: GoogleFonts.baloo2(
+                fontSize: 12,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
               ),
@@ -577,7 +578,7 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.primary, size: 20),
+            icon: Icon(Icons.arrow_forward_ios_rounded, color: AppColors.primary, size: 20),
             onPressed: () => _navigateClue(true),
           ),
         ],
@@ -714,8 +715,8 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                 left: 3,
                 child: Text(
                   '$wordStartIndex',
-                  style: const TextStyle(
-                    fontSize: 8,
+                  style: GoogleFonts.baloo2(
+                    fontSize: 6,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textSecondary,
                   ),
@@ -724,7 +725,7 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
             Center(
               child: Text(
                 cell.userLetter,
-                style: TextStyle(
+                style: GoogleFonts.baloo2(
                   fontSize: cellSize * 0.45,
                   fontWeight: FontWeight.bold,
                   color: textColor,
@@ -780,11 +781,11 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                           ),
                           alignment: Alignment.center,
                           child: isBackspace
-                              ? const Icon(Icons.backspace_outlined, color: AppColors.textPrimary, size: 18)
+                              ? Icon(Icons.backspace_outlined, color: AppColors.textPrimary, size: 18)
                               : Text(
                                   key,
-                                  style: const TextStyle(
-                                    fontSize: 16,
+                                  style: GoogleFonts.baloo2(
+                                    fontSize: 14,
                                     fontWeight: FontWeight.bold,
                                     color: AppColors.textPrimary,
                                   ),
@@ -819,33 +820,33 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                     color: Color(0xFFFFF9E6),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.emoji_events_rounded,
                     color: Colors.amber,
                     size: 80,
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
-              const Text(
+              SizedBox(height: 24),
+              Text(
                 'Xuất Sắc! 🎉',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 28,
+                style: GoogleFonts.baloo2(
+                  fontSize: 26,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 'Chúc mừng! Bạn đã giải thành công toàn bộ ô chữ Tiếng Anh trong $_elapsedTimeString!',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 16,
+                style: GoogleFonts.baloo2(
+                  fontSize: 14,
                   color: AppColors.textSecondary,
                 ),
               ),
-              const SizedBox(height: 32),
+              SizedBox(height: 32),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(3, (index) {
@@ -865,7 +866,7 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                   );
                 }),
               ),
-              const SizedBox(height: 40),
+              SizedBox(height: 40),
               Row(
                 children: [
                   Expanded(
@@ -877,20 +878,20 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                       ),
                       child: Column(
                         children: [
-                          const Text(
+                          Text(
                             'Thời gian',
-                            style: TextStyle(fontSize: 13, color: AppColors.primary),
+                            style: GoogleFonts.baloo2(fontSize: 11, color: AppColors.primary),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text(
                             _elapsedTimeString,
-                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primary),
+                            style: GoogleFonts.baloo2(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16),
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -900,14 +901,14 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                       ),
                       child: Column(
                         children: [
-                          const Text(
+                          Text(
                             'Điểm cộng',
-                            style: TextStyle(fontSize: 13, color: AppColors.success),
+                            style: GoogleFonts.baloo2(fontSize: 11, color: AppColors.success),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text(
                             '+$_score',
-                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.success),
+                            style: GoogleFonts.baloo2(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.success),
                           ),
                         ],
                       ),
@@ -915,7 +916,7 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                   ),
                 ],
               ),
-              const SizedBox(height: 48),
+              SizedBox(height: 48),
               Center(
                 child: SizedBox(
                   width: 220,
@@ -935,14 +936,14 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                       ),
                     ),
                     child: _isSavingScore
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                           )
-                        : const Text(
+                        : Text(
                             'Quay lại danh mục',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, fontSize: 14),
                           ),
                   ),
                 ),
@@ -996,9 +997,9 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                       alignment: Alignment.center,
                       child: Text(
                         'HÀNG NGANG (ACROSS)',
-                        style: TextStyle(
+                        style: GoogleFonts.baloo2(
                           fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                          fontSize: 11,
                           color: _activeClueTab == 0 ? AppColors.primary : AppColors.textSecondary,
                         ),
                       ),
@@ -1022,9 +1023,9 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                       alignment: Alignment.center,
                       child: Text(
                         'HÀNG DỌC (DOWN)',
-                        style: TextStyle(
+                        style: GoogleFonts.baloo2(
                           fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                          fontSize: 11,
                           color: _activeClueTab == 1 ? AppColors.primary : AppColors.textSecondary,
                         ),
                       ),
@@ -1033,7 +1034,7 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             // Scrollable Clue List
             Expanded(
               child: ListView.builder(
@@ -1076,26 +1077,26 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                             alignment: Alignment.center,
                             child: Text(
                               '$wordNum',
-                              style: TextStyle(
-                                fontSize: 13,
+                              style: GoogleFonts.baloo2(
+                                fontSize: 11,
                                 fontWeight: FontWeight.bold,
                                 color: isSelectedWord ? Colors.white : AppColors.textPrimary,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               w.clue,
-                              style: TextStyle(
-                                fontSize: 14,
+                              style: GoogleFonts.baloo2(
+                                fontSize: 12,
                                 fontWeight: isSelectedWord ? FontWeight.bold : FontWeight.normal,
                                 color: isSelectedWord ? AppColors.primary : AppColors.textPrimary,
                               ),
                             ),
                           ),
                           if (isSelectedWord)
-                            const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.primary),
+                          Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.primary),
                         ],
                       ),
                     ),
@@ -1111,56 +1112,89 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
 
   Widget _buildDifficultySelection() {
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FA), // Light bluish-white background like the image
       appBar: AppBar(
-        title: const Text(
-          'English Crossword 🇬🇧',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.black87),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'English Crossword',
+              style: GoogleFonts.baloo2(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: const Color(0xFF2C3E50),
+              ),
+            ),
+            SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.blueGrey.shade100,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(Icons.translate_rounded, size: 20, color: Colors.blueGrey),
+            ),
+          ],
         ),
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.translate_rounded,
-                size: 80,
-                color: AppColors.primary,
+              Center(
+                child: Image.asset(
+                  'ImageFolder/crossword.gif', 
+                  height: 120,
+                  errorBuilder: (context, error, stackTrace) => Icon(
+                    Icons.translate_rounded,
+                    size: 80,
+                    color: AppColors.primary,
+                  ),
+                ),
               ),
-              const SizedBox(height: 16),
-              const Text(
+              SizedBox(height: 24),
+              Text(
                 'Chọn Cấp Độ Ô Chữ',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                style: GoogleFonts.baloo2(
+                  fontSize: 22, 
+                  fontWeight: FontWeight.w600, 
+                  color: const Color(0xFF2C3E50),
+                ),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Giải các ô chữ tiếng Anh bằng cách điền từ tương ứng với gợi ý tiếng Việt nhé.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 40),
+              SizedBox(height: 32),
               _buildDifficultyButton(
-                title: 'Dễ (Easy)',
-                subtitle: 'Ô chữ 5 từ ngắn (7x7) - Thích hợp để làm quen từ vựng mới',
+                title: 'Khởi động',
+                subtitle: 'Làm quen nhẹ nhàng với 5 từ vựng.',
                 difficulty: CrosswordDifficulty.easy,
-                color: Colors.green,
+                backgroundColor: const Color(0xFFE4F3E4),
+                iconColor: const Color(0xFF4CAF50),
+                stars: 1,
               ),
               const SizedBox(height: 16),
               _buildDifficultyButton(
-                title: 'Trung Bình (Medium)',
-                subtitle: 'Ô chữ 10 từ vừa (11x11) - Rèn luyện ghi nhớ tốt hơn',
+                title: 'Tập trung',
+                subtitle: 'Tăng cường thử thách với 9 từ vựng.',
                 difficulty: CrosswordDifficulty.medium,
-                color: Colors.orange,
+                backgroundColor: const Color(0xFFFDEBCE),
+                iconColor: const Color(0xFFF59E0B),
+                stars: 2,
               ),
               const SizedBox(height: 16),
               _buildDifficultyButton(
-                title: 'Khó (Hard)',
-                subtitle: 'Ô chữ 20 từ dài (14x14) - Thử thách trí tuệ siêu việt',
+                title: 'Thử thách',
+                subtitle: 'Dành cho người chơi nâng cao với 14 từ vựng.',
                 difficulty: CrosswordDifficulty.hard,
-                color: Colors.red,
+                backgroundColor: const Color(0xFFFFE5E5),
+                iconColor: const Color(0xFFEF4444),
+                stars: 3,
               ),
             ],
           ),
@@ -1173,16 +1207,17 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
     required String title,
     required String subtitle,
     required CrosswordDifficulty difficulty,
-    required Color color,
+    required Color backgroundColor,
+    required Color iconColor,
+    required int stars,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 8,
             offset: const Offset(0, 4),
           )
@@ -1194,32 +1229,62 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
           onTap: () => _selectDifficulty(difficulty),
           borderRadius: BorderRadius.circular(20),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: color.withValues(alpha: 0.1),
-                  child: Icon(Icons.star_rounded, color: color, size: 20),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: iconColor,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: iconColor.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                        style: GoogleFonts.baloo2(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF1E293B), // Dark text
+                        ),
                       ),
-                      const SizedBox(height: 4),
                       Text(
                         subtitle,
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        style: GoogleFonts.baloo2(
+                          fontSize: 10,
+                          color: const Color(0xFF334155),
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right_rounded, color: AppColors.border),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(
+                    3,
+                    (index) => Padding(
+                      padding: const EdgeInsets.only(left: 2),
+                      child: Icon(
+                        Icons.star_rounded,
+                        color: index < stars ? iconColor.withValues(alpha: 0.6) : Colors.transparent,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

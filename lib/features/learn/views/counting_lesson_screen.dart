@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class CountingLessonScreen extends StatefulWidget {
   const CountingLessonScreen({super.key});
@@ -84,12 +85,12 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Đếm số thông minh',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: GoogleFonts.baloo2(fontWeight: FontWeight.bold),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          icon: Icon(Icons.arrow_back_ios_new_rounded),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -102,19 +103,19 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
               // Progress indicator showing current question number
               Row(
                 children: [
-                  const Icon(Icons.psychology_rounded, color: AppColors.primary, size: 24),
-                  const SizedBox(width: 8),
+                  Icon(Icons.psychology_rounded, color: AppColors.primary, size: 24),
+                  SizedBox(width: 8),
                   Text(
                     'Câu số $_currentQuestion',
-                    style: const TextStyle(
-                      fontSize: 18,
+                    style: GoogleFonts.baloo2(
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
 
               // Question Prompt Card
               Expanded(
@@ -131,13 +132,13 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
                       Text(
                         'Bé đếm xem có bao nhiêu $_currentEmoji?',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 35,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 33,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20),
                       // Emojis Display Grid
                       Expanded(
                         child: Center(
@@ -162,7 +163,7 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
                                   alignment: Alignment.center,
                                   child: Text(
                                     _currentEmoji,
-                                    style: TextStyle(
+                                    style: GoogleFonts.baloo2(
                                       fontSize: _correctCount > 6 ? 32 : 40,
                                     ),
                                   ),
@@ -176,7 +177,7 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
 
               // Answer choices Grid (2x2)
               Column(
@@ -186,18 +187,18 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
                     child: Row(
                       children: [
                         _buildChoiceButton(0),
-                        const SizedBox(width: 16),
+                        SizedBox(width: 16),
                         _buildChoiceButton(1),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   SizedBox(
                     height: 68,
                     child: Row(
                       children: [
                         _buildChoiceButton(2),
-                        const SizedBox(width: 16),
+                        SizedBox(width: 16),
                         _buildChoiceButton(3),
                       ],
                     ),
@@ -256,8 +257,8 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
           alignment: Alignment.center,
           child: Text(
             choiceValue.toString(),
-            style: TextStyle(
-              fontSize: 32,
+            style: GoogleFonts.baloo2(
+              fontSize: 30,
               fontWeight: FontWeight.bold,
               color: textColor,
             ),
