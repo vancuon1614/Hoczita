@@ -141,6 +141,15 @@ class EnglishCrosswordGenerator {
                 if (newStartR + wordStr.length > gridSize) continue;
               }
 
+              bool sharesStartCell = false;
+              for (final pw in placedWords) {
+                if (pw.row == newStartR && pw.col == newStartC) {
+                  sharesStartCell = true;
+                  break;
+                }
+              }
+              if (sharesStartCell) continue;
+
               // Check layout constraints & adjacency rules
               if (_canPlaceWord(
                 grid: grid,

@@ -481,16 +481,14 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
   Widget _buildGridContainer() {
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     return Container(
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
       ),
       clipBehavior: Clip.antiAlias,
       child: InteractiveViewer(
         maxScale: 2.5,
         minScale: 0.8,
+        boundaryMargin: const EdgeInsets.all(80),
         child: Center(
           child: Padding(
             padding: const EdgeInsets.all(16),

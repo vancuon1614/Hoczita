@@ -509,7 +509,7 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                 Expanded(
                   flex: 55,
                   child: Container(
-                    color: Colors.grey[50],
+                    color: Colors.white,
                     child: ClipRect(
                       child: InteractiveViewer(
                         minScale: 0.5,
@@ -595,10 +595,8 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
 
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border, width: 1.5),
       ),
       child: FittedBox(
         fit: isLandscape ? BoxFit.contain : BoxFit.fitWidth,
@@ -716,7 +714,7 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                 child: Text(
                   '$wordStartIndex',
                   style: GoogleFonts.baloo2(
-                    fontSize: 6,
+                    fontSize: 8,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textSecondary,
                   ),

@@ -202,9 +202,10 @@ class _GameTabState extends ConsumerState<GameTab> {
               ),
             ),
           ),
+          SizedBox(height: 20),
           _buildGameCard(
             context: context,
-            title: 'Ô Chữ Tiếng Anh',
+            title: 'English Crossword',
             subtitle: 'Giải ô chữ bằng từ vựng Tiếng Anh theo các gợi ý tiếng Việt sinh động.',
             icon: Icons.grid_on_rounded,
             color: Colors.pink,
@@ -218,7 +219,7 @@ class _GameTabState extends ConsumerState<GameTab> {
           SizedBox(height: 20),
           _buildGameCard(
             context: context,
-            title: 'Sắp Xếp Từ Vựng',
+            title: 'Word Scramble',
             subtitle: 'Sắp xếp các chữ cái bị xáo trộn thành từ tiếng Anh hoàn chỉnh trong 10 giây.',
             icon: Icons.shuffle_rounded,
             color: Colors.deepOrange,

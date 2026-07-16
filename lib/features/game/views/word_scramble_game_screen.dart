@@ -958,20 +958,22 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
           children: [
             if (isHardMode) ...[
               // --- HARD MODE VIEW ---
-              Text(
-                'Nội dung đã xếp:',
-                style: GoogleFonts.baloo2(fontSize: 10, color: AppColors.textSecondary),
-              ),
-              SizedBox(height: 4),
-              Text(
-                res.userAnswer.replaceAll(' / ', ' ').trim(), // clean user sentence
-                style: GoogleFonts.baloo2(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black, // Black color for user answer
+              if (!res.isCorrect) ...[
+                Text(
+                  'Nội dung đã xếp:',
+                  style: GoogleFonts.baloo2(fontSize: 10, color: AppColors.textSecondary),
                 ),
-              ),
-              SizedBox(height: 16),
+                SizedBox(height: 4),
+                Text(
+                  res.userAnswer.replaceAll(' / ', ' ').trim(), // clean user sentence
+                  style: GoogleFonts.baloo2(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black, // Black color for user answer
+                  ),
+                ),
+                SizedBox(height: 16),
+              ],
               Text(
                 'Đáp án chính xác:',
                 style: GoogleFonts.baloo2(fontSize: 10, color: AppColors.textSecondary),
@@ -996,15 +998,17 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
                 style: GoogleFonts.baloo2(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
               ),
               SizedBox(height: 16),
-              Text(
-                'Nội dung đã chọn:',
-                style: GoogleFonts.baloo2(fontSize: 10, color: AppColors.textSecondary),
-              ),
-              Text(
-                res.userAnswer,
-                style: GoogleFonts.baloo2(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
-              ),
-              SizedBox(height: 16),
+              if (!res.isCorrect) ...[
+                Text(
+                  'Nội dung đã chọn:',
+                  style: GoogleFonts.baloo2(fontSize: 10, color: AppColors.textSecondary),
+                ),
+                Text(
+                  res.userAnswer,
+                  style: GoogleFonts.baloo2(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
+                ),
+                SizedBox(height: 16),
+              ],
               Text(
                 'Đáp án chính xác:',
                 style: GoogleFonts.baloo2(fontSize: 10, color: AppColors.textSecondary),
