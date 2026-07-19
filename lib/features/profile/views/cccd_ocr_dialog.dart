@@ -610,7 +610,7 @@ class _CccdOcrDialogState extends State<CccdOcrDialog> {
             ),
             SizedBox(height: 8),
             Text(
-              'Bé vui lòng tải ảnh thẻ Căn cước công dân rõ nét để hệ thống tự động nhận dạng thông tin.',
+              'Vui lòng tải ảnh thẻ Căn cước công dân rõ nét để hệ thống tự động nhận dạng thông tin.',
               style: GoogleFonts.baloo2(fontSize: 11, color: AppColors.textSecondary),
             ),
             SizedBox(height: 24),

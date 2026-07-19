@@ -141,7 +141,7 @@ class _MathOpsLessonScreenState extends State<MathOpsLessonScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Bé hãy giải phép tính sau nhé:',
+                        'Hãy giải phép tính sau nhé:',
                         style: GoogleFonts.baloo2(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,

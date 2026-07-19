@@ -10,6 +10,7 @@ import 'memory_match_game_screen.dart';
 import 'math_crossword_game_screen.dart';
 import 'english_crossword_game_screen.dart';
 import 'word_scramble_game_screen.dart';
+import 'flashcard_study_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 
@@ -159,10 +160,16 @@ class _GameTabState extends ConsumerState<GameTab> {
   Widget _buildLanguageGames(BuildContext context) {
     return RefreshIndicator(
       onRefresh: _loadGameScores,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
-        children: [
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight - 48),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
           _buildGameCard(
             context: context,
             title: 'Flashcard Speed Run',
@@ -173,14 +180,14 @@ class _GameTabState extends ConsumerState<GameTab> {
             animationType: GameAnimationType.bounce,
             imagePath: 'ImageFolder/flashcard.gif',
             onTap: () => _playGame(
-              MultipleChoiceGameScreen(
+              FlashcardStudyScreen(
                 gameName: 'flashcard_speed',
                 gameTitle: 'Flashcard Speed Run',
                 questions: GameContent.getFlashcardQuestions(),
               ),
             ),
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 16),
           _buildGameCard(
             context: context,
             title: 'Memory Match',
@@ -194,11 +201,11 @@ class _GameTabState extends ConsumerState<GameTab> {
               const MemoryMatchGameScreen(),
             ),
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 16),
           _buildGameCard(
             context: context,
             title: 'Picture Guess',
-            subtitle: 'Nhìn hình ảnh minh họa đoán nhanh từ vựng tương ứng trong 6 giây.',
+            subtitle: 'Nhìn hình ảnh minh họa đoán nhanh từ vựng tương ứng trong 10 giây.',
             icon: Icons.image_search_rounded,
             color: Colors.teal,
             stars: _highestStars['picture_guess'] ?? 0,
@@ -209,10 +216,11 @@ class _GameTabState extends ConsumerState<GameTab> {
                 gameName: 'picture_guess',
                 gameTitle: 'Picture Guess',
                 questions: GameContent.getPictureGuessQuestions(),
+                timeLimitInSeconds: 10,
               ),
             ),
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 16),
           _buildGameCard(
             context: context,
             title: 'English Crossword',
@@ -226,7 +234,7 @@ class _GameTabState extends ConsumerState<GameTab> {
               const EnglishCrosswordGameScreen(),
             ),
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 16),
           _buildGameCard(
             context: context,
             title: 'Word Scramble',
@@ -240,7 +248,11 @@ class _GameTabState extends ConsumerState<GameTab> {
               const WordScrambleGameScreen(),
             ),
           ),
-        ],
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -248,10 +260,16 @@ class _GameTabState extends ConsumerState<GameTab> {
   Widget _buildMathGames(BuildContext context) {
     return RefreshIndicator(
       onRefresh: _loadGameScores,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
-        children: [
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight - 48),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
           _buildGameCard(
             context: context,
             title: 'Đếm Số Nhanh',
@@ -269,10 +287,10 @@ class _GameTabState extends ConsumerState<GameTab> {
               ),
             ),
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 16),
           _buildGameCard(
             context: context,
-            title: 'Thêm Bớt Vui Nhộn',
+            title: 'Tính Nhanh',
             subtitle: 'Điền kết quả đúng cho phép tính cộng trừ trong phạm vi 100.',
             icon: Icons.train_rounded,
             color: Colors.blue,
@@ -282,12 +300,12 @@ class _GameTabState extends ConsumerState<GameTab> {
             onTap: () => _playGame(
               MultipleChoiceGameScreen(
                 gameName: 'math_ops',
-                gameTitle: 'Tàu Hỏa Thêm Bớt',
+                gameTitle: 'Tính Nhanh',
                 questions: GameContent.getMathOpsQuestions(),
               ),
             ),
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 16),
           _buildGameCard(
             context: context,
             title: 'So Sánh Trái Phải',
@@ -305,7 +323,7 @@ class _GameTabState extends ConsumerState<GameTab> {
               ),
             ),
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 16),
           _buildGameCard(
             context: context,
             title: 'Ô Chữ Toán Học',
@@ -319,7 +337,11 @@ class _GameTabState extends ConsumerState<GameTab> {
               const MathCrosswordGameScreen(),
             ),
           ),
-        ],
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -443,7 +465,7 @@ class _GameTabState extends ConsumerState<GameTab> {
                           ),
                         ],
                       ),
-                      SizedBox(height: 6),
+                      const SizedBox(height: 6),
                       Text(
                         subtitle,
                         style: GoogleFonts.baloo2(

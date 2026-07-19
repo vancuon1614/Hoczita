@@ -15,16 +15,16 @@ class GameContent {
   // The 120 vocabulary items divided into 12 topics (10 items each)
   static const List<VocabItem> allVocab = [
     // 1. animals
-    VocabItem('Dog', 'Con chó', 'animals'),
-    VocabItem('Cat', 'Con mèo', 'animals'),
-    VocabItem('Lion', 'Sư tử', 'animals'),
-    VocabItem('Elephant', 'Con voi', 'animals'),
-    VocabItem('Monkey', 'Con khỉ', 'animals'),
-    VocabItem('Rabbit', 'Con thỏ', 'animals'),
-    VocabItem('Bear', 'Con gấu', 'animals'),
-    VocabItem('Tiger', 'Con hổ', 'animals'),
-    VocabItem('Sheep', 'Con cừu', 'animals'),
-    VocabItem('Pig', 'Con lợn', 'animals'),
+    VocabItem('Dog', 'Con chó', 'animal'),
+    VocabItem('Cat', 'Con mèo', 'animal'),
+    VocabItem('Lion', 'Sư tử', 'animal'),
+    VocabItem('Elephant', 'Con voi', 'animal'),
+    VocabItem('Monkey', 'Con khỉ', 'animal'),
+    VocabItem('Rabbit', 'Con thỏ', 'animal'),
+    VocabItem('Bear', 'Con gấu', 'animal'),
+    VocabItem('Tiger', 'Con hổ', 'animal'),
+    VocabItem('Sheep', 'Con cừu', 'animal'),
+    VocabItem('Pig', 'Con lợn', 'animal'),
 
     // 2. fruits
     VocabItem('Apple', 'Quả táo', 'fruits'),
@@ -286,7 +286,7 @@ class GameContent {
 
       questions.add(
         GameQuestion(
-          prompt: 'Bé hãy tính nhanh kết quả của phép tính:',
+          prompt: 'Hãy tính nhanh kết quả của phép tính:',
           visualAsset: '$num1 $op $num2 = ?',
           choices: choices,
           correctAnswer: correct,

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/eduword_model.dart';
 
@@ -31,7 +32,7 @@ class EduwordService {
       }
       return [];
     } catch (e) {
-      print('Error fetching eduwords: $e');
+      debugPrint('Error fetching eduwords: $e');
       return [];
     }
   }

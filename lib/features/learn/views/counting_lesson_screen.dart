@@ -130,7 +130,7 @@ class _CountingLessonScreenState extends State<CountingLessonScreen> {
                   child: Column(
                     children: [
                       Text(
-                        'Bé đếm xem có bao nhiêu $_currentEmoji?',
+                        'Bạn đếm xem có bao nhiêu $_currentEmoji?',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.baloo2(
                           fontSize: 33,

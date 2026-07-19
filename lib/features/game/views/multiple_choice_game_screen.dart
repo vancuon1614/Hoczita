@@ -10,12 +10,14 @@ class MultipleChoiceGameScreen extends StatefulWidget {
   final String gameName;
   final String gameTitle;
   final List<GameQuestion> questions;
+  final int timeLimitInSeconds;
 
   const MultipleChoiceGameScreen({
     super.key,
     required this.gameName,
     required this.gameTitle,
     required this.questions,
+    this.timeLimitInSeconds = 6,
   });
 
   @override
@@ -37,8 +39,6 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
   bool _isGameOver = false;
   bool _isSavingScore = false;
   late List<String?> _userAnswers;
-  bool _isPrecached = false;
-  bool _isCurrentImageReady = true;
 
   @override
   void initState() {
@@ -47,10 +47,10 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
     // Initialize user answers list
     _userAnswers = List.filled(widget.questions.length, null);
     
-    // Initialize 6-second timer controller
+    // Initialize timer controller
     _timerController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 6),
+      duration: Duration(seconds: widget.timeLimitInSeconds),
     );
 
     _timerController.addListener(() {
@@ -59,61 +59,13 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
 
     _timerController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
-        // Timeout (user did not answer in 6 seconds)
+        // Timeout (user did not answer in timeLimitInSeconds)
         _handleAnswer(-1, '');
       }
     });
 
-    if (widget.gameName == 'picture_guess') {
-      _isPrecached = false;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _precacheImages();
-      });
-    } else {
-      _isPrecached = true;
-      _gameStopwatch.start();
-      _startQuestion();
-    }
-  }
-
-  Future<void> _precacheImages() async {
-    try {
-      // Chỉ tải trước 2 ảnh đầu tiên để vào game lập tức (< 0.3 giây)
-      for (int i = 0; i < 2 && i < widget.questions.length; i++) {
-        final q = widget.questions[i];
-        if (q.visualAsset != null && q.visualAsset!.startsWith('http')) {
-          await precacheImage(
-            CachedNetworkImageProvider(q.visualAsset!),
-            context,
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('Error precaching initial images: $e');
-    }
-    if (mounted) {
-      setState(() {
-        _isPrecached = true;
-      });
-      _gameStopwatch.start();
-      _startQuestion();
-    }
-  }
-
-  void _precacheNextQuestion() {
-    // Tải trước gối đầu câu tiếp theo (cách 2 câu) trong nền
-    final nextIndex = _currentQuestionIndex + 2;
-    if (nextIndex < widget.questions.length) {
-      final nextQuestion = widget.questions[nextIndex];
-      if (nextQuestion.visualAsset != null && nextQuestion.visualAsset!.startsWith('http')) {
-        precacheImage(
-          CachedNetworkImageProvider(nextQuestion.visualAsset!),
-          context,
-        ).catchError((e) {
-          debugPrint('Background prefetch failed for index $nextIndex: $e');
-        });
-      }
-    }
+    _gameStopwatch.start();
+    _startQuestion();
   }
 
   @override
@@ -122,35 +74,13 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
     super.dispose();
   }
 
-  void _startQuestion() async {
+  void _startQuestion() {
     setState(() {
       _selectedChoiceIndex = null;
       _hasAnswered = false;
-      _isCurrentImageReady = false;
     });
 
-    // Kích hoạt tải trước gối đầu trong nền
-    _precacheNextQuestion();
-
-    final currentQuestion = widget.questions[_currentQuestionIndex];
-    if (currentQuestion.visualAsset != null && currentQuestion.visualAsset!.startsWith('http')) {
-      // Đợi ảnh của câu hiện tại tải xong (sẽ phản hồi ngay lập tức nếu đã được tải trước gối đầu thành công)
-      try {
-        await precacheImage(
-          CachedNetworkImageProvider(currentQuestion.visualAsset!),
-          context,
-        );
-      } catch (e) {
-        debugPrint('Failed to cache current question image: $e');
-      }
-    }
-
-    if (mounted) {
-      setState(() {
-        _isCurrentImageReady = true;
-      });
-      _timerController.forward(from: 0.0);
-    }
+    _timerController.forward(from: 0.0);
   }
 
   void _handleAnswer(int choiceIndex, String answerValue) {
@@ -215,14 +145,12 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
       _isSavingScore = true;
     });
 
-    final totalQuestions = widget.questions.length;
-    final accuracyPct = totalQuestions > 0 ? _correctAnswersCount / totalQuestions : 0.0;
 
-    if (accuracyPct == 1.0) {
+    if (_correctAnswersCount >= 10) {
       _stars = 3;
-    } else if (accuracyPct >= 0.7) {
+    } else if (_correctAnswersCount >= 7) {
       _stars = 2;
-    } else if (accuracyPct >= 0.4) {
+    } else if (_correctAnswersCount >= 4) {
       _stars = 1;
     } else {
       _stars = 0;
@@ -250,49 +178,6 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
 
   @override
   Widget build(BuildContext context) {
-    if (!_isPrecached) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(
-            widget.gameTitle,
-            style: GoogleFonts.baloo2(fontWeight: FontWeight.bold),
-          ),
-          leading: IconButton(
-            icon: Icon(Icons.close_rounded),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                strokeWidth: 4,
-              ),
-              SizedBox(height: 24),
-              Text(
-                'Đang chuẩn bị hình ảnh câu hỏi...',
-                style: GoogleFonts.baloo2(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Hình ảnh đang được tải trước để chơi mượt mà nhất',
-                style: GoogleFonts.baloo2(
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
     if (_isGameOver) {
       return _buildSummaryView();
     }
@@ -309,6 +194,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
 
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
         title: Text(
           widget.gameTitle,
           style: GoogleFonts.baloo2(fontWeight: FontWeight.bold),
@@ -347,7 +233,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                         strokeWidth: 6,
                       ),
                       Text(
-                        (6 - (_timerController.value * 6).floor()).toString(),
+                        (widget.timeLimitInSeconds - (_timerController.value * widget.timeLimitInSeconds).floor()).toString(),
                         style: GoogleFonts.baloo2(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -389,15 +275,32 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                       ),
                     ],
                   ),
-                  child: Center(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _buildQuestionPrompt(currentQuestion),
-                        ],
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: Center(
+                          child: SingleChildScrollView(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  currentQuestion.prompt,
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.baloo2(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimary,
+                                    height: 1.3,
+                                  ),
+                                ),
+                                SizedBox(height: 24),
+                                _buildQuestionPrompt(currentQuestion),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
               ),
@@ -467,16 +370,6 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            question.prompt,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.baloo2(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          SizedBox(height: 16),
           Row(
             children: [
               // Left panel
@@ -512,24 +405,13 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
       );
     }
 
-    // Default question type (image/emoji + prompt text)
+    // Default question type (image/emoji)
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         if (question.visualAsset != null) ...[
           _buildVisualAsset(question.visualAsset!, height: 140.0, fontSize: 52),
-          SizedBox(height: 20),
         ],
-        Text(
-          question.prompt,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.baloo2(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
-            height: 1.3,
-          ),
-        ),
       ],
     );
   }
@@ -542,17 +424,26 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
           Expanded(
             child: Row(
               children: [
-                _buildChoiceButton(0, question, choices[0]),
+                Expanded(child: _buildChoiceButton(0, question, choices[0])),
                 SizedBox(width: 16),
-                _buildChoiceButton(1, question, choices[1]),
+                Expanded(child: _buildChoiceButton(1, question, choices[1])),
               ],
             ),
           ),
           SizedBox(height: 16),
           Expanded(
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildChoiceButton(2, question, choices[2]),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Spacer(),
+                      Expanded(flex: 2, child: _buildChoiceButton(2, question, choices[2])),
+                      Spacer(),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -567,9 +458,9 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
           Expanded(
             child: Row(
               children: [
-                _buildChoiceButton(0, question),
+                Expanded(child: _buildChoiceButton(0, question)),
                 SizedBox(width: 16),
-                _buildChoiceButton(1, question),
+                Expanded(child: _buildChoiceButton(1, question)),
               ],
             ),
           ),
@@ -577,9 +468,9 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
           Expanded(
             child: Row(
               children: [
-                _buildChoiceButton(2, question),
+                Expanded(child: _buildChoiceButton(2, question)),
                 SizedBox(width: 16),
-                _buildChoiceButton(3, question),
+                Expanded(child: _buildChoiceButton(3, question)),
               ],
             ),
           ),
@@ -591,17 +482,26 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
           Expanded(
             child: Row(
               children: [
-                _buildChoiceButton(0, question),
+                Expanded(child: _buildChoiceButton(0, question)),
                 SizedBox(width: 16),
-                _buildChoiceButton(1, question),
+                Expanded(child: _buildChoiceButton(1, question)),
               ],
             ),
           ),
           SizedBox(height: 16),
           Expanded(
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildChoiceButton(2, question),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Spacer(),
+                      Expanded(flex: 2, child: _buildChoiceButton(2, question)),
+                      Spacer(),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -610,9 +510,9 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
     } else if (choicesCount == 2) {
       return Row(
         children: [
-          _buildChoiceButton(0, question),
+          Expanded(child: _buildChoiceButton(0, question)),
           SizedBox(width: 16),
-          _buildChoiceButton(1, question),
+          Expanded(child: _buildChoiceButton(1, question)),
         ],
       );
     } else {
@@ -620,10 +520,13 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
         children: List.generate(
           choicesCount,
           (index) => Expanded(
-            child: Row(
-              children: [
-                _buildChoiceButton(index, question),
-              ],
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: Row(
+                children: [
+                  Expanded(child: _buildChoiceButton(index, question)),
+                ],
+              ),
             ),
           ),
         ),
@@ -644,34 +547,32 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
       textColor = AppColors.primary;
     }
 
-    return Expanded(
-      child: GestureDetector(
-        onTap: (_hasAnswered || !_isCurrentImageReady) ? null : () => _handleAnswer(index, choiceValue),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          decoration: BoxDecoration(
-            color: buttonColor,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: borderColor, width: 2.5),
-            boxShadow: _selectedChoiceIndex == index
-                ? [
-                    BoxShadow(
-                      color: borderColor.withValues(alpha: 0.15),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    )
-                  ]
-                : null,
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            choiceValue,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.baloo2(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: textColor,
-            ),
+    return GestureDetector(
+      onTap: _hasAnswered ? null : () => _handleAnswer(index, choiceValue),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          color: buttonColor,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: borderColor, width: 2.5),
+          boxShadow: _selectedChoiceIndex == index
+              ? [
+                  BoxShadow(
+                    color: borderColor.withValues(alpha: 0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  )
+                ]
+              : null,
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          choiceValue,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.baloo2(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: textColor,
           ),
         ),
       ),
@@ -711,8 +612,9 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
 
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -734,7 +636,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
               SizedBox(height: 12),
               
               Text(
-                stars > 0 ? 'Tuyệt Vời! 🎉' : 'Cố Gắng Lên Bé Ơi!',
+                stars > 0 ? 'Tuyệt Vời! 🎉' : 'Lần Sau Cố Gắng Hơn Nhé!',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.baloo2(
                   fontSize: 20,
@@ -745,7 +647,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
               SizedBox(height: 4),
               
               Text(
-                'Bé đã trả lời đúng $_correctAnswersCount/${widget.questions.length} câu đố trong $_elapsedTimeString.',
+                'Bạn đã trả lời đúng $_correctAnswersCount/${widget.questions.length} câu đố trong $_elapsedTimeString.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.baloo2(
                   fontSize: 12,
@@ -875,6 +777,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
               ),
             ],
           ),
+        ),
         ),
       ),
     );
@@ -1103,7 +1006,7 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                         Icon(Icons.timer_outlined, color: Colors.orange, size: 16),
                         SizedBox(width: 8),
                         Text(
-                          'Bé đã không chọn đáp án (Hết giờ ⏳)',
+                          'Đã hết thời gian chọn đáp án! ⏳',
                           style: GoogleFonts.baloo2(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,

@@ -267,33 +267,35 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
                 'Lật ghép các cặp từ tiếng Anh tương ứng với nghĩa tiếng Việt:',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.baloo2(
-                  fontSize: 12,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                   color: AppColors.textSecondary,
                 ),
               ),
-              SizedBox(height: 24),
+              SizedBox(height: 32),
               // 4x4 Grid
-              Expanded(
-                child: GridView.builder(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 4,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 0.8, // Rectangular card feel
-                  ),
-                  itemCount: 16,
-                  itemBuilder: (context, index) {
-                    return _buildCardItem(index);
-                  },
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 0.8, // Rectangular card feel
                 ),
+                itemCount: 16,
+                itemBuilder: (context, index) {
+                  return _buildCardItem(index);
+                },
               ),
             ],
           ),
@@ -428,7 +430,7 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
               SizedBox(height: 8),
               
               Text(
-                'Bé đã ghép hoàn tất 8 cặp từ trong $_elapsedTimeString.',
+                'Bạn đã hoàn thành ghép 8 cặp từ trong $_elapsedTimeString.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.baloo2(
                   fontSize: 14,

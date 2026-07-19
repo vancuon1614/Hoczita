@@ -308,7 +308,7 @@ class _AdvisingBookingScreenState extends State<AdvisingBookingScreen> {
                 _buildFieldTitle('Họ và Tên'),
                 TextFormField(
                   controller: _fullNameController,
-                  decoration: _buildInputDecoration('Nhập họ tên của bé / phụ huynh'),
+                  decoration: _buildInputDecoration('Nhập họ tên của học sinh / phụ huynh'),
                   validator: (val) {
                     if (val == null || val.trim().isEmpty) return 'Vui lòng nhập họ tên!';
                     return null;

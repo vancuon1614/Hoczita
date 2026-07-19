@@ -1001,7 +1001,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
                 ),
               ),
               SizedBox(height: 24),
-              
+              const Spacer(),
               Text(
                 'Giải Ô Chữ Hoàn Tất! 🎉',
                 textAlign: TextAlign.center,
