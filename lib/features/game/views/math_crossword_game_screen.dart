@@ -91,6 +91,29 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
   String _elapsedTimeString = '0.0';
   int _score = 0;
   int _stars = 0;
+  
+  int _easyStars = 0;
+  int _mediumStars = 0;
+  int _hardStars = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHighestStars();
+  }
+
+  Future<void> _loadHighestStars() async {
+    final easy = await SupabaseService.instance.getHighestStarsForGame('math_crossword_easy');
+    final medium = await SupabaseService.instance.getHighestStarsForGame('math_crossword_medium');
+    final hard = await SupabaseService.instance.getHighestStarsForGame('math_crossword_hard');
+    if (mounted) {
+      setState(() {
+        _easyStars = easy;
+        _mediumStars = medium;
+        _hardStars = hard;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -327,11 +350,13 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
     });
 
     try {
+      final diffName = _selectedDifficulty == 5 ? 'easy' : (_selectedDifficulty == 10 ? 'medium' : 'hard');
       await SupabaseService.instance.saveScore(
-        gameName: 'math_crossword',
+        gameName: 'math_crossword_$diffName',
         stars: _stars,
         score: _score,
       );
+      _loadHighestStars();
     } catch (e) {
       debugPrint('Error saving score: $e');
     } finally {
@@ -395,26 +420,25 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
         ),
         actions: [
           Container(
-            width: 76, // Shrunk to fit the smaller size nicely
-            margin: const EdgeInsets.only(right: 12, top: 10, bottom: 10), // Adjusted margin to center vertically
-            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+            width: 76,
+            margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
             decoration: BoxDecoration(
               color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                SizedBox(width: 2),
-                Icon(Icons.timer_outlined, size: 12, color: AppColors.primary), // Shrunk icon size
-                SizedBox(width: 4), // Shrunk spacing
+                SizedBox(width: 4),
+                Icon(Icons.timer_outlined, size: 14, color: AppColors.primary),
                 Expanded(
                   child: Text(
                     _elapsedTimeString,
-                    textAlign: TextAlign.left,
+                    textAlign: TextAlign.center,
                     style: GoogleFonts.baloo2(
-                      fontSize: 9, // Shrunk font size
+                      fontSize: 11,
                       fontWeight: FontWeight.bold,
                       color: AppColors.primary,
                       fontFeatures: [FontFeature.tabularFigures()],
@@ -677,7 +701,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
                 difficulty: 5,
                 backgroundColor: const Color(0xFFE4F3E4),
                 iconColor: const Color(0xFF4CAF50),
-                stars: 1,
+                stars: _easyStars,
               ),
               SizedBox(height: 16),
               _buildDifficultyButton(
@@ -686,7 +710,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
                 difficulty: 10,
                 backgroundColor: const Color(0xFFFDEBCE),
                 iconColor: const Color(0xFFF59E0B),
-                stars: 2,
+                stars: _mediumStars,
               ),
               SizedBox(height: 16),
               _buildDifficultyButton(
@@ -695,7 +719,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
                 difficulty: 20,
                 backgroundColor: const Color(0xFFFFE5E5),
                 iconColor: const Color(0xFFEF4444),
-                stars: 3,
+                stars: _hardStars,
               ),
             ],
           ),

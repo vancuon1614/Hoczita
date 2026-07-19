@@ -49,28 +49,38 @@ class _GameTabState extends ConsumerState<GameTab> {
 
     try {
       final scores = await _db.getScores();
-      final Map<String, int> starsMap = {
-        'flashcard_speed': 0,
-        'memory_match': 0,
-        'picture_guess': 0,
-        'counting': 0,
-        'math_ops': 0,
-        'comparison': 0,
-        'math_crossword': 0,
-        'english_crossword': 0,
-        'word_scramble': 0,
-      };
+      final Map<String, int> tempStarsMap = {};
 
       for (final scoreEntry in scores) {
         final String? gameName = scoreEntry['game_name'];
         final int? stars = scoreEntry['stars'];
         if (gameName != null && stars != null) {
-          final currentMax = starsMap[gameName] ?? 0;
+          final currentMax = tempStarsMap[gameName] ?? 0;
           if (stars > currentMax) {
-            starsMap[gameName] = stars;
+            tempStarsMap[gameName] = stars;
           }
         }
       }
+
+      int getModeStars(String baseName) {
+        int starsCount = 0;
+        if ((tempStarsMap['${baseName}_easy'] ?? 0) == 3) starsCount++;
+        if ((tempStarsMap['${baseName}_medium'] ?? 0) == 3) starsCount++;
+        if ((tempStarsMap['${baseName}_hard'] ?? 0) == 3) starsCount++;
+        return starsCount;
+      }
+
+      final Map<String, int> starsMap = {
+        'flashcard_speed': tempStarsMap['flashcard_speed'] ?? 0,
+        'memory_match': tempStarsMap['memory_match'] ?? 0,
+        'picture_guess': tempStarsMap['picture_guess'] ?? 0,
+        'counting': tempStarsMap['counting'] ?? 0,
+        'math_ops': tempStarsMap['math_ops'] ?? 0,
+        'comparison': tempStarsMap['comparison'] ?? 0,
+        'math_crossword': getModeStars('math_crossword'),
+        'english_crossword': getModeStars('english_crossword'),
+        'word_scramble': getModeStars('word_scramble'),
+      };
 
       if (mounted) {
         setState(() {

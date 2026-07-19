@@ -235,20 +235,20 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
         ),
          actions: [
           Container(
-            width: 90, // Fixed width to prevent shifting layout
-            margin: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
-            padding: const EdgeInsets.symmetric(vertical: 6),
+            width: 76,
+            margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
             decoration: BoxDecoration(
               color: AppColors.primaryLight,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(Icons.timer_outlined, size: 14, color: AppColors.primary),
                 SizedBox(width: 4),
-                SizedBox(
-                  width: 50, // Fixed width for text area to prevent any shaking/shifting
+                Icon(Icons.timer_outlined, size: 14, color: AppColors.primary),
+                Expanded(
                   child: Text(
                     _elapsedTimeString,
                     textAlign: TextAlign.center,

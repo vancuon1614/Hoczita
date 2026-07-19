@@ -147,6 +147,35 @@ class SupabaseService {
     }
   }
 
+  Future<int> getHighestStarsForGame(String gameName) async {
+    if (isOfflineDemoMode) {
+      final scores = _mockScores.where((s) => s['game_name'] == gameName);
+      if (scores.isEmpty) return 0;
+      return scores.map((s) => s['stars'] as int).reduce((a, b) => a > b ? a : b);
+    }
+    try {
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) return 0;
+
+      final response = await client
+          .from(SupabaseConstants.tableGameScores)
+          .select('stars')
+          .eq('profile_id', userId)
+          .eq('game_name', gameName)
+          .order('stars', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      if (response != null) {
+        return response['stars'] as int? ?? 0;
+      }
+      return 0;
+    } catch (e) {
+      debugPrint('Get highest stars error: $e');
+      return 0;
+    }
+  }
+
   Future<int> getTotalScore() async {
     if (isOfflineDemoMode) {
       return _mockTotalScore;

@@ -62,12 +62,30 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
   final Map<EnglishCrosswordWord, int> _wordNumbers = {};
   int _activeClueTab = 0; // 0 for Across, 1 for Down
 
+  int _easyStars = 0;
+  int _mediumStars = 0;
+  int _hardStars = 0;
+
   @override
   void initState() {
     super.initState();
+    _loadHighestStars();
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
     ]);
+  }
+
+  Future<void> _loadHighestStars() async {
+    final easy = await _db.getHighestStarsForGame('english_crossword_easy');
+    final medium = await _db.getHighestStarsForGame('english_crossword_medium');
+    final hard = await _db.getHighestStarsForGame('english_crossword_hard');
+    if (mounted) {
+      setState(() {
+        _easyStars = easy;
+        _mediumStars = medium;
+        _hardStars = hard;
+      });
+    }
   }
 
   @override
@@ -360,11 +378,13 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
     });
 
     try {
+      final diffName = _selectedDifficulty?.name ?? 'easy';
       await _db.saveScore(
-        gameName: 'english_crossword',
+        gameName: 'english_crossword_$diffName',
         stars: _stars,
         score: _score,
       );
+      _loadHighestStars();
     } catch (e) {
       debugPrint('Error saving score: $e');
     } finally {
@@ -463,20 +483,20 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
           ),
           actions: [
             Container(
-              width: 90, // Fixed width to prevent shifting layout
-              margin: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
-              padding: const EdgeInsets.symmetric(vertical: 6),
+              width: 76,
+              margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
               decoration: BoxDecoration(
                 color: AppColors.primaryLight,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Icon(Icons.timer_outlined, size: 14, color: AppColors.primary),
                   SizedBox(width: 4),
-                  SizedBox(
-                    width: 50, // Fixed width for text area to prevent any shaking/shifting
+                  Icon(Icons.timer_outlined, size: 14, color: AppColors.primary),
+                  Expanded(
                     child: Text(
                       _elapsedTimeString,
                       textAlign: TextAlign.center,
@@ -1159,7 +1179,7 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
               ),
               SizedBox(height: 24),
               Text(
-                'Chọn Cấp Độ Ô Chữ',
+                'Please Select Mode',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.baloo2(
                   fontSize: 22, 
@@ -1169,30 +1189,30 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
               ),
               SizedBox(height: 32),
               _buildDifficultyButton(
-                title: 'Khởi động',
-                subtitle: 'Làm quen nhẹ nhàng với 5 từ vựng.',
+                title: 'Easy',
+                subtitle: 'Warm up gently with 5 words.',
                 difficulty: CrosswordDifficulty.easy,
                 backgroundColor: const Color(0xFFE4F3E4),
                 iconColor: const Color(0xFF4CAF50),
-                stars: 1,
+                stars: _easyStars,
               ),
               const SizedBox(height: 16),
               _buildDifficultyButton(
-                title: 'Tập trung',
-                subtitle: 'Tăng cường thử thách với 9 từ vựng.',
+                title: 'Medium',
+                subtitle: 'Challenge yourself with 9 words.',
                 difficulty: CrosswordDifficulty.medium,
                 backgroundColor: const Color(0xFFFDEBCE),
                 iconColor: const Color(0xFFF59E0B),
-                stars: 2,
+                stars: _mediumStars,
               ),
               const SizedBox(height: 16),
               _buildDifficultyButton(
-                title: 'Thử thách',
-                subtitle: 'Dành cho người chơi nâng cao với 14 từ vựng.',
+                title: 'Hard',
+                subtitle: 'For advanced players with 14 words.',
                 difficulty: CrosswordDifficulty.hard,
                 backgroundColor: const Color(0xFFFFE5E5),
                 iconColor: const Color(0xFFEF4444),
-                stars: 3,
+                stars: _hardStars,
               ),
             ],
           ),

@@ -4,14 +4,16 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
-import '../constants/word_scramble_data.dart';
+import '../services/eduword_service.dart';
+import '../models/eduword_model.dart';
 
 enum ScrambleDifficulty { easy, medium, hard }
 
 class ScrambleWord {
   final String en;
   final String hint;
-  ScrambleWord(this.en, this.hint);
+  final EduwordModel? model;
+  ScrambleWord(this.en, this.hint, {this.model});
 }
 
 class ScrambledTile {
@@ -44,15 +46,6 @@ class WordScrambleGameScreen extends ConsumerStatefulWidget {
 }
 
 class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen> with TickerProviderStateMixin {
-  // Vocabulary Database – built from wordScrambleData
-  // common  → easy   | rare → medium | legendary + exclusive → hard
-  static List<ScrambleWord> _buildPool(List<String> difficulties) {
-    return wordScrambleData
-        .where((item) => difficulties.contains(item.difficulty))
-        .map((item) => ScrambleWord(item.word.toUpperCase(), item.hint))
-        .toList();
-  }
-
   // Game Settings & State
   ScrambleDifficulty? _difficulty;
   List<ScrambleWord> _selectedWords = [];
@@ -60,10 +53,15 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
   int _correctCount = 0;
   bool _isPlaying = false;
   bool _isGameOver = false;
+  bool _isLoading = false;
   int _score = 0;
   int _stars = 0;
   bool _isSavingScore = false;
   final List<ScrambleResult> _results = [];
+  
+  int _easyStars = 0;
+  int _mediumStars = 0;
+  int _hardStars = 0;
 
   // Word specific states
   List<ScrambledTile> _scrambledTiles = [];
@@ -77,6 +75,7 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
   @override
   void initState() {
     super.initState();
+    _loadHighestStars();
     _timerController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 10),
@@ -88,6 +87,19 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
     });
   }
 
+  Future<void> _loadHighestStars() async {
+    final easy = await SupabaseService.instance.getHighestStarsForGame('word_scramble_easy');
+    final medium = await SupabaseService.instance.getHighestStarsForGame('word_scramble_medium');
+    final hard = await SupabaseService.instance.getHighestStarsForGame('word_scramble_hard');
+    if (mounted) {
+      setState(() {
+        _easyStars = easy;
+        _mediumStars = medium;
+        _hardStars = hard;
+      });
+    }
+  }
+
   @override
   void dispose() {
     _timerController.dispose();
@@ -95,24 +107,57 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
     super.dispose();
   }
 
-  void _selectDifficulty(ScrambleDifficulty diff) {
-    final List<String> difficulties;
-    switch (diff) {
-      case ScrambleDifficulty.easy:
-        difficulties = ['easy'];
-        break;
-      case ScrambleDifficulty.medium:
-        difficulties = ['medium'];
-        break;
-      case ScrambleDifficulty.hard:
-        difficulties = ['hard'];
-        break;
+  Future<void> _selectDifficulty(ScrambleDifficulty diff) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    List<ScrambleWord> selectedWords = [];
+    int limitParam = 100;
+    
+    try {
+      final eduwords = await EduwordService.fetchWords(limit: limitParam);
+      
+      if (diff == ScrambleDifficulty.hard) {
+        selectedWords = eduwords.where((e) => e.acf.level == 'C1' && e.title.isNotEmpty).map((e) {
+          final hint = e.acf.description.isNotEmpty ? e.acf.description : e.acf.viword;
+          return ScrambleWord(
+            e.title.toUpperCase(),
+            hint,
+            model: e,
+          );
+        }).take(10).toList();
+      } else if (diff == ScrambleDifficulty.medium) {
+        selectedWords = eduwords.where((e) => e.title.trim().length > 4 && e.title.trim().length <= 8 && e.acf.level != 'C1' && e.title.isNotEmpty).map((e) {
+          final hint = e.acf.description.isNotEmpty ? e.acf.description : e.acf.viword;
+          return ScrambleWord(
+            e.title.toUpperCase(),
+            hint,
+            model: e,
+          );
+        }).take(10).toList();
+      } else {
+        selectedWords = eduwords.where((e) => e.title.trim().length <= 4 && e.acf.level != 'C1' && e.title.isNotEmpty).map((e) {
+          final hint = e.acf.description.isNotEmpty ? e.acf.description : e.acf.viword;
+          return ScrambleWord(
+            e.title.toUpperCase(),
+            hint,
+            model: e,
+          );
+        }).take(10).toList();
+      }
+      
+      selectedWords.shuffle();
+    } catch (e) {
+      debugPrint('Failed to fetch from API: $e');
     }
 
-    final pool = _buildPool(difficulties)..shuffle();
+    if (!mounted) return;
+
     setState(() {
+      _isLoading = false;
       _difficulty = diff;
-      _selectedWords = pool.take(10).toList();
+      _selectedWords = selectedWords;
       _currentWordIndex = 0;
       _correctCount = 0;
       _results.clear();
@@ -120,7 +165,13 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
       _isGameOver = false;
     });
 
-    _loadWord(_currentWordIndex);
+    if (selectedWords.isNotEmpty) {
+      _loadWord(_currentWordIndex);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lỗi tải dữ liệu. Vui lòng thử lại!')),
+      );
+    }
   }
 
   void _loadWord(int index) {
@@ -307,11 +358,15 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
       _isSavingScore = true;
     });
     try {
+      final diffName = _difficulty?.name ?? 'easy';
       await SupabaseService.instance.saveScore(
-        gameName: 'word_scramble',
+        gameName: 'word_scramble_$diffName',
         stars: stars,
         score: score,
       );
+      
+      // Update local highest stars so the difficulty screen reflects the new score immediately
+      _loadHighestStars();
     } catch (e) {
       debugPrint('Error saving Word Scramble score: $e');
     } finally {
@@ -398,7 +453,7 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
               ),
               SizedBox(height: 24),
               Text(
-                'Chọn Cấp Độ Từ',
+                'Please Select Mode',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.baloo2(
                   fontSize: 22, 
@@ -408,31 +463,35 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
               ),
               SizedBox(height: 32),
               _buildDifficultyCard(
-                title: 'Khởi động',
-                subtitle: 'Làm quen nhẹ nhàng với từ 3-5 ký tự.',
+                title: 'Easy',
+                subtitle: 'Warm up gently with up to 4-letter words.',
                 difficulty: ScrambleDifficulty.easy,
                 backgroundColor: const Color(0xFFE4F3E4),
                 iconColor: const Color(0xFF4CAF50),
-                stars: 1,
+                stars: _easyStars,
               ),
               const SizedBox(height: 16),
               _buildDifficultyCard(
-                title: 'Tập trung',
-                subtitle: 'Tăng cường thử thách với từ 6-10 ký tự.',
+                title: 'Medium',
+                subtitle: 'Challenge yourself with 5 to 8-letter words.',
                 difficulty: ScrambleDifficulty.medium,
                 backgroundColor: const Color(0xFFFDEBCE),
                 iconColor: const Color(0xFFF59E0B),
-                stars: 2,
+                stars: _mediumStars,
               ),
               const SizedBox(height: 16),
               _buildDifficultyCard(
-                title: 'Thử thách',
-                subtitle: 'Dành cho người chơi nâng cao với dạng ghép câu.',
+                title: 'Hard',
+                subtitle: 'For advanced players with C1 level words.',
                 difficulty: ScrambleDifficulty.hard,
                 backgroundColor: const Color(0xFFFFE5E5),
                 iconColor: const Color(0xFFEF4444),
-                stars: 3,
+                stars: _hardStars,
               ),
+              if (_isLoading) ...[
+                const SizedBox(height: 24),
+                const Center(child: CircularProgressIndicator()),
+              ],
             ],
           ),
         ),
@@ -604,11 +663,10 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
                   children: [
                     SizedBox(width: 4),
                     Icon(Icons.timer_outlined, size: 14, color: timerColor),
-                    SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         '${_secondsRemaining}s',
-                        textAlign: TextAlign.left,
+                        textAlign: TextAlign.center,
                         style: GoogleFonts.baloo2(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -659,7 +717,7 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
                       child: Column(
                         children: [
                           Text(
-                            'GỢI Ý',
+                            'DESCRIPTION',
                             style: GoogleFonts.baloo2(
                               fontSize: 9,
                               fontWeight: FontWeight.bold,
@@ -900,31 +958,28 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
                     SizedBox(height: 48),
 
                     // Control Buttons: Confirm only
-                    Center(
-                      child: SizedBox(
-                        width: 220,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: () => _submitCurrentWord(isTimeout: false),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
+                    if (!_answerSlots.contains(null))
+                      Center(
+                        child: GestureDetector(
+                          onTap: () => _submitCurrentWord(isTimeout: false),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD4E6F1), // Light blue background
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFF2980B9), width: 1.2), // Blue border
                             ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.check_circle_outline_rounded, size: 18),
-                              SizedBox(width: 6),
-                              Text('Xác nhận', style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, fontSize: 14)),
-                            ],
+                            child: Text(
+                              'Confirm',
+                              style: GoogleFonts.baloo2(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF2980B9),
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
                   ],
                 ],
               ),
@@ -937,6 +992,7 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
 
   void _showResultDetailsDialog(ScrambleResult res, int index) {
     final isHardMode = res.word.en.contains(' / ');
+    final model = res.word.model;
 
     showDialog(
       context: context,
@@ -990,7 +1046,7 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
             ] else ...[
               // --- EASY/MEDIUM MODE VIEW ---
               Text(
-                'Gợi ý tiếng Việt:',
+                'Gợi ý:',
                 style: GoogleFonts.baloo2(fontSize: 10, color: AppColors.textSecondary),
               ),
               Text(
@@ -1029,6 +1085,24 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
                 '* Đã hết thời gian làm câu này.',
                 style: GoogleFonts.baloo2(fontSize: 9, color: AppColors.error, fontStyle: FontStyle.italic),
               ),
+            ],
+            if (model != null) ...[
+              SizedBox(height: 16),
+              Divider(),
+              SizedBox(height: 8),
+              Text('Từ vựng: ${model.title}', style: GoogleFonts.baloo2(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary)),
+              if (model.acf.transcription.isNotEmpty)
+                Text('Phiên âm: ${model.acf.transcription}', style: GoogleFonts.baloo2(fontSize: 12, color: AppColors.textSecondary)),
+              if (model.acf.viword.isNotEmpty)
+                Text('Nghĩa: ${model.acf.viword}', style: GoogleFonts.baloo2(fontSize: 12, color: AppColors.textPrimary)),
+              if (model.acf.description.isNotEmpty)
+                Text('Định nghĩa: ${model.acf.description}', style: GoogleFonts.baloo2(fontSize: 12, color: AppColors.textPrimary)),
+              if (model.acf.videscription.isNotEmpty)
+                Text('Giải nghĩa VN: ${model.acf.videscription}', style: GoogleFonts.baloo2(fontSize: 12, color: AppColors.textPrimary)),
+              if (model.acf.example.isNotEmpty)
+                Text('Ví dụ: ${model.acf.example}', style: GoogleFonts.baloo2(fontSize: 12, fontStyle: FontStyle.italic, color: AppColors.textPrimary)),
+              if (model.acf.level.isNotEmpty)
+                Text('Trình độ: ${model.acf.level}', style: GoogleFonts.baloo2(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange)),
             ]
           ],
         ),
