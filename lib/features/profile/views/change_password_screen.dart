@@ -468,7 +468,11 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                         ),
                         subtitle: Text(
                           'Mật khẩu sẽ thay đổi và bạn cần mật khẩu này cho lần đăng nhập sau.',
-                          style: GoogleFonts.baloo2(fontSize: 10, color: AppColors.textSecondary),
+                          style: GoogleFonts.baloo2(
+                            fontSize: 12, 
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                         value: _isConfirmedSaved,
                         activeColor: AppColors.primary,

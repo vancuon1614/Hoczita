@@ -301,8 +301,8 @@ Puzzle generatePuzzle(Difficulty difficulty) {
     gridSize = 13; 
     allowedOps = ['+', '-', 'x'];
   } else if (difficulty == Difficulty.hard) {
-    targetCount = 20;
-    gridSize = 17; 
+    targetCount = 16;
+    gridSize = 19; 
     allowedOps = ['+', '-', 'x', '/'];
   }
 

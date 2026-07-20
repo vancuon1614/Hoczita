@@ -180,10 +180,11 @@ class _GameTabState extends ConsumerState<GameTab> {
             animationType: GameAnimationType.bounce,
             imagePath: 'ImageFolder/flashcard.gif',
             onTap: () => _playGame(
-              FlashcardStudyScreen(
+              MultipleChoiceGameScreen(
                 gameName: 'flashcard_speed',
                 gameTitle: 'Flashcard Speed Run',
                 questions: GameContent.getFlashcardQuestions(),
+                timeLimitInSeconds: 6,
               ),
             ),
           ),

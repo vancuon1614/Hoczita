@@ -124,14 +124,12 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
   }
 
   void _selectDifficulty(int difficulty) {
-    if (difficulty == 10 || difficulty == 20) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
-    } else {
-      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-    }
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     setState(() {
       _selectedDifficulty = difficulty;
       _isPlaying = true;

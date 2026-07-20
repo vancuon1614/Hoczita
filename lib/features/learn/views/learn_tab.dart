@@ -6,9 +6,8 @@ import '../../auth/providers/auth_provider.dart';
 import '../../../core/services/supabase_service.dart';
 import 'counting_lesson_screen.dart';
 import 'math_ops_lesson_screen.dart';
+import 'random_flashcard_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
-
-
 class LearnTab extends ConsumerWidget {
   const LearnTab({super.key});
 
@@ -112,7 +111,7 @@ class LearnTab extends ConsumerWidget {
                   SizedBox(height: 24),
                   // Main Title
                   Text(
-                    'Toán Lớp 1 📚',
+                    'Toán Học 🧮',
                     style: GoogleFonts.baloo2(
                       fontSize: 23,
                       fontWeight: FontWeight.bold,
@@ -165,6 +164,45 @@ class LearnTab extends ConsumerWidget {
                         context,
                         MaterialPageRoute(
                           builder: (context) => const MathOpsLessonScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  SizedBox(height: 32),
+
+                  // English Section Title
+                  Text(
+                    'Tiếng Anh 🇬🇧',
+                    style: GoogleFonts.baloo2(
+                      fontSize: 23,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Cải thiện vốn từ vựng mỗi ngày với phương pháp lặp lại ngẫu nhiên.',
+                    style: GoogleFonts.baloo2(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                  SizedBox(height: 24),
+
+                  // Lesson card 3: Random Flashcards
+                  _buildLessonCard(
+                    context: context,
+                    title: 'Flashcard Từ Vựng',
+                    subtitle: 'Học từ vựng không giới hạn với hình ảnh sinh động và phát âm.',
+                    icon: Icons.flash_on_rounded,
+                    color: Colors.amber,
+                    animationType: GameAnimationType.bounce,
+                    imagePath: 'ImageFolder/flashcard.gif',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const RandomFlashcardScreen(),
                         ),
                       );
                     },
