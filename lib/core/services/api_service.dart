@@ -214,19 +214,24 @@ class ApiService {
 
     final url = Uri.parse('$_accountBaseUrl/nks/user/updatePass');
     try {
-      final response = await http.post(
-        url,
-        body: {
-          'old_password': oldPassword,
-          'password': newPassword,
-          'access_token': _accessToken!,
-        },
-      );
+      final request = http.MultipartRequest('POST', url);
+      request.headers['Accept'] = 'application/json';
+      request.fields['old_password'] = oldPassword;
+      request.fields['password'] = newPassword;
+      request.fields['access_token'] = _accessToken!;
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body) as Map<String, dynamic>;
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final bool isSuccess = data['success'] ?? (data['error'] == null);
+        if (!isSuccess) {
+           throw Exception(data['message'] ?? response.body);
+        }
+        return data;
       } else {
-        throw Exception('Server returned status code ${response.statusCode}');
+        throw Exception('HTTP ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
       debugPrint('Update Password API error: $e');

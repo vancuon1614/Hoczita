@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/services/api_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class ChangePasswordScreen extends ConsumerStatefulWidget {
@@ -263,6 +264,27 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
 
       if (mounted) {
         if (success) {
+          // Sync to NKS if token exists
+          if (ApiService.instance.hasToken) {
+            try {
+              await ApiService.instance.updatePassword(
+                oldPassword: _oldPasswordController.text,
+                newPassword: _newPasswordController.text,
+              );
+            } catch (nksErr) {
+              debugPrint('Lỗi đồng bộ mật khẩu lên NKS: $nksErr');
+              // Có thể mật khẩu cũ đúng với Supabase nhưng NKS lại khác, hoặc lỗi server NKS
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Đổi mật khẩu App thành công nhưng không thể đồng bộ lên NKS: $nksErr'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+              Navigator.pop(context);
+              return;
+            }
+          }
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Cập nhật mật khẩu thành công! 🎉'),
