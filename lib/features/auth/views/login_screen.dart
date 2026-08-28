@@ -61,7 +61,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       for (final email in emails) {
         final username = prefs.getString('username_$email') ?? email.split('@')[0];
         mappings[email] = username;
-        final avatar = prefs.getString('profile_avatar_path_$email');
+        final avatar = prefs.getString('cached_user_avatar_$email') ?? prefs.getString('profile_avatar_path_$email');
         if (avatar != null && avatar.isNotEmpty) {
           avatars[email] = avatar;
         }

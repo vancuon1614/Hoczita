@@ -83,15 +83,14 @@ class ApiService {
         
         // Check success based on standard API formats
         final bool isSuccess = data['success'] ?? (data['error'] == null);
-        if (isSuccess && data['access_token'] != null) {
-          final String token = data['access_token'];
+        
+        if (isSuccess && data['data'] != null && data['data']['access_token'] != null) {
+          final String token = data['data']['access_token'];
           await _saveToken(token);
           
-          if (data['data'] != null) {
-            _cachedUserInfo = data['data'];
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setString(_userInfoKey, jsonEncode(_cachedUserInfo));
-          }
+          _cachedUserInfo = data['data']['user'] ?? data['data'];
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_userInfoKey, jsonEncode(_cachedUserInfo));
         }
         return data;
       } else {
@@ -125,7 +124,7 @@ class ApiService {
         final bool isSuccess = data['success'] ?? (data['error'] == null);
         
         if (isSuccess && data['data'] != null) {
-          _cachedUserInfo = data['data'];
+          _cachedUserInfo = data['data']['user'] ?? data['data'];
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString(_userInfoKey, jsonEncode(_cachedUserInfo));
         }
@@ -149,12 +148,12 @@ class ApiService {
     required String phone,
     required int gender, // 0 for Male, 1 for Female
     String website = '',
-    required String dob, // yyyy-mm-dd
-    required String pob,
-    required String idNumber,
-    required String idDate,
-    required String idPlace,
-    required String province,
+    String dob = '', // yyyy-mm-dd
+    String pob = '',
+    String idNumber = '',
+    String idDate = '',
+    String idPlace = '',
+    String province = '',
   }) async {
     if (!hasToken) {
       throw Exception('Unauthenticated: Access token is missing');
@@ -162,36 +161,39 @@ class ApiService {
 
     final url = Uri.parse('$_accountBaseUrl/nks/user/updateInfo');
     try {
-      final response = await http.post(
-        url,
-        body: {
-          'firstname': firstname,
-          'lastname': lastname,
-          'intro': intro,
-          'phone': phone,
-          'gender': gender.toString(),
-          'website': website,
-          'dob': dob,
-          'pob': pob,
-          'id_number': idNumber,
-          'id_date': idDate,
-          'id_place': idPlace,
-          'province': province,
-          'access_token': _accessToken!,
-        },
-      );
+      final request = http.MultipartRequest('POST', url);
+      request.headers['Accept'] = 'application/json';
+      
+      request.fields['access_token'] = _accessToken!;
+      request.fields['firstname'] = firstname;
+      request.fields['lastname'] = lastname;
+      request.fields['intro'] = intro;
+      request.fields['phone'] = phone;
+      request.fields['gender'] = gender.toString();
+      request.fields['website'] = website;
+      request.fields['pob'] = pob;
+      request.fields['id_number'] = idNumber;
+      request.fields['id_place'] = idPlace;
+      request.fields['province'] = province;
+      
+      // Dates can cause 500 SQL errors if passed as empty strings, so conditionally add them
+      if (dob.isNotEmpty) request.fields['dob'] = dob;
+      if (idDate.isNotEmpty) request.fields['id_date'] = idDate;
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        // Sync local cache if update was successful
         final bool isSuccess = data['success'] ?? (data['error'] == null);
         if (isSuccess) {
-          // Refresh user info
           await getUserInfo();
+        } else {
+          throw Exception('NKS Error: ${data['message'] ?? response.body}');
         }
         return data;
       } else {
-        throw Exception('Server returned status code ${response.statusCode}');
+        throw Exception('HTTP ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
       debugPrint('Update User Info API error: $e');
@@ -244,23 +246,25 @@ class ApiService {
 
     final url = Uri.parse('$_accountBaseUrl/nks/user/updateAvatar');
     try {
-      final response = await http.post(
-        url,
-        body: {
-          'avatar': base64Image,
-          'access_token': _accessToken!,
-        },
-      );
+      final request = http.MultipartRequest('POST', url);
+      request.headers['Accept'] = 'application/json';
+      request.fields['avatar'] = base64Image;
+      request.fields['access_token'] = _accessToken!;
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final bool isSuccess = data['success'] ?? (data['error'] == null);
         if (isSuccess) {
           await getUserInfo();
+        } else {
+          throw Exception('NKS Error: ${data['message'] ?? response.body}');
         }
         return data;
       } else {
-        throw Exception('Server returned status code ${response.statusCode}');
+        throw Exception('HTTP ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
       debugPrint('Update Avatar API error: $e');
@@ -284,17 +288,17 @@ class ApiService {
 
     final url = Uri.parse('$_accountBaseUrl/nks/user/updateCccd');
     try {
-      final response = await http.post(
-        url,
-        body: {
-          'front': frontBase64,
-          'back': backBase64,
-          'number': number,
-          'date': date,
-          'place': place,
-          'access_token': _accessToken!,
-        },
-      );
+      final request = http.MultipartRequest('POST', url);
+      request.headers['Accept'] = 'application/json';
+      request.fields['front'] = frontBase64;
+      request.fields['back'] = backBase64;
+      if (number.isNotEmpty) request.fields['number'] = number;
+      if (date.isNotEmpty) request.fields['date'] = date;
+      if (place.isNotEmpty) request.fields['place'] = place;
+      request.fields['access_token'] = _accessToken!;
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -327,7 +331,7 @@ class ApiService {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         if (data['success'] == true && data['data'] != null) {
           final List<dynamic> list = data['data'];
-          return list.map((item) => {
+          return list.map((item) => <String, dynamic>{
             'id': item['id']?.toString() ?? '',
             'title': item['title']?.toString() ?? '',
           }).toList();
@@ -363,7 +367,7 @@ class ApiService {
         final bool isSuccess = data['success'] ?? (data['error'] == null);
         if (isSuccess && data['data'] != null) {
           final List<dynamic> list = data['data'];
-          return list.map((item) => {
+          return list.map((item) => <String, dynamic>{
             'id': item['id']?.toString() ?? '',
             'title': item['title']?.toString() ?? '',
           }).toList();

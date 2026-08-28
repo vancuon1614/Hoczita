@@ -1,4 +1,4 @@
-
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -6,7 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
+import 'package:http/http.dart' as http;
 import '../../../core/services/supabase_service.dart';
+import '../../../core/services/api_service.dart';
 
 import '../../../core/constants/supabase_constants.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -113,7 +115,7 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
           
       String? avatarPath;
       if (email.isNotEmpty) {
-        avatarPath = prefs.getString('profile_avatar_path_$email');
+        avatarPath = prefs.getString('cached_user_avatar_$email');
       }
       
       // Fallback: lấy avatar_url từ Supabase profiles nếu local chưa có
@@ -269,34 +271,52 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
             _isLoading = true;
           });
 
-          // 1. Prioritize uploading to Supabase Storage
+          // 1. Chuyển ảnh thành chuỗi Base64
           String finalPath = croppedPath;
-          if (_db.hasSession) {
-            try {
-              final uploadedUrl = await _db.uploadAvatar(croppedPath);
-              if (uploadedUrl != null) {
-                finalPath = uploadedUrl;
-                
-                // Sync to Supabase profiles table
-                final userId = _db.client.auth.currentUser?.id;
-                if (userId != null) {
-                  await _db.client
-                      .from(SupabaseConstants.tableProfiles)
-                      .update({'avatar_url': finalPath})
-                      .eq('id', userId);
-                }
+          
+          try {
+            String base64Image = '';
+            
+            if (croppedPath.startsWith('data:image/')) {
+              // Dùng nguyên chuỗi từ web cropper
+              base64Image = croppedPath;
+            } else if (croppedPath.startsWith('blob:')) {
+              final response = await http.get(Uri.parse(croppedPath));
+              final contentType = response.headers['content-type'] ?? 'image/jpeg';
+              base64Image = 'data:$contentType;base64,' + base64Encode(response.bodyBytes);
+            } else {
+              final bytes = await File(croppedPath).readAsBytes();
+              final isPng = croppedPath.toLowerCase().endsWith('.png');
+              base64Image = 'data:image/${isPng ? 'png' : 'jpeg'};base64,' + base64Encode(bytes);
+            }
+            
+            debugPrint('Base64 Payload Size: ${(base64Image.length / 1024).toStringAsFixed(2)} KB');
+            
+            // 2. Gọi API Update Ảnh của NKS
+            if (ApiService.instance.hasToken) {
+              await ApiService.instance.updateAvatar(base64Image: base64Image);
+              
+              // Cập nhật lại đường dẫn hiển thị nếu API NKS trả về link mới
+              final nksAvatar = ApiService.instance.cachedUserInfo?['avatar'];
+              if (nksAvatar != null && nksAvatar.toString().isNotEmpty) {
+                finalPath = nksAvatar.toString();
               }
-            } catch (se) {
-              debugPrint('Error uploading/syncing to Supabase: $se');
+            } else {
+              // Nếu dùng offline/không có token, dùng luôn base64 để hiển thị tạm
+              finalPath = base64Image;
+            }
+          } catch (ne) {
+            debugPrint('Lỗi xử lý Base64 hoặc đồng bộ NKS: $ne');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi cập nhật ảnh: $ne')));
             }
           }
 
-          // 2. Save locally to SharedPreferences (email-scoped only)
+          // 3. Save locally to SharedPreferences (email-scoped only)
           final prefs = await SharedPreferences.getInstance();
           final email = ref.read(authProvider).email?.trim().toLowerCase();
           if (email != null && email.isNotEmpty) {
-            await prefs.setString('profile_avatar_path_$email', finalPath);
-            // Also sync with the cached_user_avatar key to update ProfileTab instantly
+            // Update the single source of truth for avatar in cache
             await prefs.setString('cached_user_avatar_$email', finalPath);
           }
 

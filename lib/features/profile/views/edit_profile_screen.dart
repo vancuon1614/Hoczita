@@ -176,7 +176,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       if (currentProvince.isNotEmpty) {
         final match = _provinceList.firstWhere(
           (p) => p['title'].toString().toLowerCase() == currentProvince.toLowerCase(),
-          orElse: () => {},
+          orElse: () => <String, dynamic>{},
         );
         if (match.isNotEmpty) {
           _selectedProvinceId = match['id'].toString();
@@ -356,6 +356,57 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             province: _provinceController.text.trim(),
           );
         }
+
+        // 3. Sync to NKS API (updateUserInfo)
+        if (ApiService.instance.hasToken) {
+          try {
+            // Tách firstname, lastname
+            final parts = _fullNameController.text.trim().split(' ');
+            final firstname = parts.isNotEmpty ? parts.last : '';
+            final lastname = parts.length > 1 ? parts.sublist(0, parts.length - 1).join(' ') : '';
+            
+            // Format Date from dd/MM/yyyy to yyyy-mm-dd
+            String formattedDob = '';
+            final dobText = _dobController.text.trim();
+            if (dobText.isNotEmpty) {
+              final dobParts = dobText.split('/');
+              if (dobParts.length == 3) {
+                formattedDob = '${dobParts[2]}-${dobParts[1].padLeft(2, '0')}-${dobParts[0].padLeft(2, '0')}';
+              }
+            }
+            
+            String formattedIdDate = '';
+            final idDateText = _idCardDateController.text.trim();
+            if (idDateText.isNotEmpty) {
+              final idParts = idDateText.split('/');
+              if (idParts.length == 3) {
+                formattedIdDate = '${idParts[2]}-${idParts[1].padLeft(2, '0')}-${idParts[0].padLeft(2, '0')}';
+              }
+            }
+
+            int genderInt = _genderController.text.trim().toLowerCase() == 'nữ' ? 1 : 0;
+            
+            await ApiService.instance.updateUserInfo(
+              firstname: firstname,
+              lastname: lastname,
+              intro: '',
+              phone: _phoneController.text.trim(),
+              gender: genderInt,
+              website: '',
+              dob: formattedDob,
+              pob: _pobController.text.trim(),
+              idNumber: _idCardController.text.trim(),
+              idDate: formattedIdDate,
+              idPlace: _idCardPlaceController.text.trim(),
+              province: _selectedProvinceId ?? '',
+            );
+          } catch (ne) {
+            debugPrint('Sync user info to NKS API error: $ne');
+            if (mounted) {
+               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cảnh báo đồng bộ NKS: $ne')));
+            }
+          }
+        }
         
         // 3. Sync CCCD images (Base64) to NKS Server if available
         if (_cccdFrontBase64 != null && _cccdBackBase64 != null && ApiService.instance.hasToken) {
@@ -516,7 +567,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 final pClean = pTitle.replaceAll('tỉnh ', '').replaceAll('thành phố ', '').trim();
                 return query.contains(pClean) || pClean.contains(query);
               },
-              orElse: () => <String, String>{},
+              orElse: () => <String, dynamic>{},
             );
           }
 
@@ -593,7 +644,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       final matchedProvince = _provinceList.firstWhere(
         (p) => p['title'].toString().toLowerCase().contains(provinceName.toLowerCase()) || 
                provinceName.toLowerCase().contains(p['title'].toString().toLowerCase()),
-        orElse: () => {},
+        orElse: () => <String, dynamic>{},
       );
 
       if (matchedProvince.isNotEmpty) {
@@ -615,7 +666,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         final matchedDistrict = _districtList.firstWhere(
           (d) => d['title'].toString().toLowerCase().contains(districtName.toLowerCase()) ||
                  districtName.toLowerCase().contains(d['title'].toString().toLowerCase()),
-          orElse: () => {},
+          orElse: () => <String, dynamic>{},
         );
 
         if (matchedDistrict.isNotEmpty) {
@@ -718,7 +769,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             final pClean = pTitle.replaceAll('tỉnh ', '').replaceAll('thành phố ', '').trim();
             return pClean == provinceName.toLowerCase();
           },
-          orElse: () => <String, String>{},
+          orElse: () => <String, dynamic>{},
         );
         if (matchedProvince.isNotEmpty) {
           _pobController.text = matchedProvince['title'].toString();
