@@ -65,18 +65,18 @@ class ApiService {
   }) async {
     final url = Uri.parse('$_accountBaseUrl/nks/user/login');
     try {
-      final response = await http.post(
-        url,
-        body: {
-          'username': username,
-          'password': password,
-          'fbtoken': fbtoken,
-          'system': system,
-          'device': device,
-          'ip_address': ipAddress,
-          'location': location,
-        },
-      ).timeout(const Duration(seconds: 15));
+      final request = http.MultipartRequest('POST', url);
+      request.headers['Accept'] = 'application/json';
+      request.fields['username'] = username;
+      request.fields['password'] = password;
+      request.fields['fbtoken'] = fbtoken;
+      request.fields['system'] = system;
+      request.fields['device'] = device;
+      request.fields['ip_address'] = ipAddress;
+      request.fields['location'] = location;
+      
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 15));
+      final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -112,12 +112,12 @@ class ApiService {
     
     final url = Uri.parse('$_accountBaseUrl/nks/user');
     try {
-      final response = await http.post(
-        url,
-        body: {
-          'access_token': _accessToken!,
-        },
-      );
+      final request = http.MultipartRequest('POST', url);
+      request.headers['Accept'] = 'application/json';
+      request.fields['access_token'] = _accessToken!;
+      
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;

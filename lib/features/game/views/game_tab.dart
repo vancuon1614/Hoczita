@@ -10,6 +10,8 @@ import 'memory_match_game_screen.dart';
 import 'math_crossword_game_screen.dart';
 import 'english_crossword_game_screen.dart';
 import 'word_scramble_game_screen.dart';
+import 'magic_words_game_screen.dart';
+import 'magic_number_path_game_screen.dart';
 import 'flashcard_study_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -249,6 +251,20 @@ class _GameTabState extends ConsumerState<GameTab> {
               const WordScrambleGameScreen(),
             ),
           ),
+          const SizedBox(height: 16),
+          _buildGameCard(
+            context: context,
+            title: 'Magic Words',
+            subtitle: 'Tìm 4 từ ẩn. Dùng mỗi ô chữ đúng một lần nhé!',
+            icon: Icons.font_download_rounded,
+            color: Colors.indigo,
+            stars: _highestStars['magic_words'] ?? 0,
+            animationType: GameAnimationType.pulse,
+            imagePath: 'ImageFolder/wordscramble.webp',
+            onTap: () => _playGame(
+              const MagicWordsGameScreen(),
+            ),
+          ),
                 ],
               ),
             ),
@@ -336,6 +352,20 @@ class _GameTabState extends ConsumerState<GameTab> {
             imagePath: 'ImageFolder/crossword.gif',
             onTap: () => _playGame(
               const MathCrosswordGameScreen(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildGameCard(
+            context: context,
+            title: 'Đường Số Diệu Kỳ',
+            subtitle: 'Kết nối các số theo thứ tự để điền kín tất cả các ô trên bảng.',
+            icon: Icons.timeline_rounded,
+            color: Colors.green,
+            stars: _highestStars['magic_number_path'] ?? 0,
+            animationType: GameAnimationType.pulse,
+            imagePath: 'ImageFolder/crossword.gif', // Placeholder image
+            onTap: () => _playGame(
+              const MagicNumberPathGameScreen(),
             ),
           ),
                 ],

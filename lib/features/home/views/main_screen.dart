@@ -5,6 +5,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../auth/views/login_screen.dart';
 import '../../learn/views/learn_tab.dart';
 import '../../game/views/game_tab.dart';
+import 'daily_checkin_dashboard_screen.dart';
 import '../../profile/views/profile_tab.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -17,9 +18,10 @@ class MainScreen extends ConsumerStatefulWidget {
 
 class _MainScreenState extends ConsumerState<MainScreen> {
   int _selectedIndex = 0;
-  final List<bool> _isHovered = [false, false, false];
+  final List<bool> _isHovered = [false, false, false, false];
 
   final List<Widget> _tabs = [
+    const DailyCheckinDashboardScreen(),
     const LearnTab(),
     const GameTab(),
     const ProfileTab(),
@@ -29,8 +31,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     final authState = ref.read(authProvider);
     final isLoggedIn = authState.status == AuthStatus.authenticated;
 
-    // Phân quyền cho Guest (Chỉ được học, không được vào Game & Account)
-    if (index > 0 && !isLoggedIn) {
+    // Phân quyền cho Guest (Chỉ được học và xem dashboard, không được vào Game & Account)
+    if (index > 1 && !isLoggedIn) {
       _showLoginRequirementDialog();
     } else {
       setState(() {
@@ -176,18 +178,26 @@ class _MainScreenState extends ConsumerState<MainScreen> {
               children: [
                 _buildTabItem(
                   index: 0,
-                  icon: Icons.menu_book_rounded,
-                  label: 'Học tập',
+                  icon: Icons.home_rounded,
+                  label: 'Trang chủ',
                   isSelected: _selectedIndex == 0,
                   isHovered: _isHovered[0],
                   isLocked: false,
                 ),
                 _buildTabItem(
                   index: 1,
-                  icon: Icons.sports_esports_rounded,
-                  label: 'Trò chơi',
+                  icon: Icons.menu_book_rounded,
+                  label: 'Học tập',
                   isSelected: _selectedIndex == 1,
                   isHovered: _isHovered[1],
+                  isLocked: false,
+                ),
+                _buildTabItem(
+                  index: 2,
+                  icon: Icons.sports_esports_rounded,
+                  label: 'Trò chơi',
+                  isSelected: _selectedIndex == 2,
+                  isHovered: _isHovered[2],
                   isLocked: !isLoggedIn,
                   badge: !isLoggedIn
                       ? Container(
@@ -204,11 +214,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                       : null,
                 ),
                 _buildTabItem(
-                  index: 2,
+                  index: 3,
                   icon: Icons.person_rounded,
                   label: 'Tài khoản',
-                  isSelected: _selectedIndex == 2,
-                  isHovered: _isHovered[2],
+                  isSelected: _selectedIndex == 3,
+                  isHovered: _isHovered[3],
                   isLocked: !isLoggedIn,
                 ),
               ],
