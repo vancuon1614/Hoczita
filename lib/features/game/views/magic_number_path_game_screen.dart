@@ -3,6 +3,24 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
 import 'dart:math';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/supabase_service.dart';
+
+class CellPosition {
+  final int row;
+  final int col;
+  const CellPosition(this.row, this.col);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CellPosition &&
+          runtimeType == other.runtimeType &&
+          row == other.row &&
+          col == other.col;
+
+  @override
+  int get hashCode => row.hashCode ^ col.hashCode;
+}
 
 class GridCell {
   final int row;
@@ -49,6 +67,10 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
   Timer? _timer;
   int _secondsElapsed = 0;
   bool _isGameOver = false;
+  int _undoCount = 0;
+  int _hintCount = 0;
+  Map<String, dynamic>? _rankData;
+  bool _isSavingScore = false;
   
   Offset? _lastLocalPosition;
 
@@ -66,6 +88,7 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
   }
 
   void _startTimer() {
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!_isGameOver) {
         setState(() {
@@ -76,61 +99,93 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
   }
 
   void _generatePuzzle() {
-    // Generate a solvable puzzle with a Hamiltonian path.
-    // For simplicity, we hardcode a sample puzzle here. In production, this should be an algorithm.
-    // Let's create a 5x5 grid with some walls.
     _rows = 5;
     _cols = 5;
     _grid = List.generate(_rows, (r) => List.generate(_cols, (c) => GridCell(row: r, col: c)));
-
-    // Define some walls
-    _grid[1][1].isWall = true;
-    _grid[3][3].isWall = true;
-    _grid[1][3].isWall = true;
-    _grid[3][1].isWall = true;
-
-    // A valid path covering all open cells:
-    // (0,0)->(0,1)->(0,2)->(0,3)->(0,4)->(1,4)->(2,4)->(3,4)->(4,4)
-    // ->(4,3)->(4,2)->(4,1)->(4,0)->(3,0)->(2,0)->(1,0)
-    // ->(2,1)->(2,2)->(1,2)->(2,3)->(3,2) -> wait, making a valid path dynamically is better or hardcode a known one.
-    // Let's hardcode a known valid Hamiltonian path for 5x5 with those 4 walls:
-    // (0,0)->(1,0)->(2,0)->(3,0)->(4,0)->(4,1)->(4,2)->(3,2)->(2,2)->(1,2)->(0,2)->(0,1)->(0,3)->(0,4)->(1,4)->(2,4)->(3,4)->(4,4)->(4,3)->(2,3) -> not adjacent.
-    // Actually, creating a simple snake path is safest for a guaranteed puzzle:
-    _grid = List.generate(_rows, (r) => List.generate(_cols, (c) => GridCell(row: r, col: c)));
-    // No walls, pure snake:
-    List<GridCell> path = [];
+    
+    // 1. Randomize walls (0 to 3 walls)
+    final rand = Random();
+    int wallCount = rand.nextInt(4);
+    List<CellPosition> walls = [];
+    
+    // To ensure Hamiltonian path is possible, generating a random snake path first is safest.
+    // Let's generate a random Hamiltonian path on an empty grid, then randomly turn some unused corners into walls if we don't cover them?
+    // Wait, the requirement is to cover ALL OPEN CELLS.
+    // Easiest way to generate a valid puzzle:
+    // a) Start with empty grid.
+    // b) Generate a random snake/DFS path that covers ALL cells. (This can be hard to guarantee quickly without backtracking).
+    // Let's do a simple recursive backtracker to find ONE path that covers N cells, and whatever is left becomes walls.
+    List<CellPosition> path = _generateRandomPath(_rows, _cols, (_rows * _cols) - wallCount, rand);
+    
+    // Mark walls
     for (int r = 0; r < _rows; r++) {
-      if (r % 2 == 0) {
-        for (int c = 0; c < _cols; c++) path.add(_grid[r][c]);
-      } else {
-        for (int c = _cols - 1; c >= 0; c--) path.add(_grid[r][c]);
+      for (int c = 0; c < _cols; c++) {
+        if (!path.any((p) => p.row == r && p.col == c)) {
+          _grid[r][c].isWall = true;
+          walls.add(CellPosition(r, c));
+        }
       }
     }
     
-    // Add checkpoints along this path
-    path[0].checkpointNumber = 1;
-    path[5].checkpointNumber = 2;
-    path[12].checkpointNumber = 3;
-    path[18].checkpointNumber = 4;
-    path[24].checkpointNumber = 5;
-    _maxCheckpoint = 5;
+    // 2. Assign checkpoints
+    // Always start at 1, end at K. Add 2-3 random checkpoints in between.
+    int k = rand.nextInt(3) + 4; // 4 to 6 checkpoints
+    List<int> cpIndices = [0, path.length - 1]; // Start and end
     
-    // Add some visual walls that are not part of the path? Since snake covers 25 cells, no walls.
-    // Let's modify grid to 5x5 with 1 wall at (2,2).
-    // Path: 0,0 > 0,1 > 0,2 > 0,3 > 0,4 > 1,4 > 2,4 > 3,4 > 4,4 > 4,3 > 4,2 > 4,1 > 4,0 > 3,0 > 2,0 > 1,0 > 1,1 > 2,1 > 3,1 > 3,2 > 3,3 > 2,3 > 1,3 > 1,2
-    _grid = List.generate(_rows, (r) => List.generate(_cols, (c) => GridCell(row: r, col: c)));
-    _grid[2][2].isWall = true;
+    // Add random middle checkpoints
+    while (cpIndices.length < k) {
+      int idx = rand.nextInt(path.length - 2) + 1;
+      if (!cpIndices.contains(idx)) {
+        cpIndices.add(idx);
+      }
+    }
+    cpIndices.sort();
     
-    _grid[0][0].checkpointNumber = 1;
-    _grid[4][4].checkpointNumber = 2;
-    _grid[1][1].checkpointNumber = 3;
-    _grid[1][2].checkpointNumber = 4;
-    _maxCheckpoint = 4;
+    for (int i = 0; i < cpIndices.length; i++) {
+      int pathIdx = cpIndices[i];
+      _grid[path[pathIdx].row][path[pathIdx].col].checkpointNumber = i + 1;
+    }
     
-    _openCellsCount = (_rows * _cols) - 1;
+    _maxCheckpoint = k;
+    _openCellsCount = path.length;
     _currentPath.clear();
     _secondsElapsed = 0;
     _isGameOver = false;
+    _undoCount = 0;
+    _hintCount = 0;
+    _rankData = null;
+  }
+
+  // A simple DFS to find a path of specific length
+  List<CellPosition> _generateRandomPath(int r, int c, int targetLen, Random rand) {
+    List<CellPosition> path = [CellPosition(rand.nextInt(r), rand.nextInt(c))];
+    List<List<bool>> visited = List.generate(r, (_) => List.generate(c, (_) => false));
+    visited[path[0].row][path[0].col] = true;
+    
+    bool dfs(int cr, int cc) {
+      if (path.length == targetLen) return true;
+      
+      List<List<int>> dirs = [[-1,0], [1,0], [0,-1], [0,1]];
+      dirs.shuffle(rand);
+      
+      for (var d in dirs) {
+        int nr = cr + d[0];
+        int nc = cc + d[1];
+        if (nr >= 0 && nr < r && nc >= 0 && nc < c && !visited[nr][nc]) {
+          visited[nr][nc] = true;
+          path.add(CellPosition(nr, nc));
+          if (dfs(nr, nc)) return true;
+          path.removeLast();
+          visited[nr][nc] = false;
+        }
+      }
+      return false;
+    }
+    
+    dfs(path[0].row, path[0].col);
+    
+    // If it couldn't find a path of targetLen, just return whatever it found (it will just have more walls)
+    return path;
   }
 
   void _handlePanStart(DragStartDetails details, BoxConstraints constraints) {
@@ -228,11 +283,11 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
     return false;
   }
 
-  void _checkWinCondition() {
+  void _checkWinCondition() async {
     // a) Path covers all open cells
     if (_currentPath.length != _openCellsCount) return;
     
-    // b) Checkpoints are in order (implicitly handled by _validateCheckpointOrder, but we double check)
+    // b) Checkpoints are in order
     int cpExpected = 1;
     for (var cell in _currentPath) {
       if (cell.checkpointNumber != null) {
@@ -245,15 +300,47 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
     if (_currentPath.last.checkpointNumber != _maxCheckpoint) return;
     
     // WIN!
+    _timer?.cancel();
     setState(() {
       _isGameOver = true;
+      _isSavingScore = true;
     });
-    _timer?.cancel();
+
+    // Score logic for Zip
+    int baseScore = 100;
+    int score = baseScore - (_secondsElapsed * 2) - (_hintCount * 10) - (_undoCount * 2);
+    if (score < 10) score = 10;
+    
+    int stars = 3;
+    if (_secondsElapsed > 30) stars = 2;
+    if (_secondsElapsed > 60) stars = 1;
+
+    try {
+      final rankData = await SupabaseService.instance.saveAndGetGameRank(
+        gameName: 'magic_number_path',
+        stars: stars,
+        score: score,
+      );
+      if (mounted) {
+        setState(() {
+          _rankData = rankData;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error saving Zip score: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSavingScore = false;
+        });
+      }
+    }
   }
 
   void _undo() {
     if (_currentPath.length > 1 && !_isGameOver) {
       setState(() {
+        _undoCount++;
         _currentPath.removeLast();
       });
     }
@@ -623,6 +710,45 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
                   color: AppColors.textSecondary,
                 ),
               ),
+              const SizedBox(height: 24),
+              
+              if (_isSavingScore)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  ),
+                )
+              else if (_rankData != null)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Xếp hạng của bạn: #${_rankData!['rank']}',
+                        style: GoogleFonts.baloo2(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Điểm: ${_rankData!['yourScore']} / Đỉnh cao trong ${_rankData!['totalPlayers']} người',
+                        style: GoogleFonts.nunito(
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
               const SizedBox(height: 32),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -645,6 +771,7 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
                 onPressed: () {
                   setState(() {
                     _generatePuzzle();
+                    _startTimer();
                   });
                 },
                 style: ElevatedButton.styleFrom(

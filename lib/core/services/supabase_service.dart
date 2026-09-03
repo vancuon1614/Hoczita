@@ -195,7 +195,7 @@ class SupabaseService {
     }
   }
 
-  Future<void> saveScore({required String gameName, required int stars, required int score}) async {
+  Future<Map<String, dynamic>> saveAndGetGameRank({required String gameName, required int stars, required int score}) async {
     if (isOfflineDemoMode) {
       _mockScores.insert(0, {
         'game_name': gameName,
@@ -204,12 +204,19 @@ class SupabaseService {
         'completed_at': DateTime.now().toIso8601String(),
       });
       _mockTotalScore += score;
-      return;
+      await Future.delayed(const Duration(milliseconds: 800)); // Simulate loading
+      return {
+        'rank': 1,
+        'totalPlayers': 1,
+        'yourScore': score,
+        'averageScore': score.toDouble(),
+      };
     }
     try {
       final userId = client.auth.currentUser?.id;
-      if (userId == null) return;
+      if (userId == null) throw Exception("Not logged in");
 
+      // 1. Save score
       await client.from(SupabaseConstants.tableGameScores).insert({
         'profile_id': userId,
         'game_name': gameName,
@@ -223,9 +230,74 @@ class SupabaseService {
         'total_score': currentScore + score,
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', userId);
+      
+      // 2. Calculate Rank for this game (based on best score per player? Or all scores? Let's do best score per player for ranking)
+      // Since it's hard to do complex grouping in client, we'll fetch all scores for this game and group them manually.
+      final response = await client
+          .from(SupabaseConstants.tableGameScores)
+          .select('profile_id, score, completed_at')
+          .eq('game_name', gameName);
+
+      List<Map<String, dynamic>> allScores = List<Map<String, dynamic>>.from(response);
+      
+      // Group by profile_id to find max score per player
+      Map<String, int> bestScores = {};
+      Map<String, String> bestTimes = {};
+      for (var row in allScores) {
+        String pid = row['profile_id'].toString();
+        int sc = row['score'] as int? ?? 0;
+        String time = row['completed_at']?.toString() ?? '';
+        
+        if (!bestScores.containsKey(pid) || sc > bestScores[pid]!) {
+          bestScores[pid] = sc;
+          bestTimes[pid] = time;
+        } else if (sc == bestScores[pid]! && time.compareTo(bestTimes[pid]!) < 0) {
+          // tie breaker: earlier time
+          bestTimes[pid] = time;
+        }
+      }
+      
+      // Create a list of best players
+      List<Map<String, dynamic>> players = bestScores.keys.map((pid) {
+        return {
+          'profile_id': pid,
+          'score': bestScores[pid]!,
+          'completed_at': bestTimes[pid]!,
+        };
+      }).toList();
+      
+      // Sort by score DESC, then time ASC
+      players.sort((a, b) {
+        int scA = a['score'] as int;
+        int scB = b['score'] as int;
+        if (scA != scB) return scB.compareTo(scA);
+        
+        String timeA = a['completed_at'] as String;
+        String timeB = b['completed_at'] as String;
+        return timeA.compareTo(timeB);
+      });
+      
+      int rank = 1;
+      int totalScore = 0;
+      for (int i = 0; i < players.length; i++) {
+        if (players[i]['profile_id'] == userId) {
+          rank = i + 1;
+        }
+        totalScore += players[i]['score'] as int;
+      }
+      
+      int totalPlayers = players.length;
+      double avgScore = totalPlayers > 0 ? totalScore / totalPlayers : score.toDouble();
+      
+      return {
+        'rank': rank,
+        'totalPlayers': totalPlayers,
+        'yourScore': score,
+        'averageScore': avgScore,
+      };
     } catch (e) {
-      debugPrint('Save score error: $e');
-      rethrow;
+      debugPrint('Save and get game rank error: $e');
+      throw Exception('Failed to get rank: $e');
     }
   }
 
