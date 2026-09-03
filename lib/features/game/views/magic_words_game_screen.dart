@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:math';
 import '../../../core/theme/app_theme.dart';
-import 'daily_checkin_report_dialog.dart';
 
 class CellPosition {
   final int row;
@@ -70,6 +69,8 @@ class _MagicWordsGameScreenState extends State<MagicWordsGameScreen> {
   Offset? _lastLocalPosition;
   bool _isError = false; // For red flash on wrong word
 
+  bool _isGameOver = false;
+
   @override
   void initState() {
     super.initState();
@@ -77,64 +78,7 @@ class _MagicWordsGameScreenState extends State<MagicWordsGameScreen> {
   }
 
   void _loadPuzzle() {
-    // Hardcoded puzzle for demonstration.
-    // Let's create a small exact cover puzzle.
-    // Grid:
-    // C A T
-    // O B S
-    // W G O
-    // Target words: CAT, DOG, COWS (wait: C-O-W-S? O-B-S -> B is extra)
-    // Let's make a real 3x3 exact cover:
-    // S U N
-    // H O T
-    // D O G
-    // Words: SUN, HOT, DOG.
-    
-    _rows = 5;
-    _cols = 5;
-    
-    // A classic wordbrain style puzzle
-    // L E . U R
-    // . F T N .
-    // . H T H .
-    // . T G G .
-    // L E N I R
-    
-    final List<List<String>> gridData = [
-      ['L', 'E', '', 'U', 'R'],
-      ['', 'F', 'T', 'N', ''],
-      ['', 'H', 'T', 'H', ''],
-      ['', 'T', 'G', 'G', ''],
-      ['L', 'E', 'N', 'I', 'R'],
-    ];
-    
-    _grid = List.generate(_rows, (r) => List.generate(_cols, (c) {
-      if (gridData[r][c].isEmpty) return null;
-      return LetterCell(r, c, gridData[r][c]);
-    }));
-
-    // Expected words: LEFT, RIGHT, THING, LUNG, THEREN?
-    // Let's just define a simple valid exact cover for testing.
-    // L E U R
-    // F T N 
-    // H T H
-    // T G G
-    // L E N I R
-    // To avoid logic errors with my fake puzzle, I'll allow "LEFT", "RIGHT", "THEN", "GUNG" etc., 
-    // but honestly any exact cover puzzle will do. Let's make the targets simple.
-    
-    _puzzle = PuzzleAnswer(
-      targetWords: ["LEFT", "RIGHT", "THING", "LUNG", "HERO"], // just mocking
-      wordPaths: {
-        "LEFT": [const CellPosition(0,0), const CellPosition(0,1), const CellPosition(1,1), const CellPosition(2,1)],
-      },
-    );
-    
-    // Actually, let's redefine the puzzle to be perfectly solvable:
-    // 3x3 grid
-    // C A T
-    // D O G
-    // P I G
+    _isGameOver = false;
     _rows = 3;
     _cols = 3;
     final List<List<String>> simpleGrid = [
@@ -153,13 +97,13 @@ class _MagicWordsGameScreenState extends State<MagicWordsGameScreen> {
   }
 
   void _handlePanStart(DragStartDetails details, BoxConstraints constraints) {
-    if (_isError) return;
+    if (_isError || _isGameOver) return;
     _lastLocalPosition = details.localPosition;
     _hitTestCell(details.localPosition, constraints);
   }
 
   void _handlePanUpdate(DragUpdateDetails details, BoxConstraints constraints) {
-    if (_isError || _lastLocalPosition == null) return;
+    if (_isError || _lastLocalPosition == null || _isGameOver) return;
 
     double dx = details.localPosition.dx - _lastLocalPosition!.dx;
     double dy = details.localPosition.dy - _lastLocalPosition!.dy;
@@ -175,6 +119,7 @@ class _MagicWordsGameScreenState extends State<MagicWordsGameScreen> {
   }
 
   void _hitTestCell(Offset localPosition, BoxConstraints constraints) {
+    if (_isGameOver) return;
     double cellWidth = constraints.maxWidth / _cols;
     double cellHeight = constraints.maxHeight / _rows;
 
@@ -215,7 +160,7 @@ class _MagicWordsGameScreenState extends State<MagicWordsGameScreen> {
   }
 
   void _handlePanEnd(DragEndDetails details) {
-    if (_currentSelection.isEmpty || _isError) return;
+    if (_currentSelection.isEmpty || _isError || _isGameOver) return;
     _validateSelection();
   }
 
@@ -278,30 +223,14 @@ class _MagicWordsGameScreenState extends State<MagicWordsGameScreen> {
 
     if (lockedLetters == totalLetters && _foundWords.length == _puzzle.targetWords.length) {
       // WIN
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => DailyCheckinReportDialog(
-          foundPaths: _foundWords.length,
-          pointsEarned: 30,
-          currentStreak: 1,
-          onPlayAgain: () {
-            Navigator.pop(context);
-            setState(() {
-              _loadPuzzle();
-            });
-          },
-          onGoHome: () {
-            Navigator.pop(context);
-            Navigator.pop(context);
-          },
-        ),
-      );
+      setState(() {
+        _isGameOver = true;
+      });
     }
   }
 
   void _undo() {
-    if (_foundWords.isNotEmpty) {
+    if (_foundWords.isNotEmpty && !_isGameOver) {
       setState(() {
         String lastWord = _foundWords.removeLast();
         for (int r = 0; r < _rows; r++) {
@@ -319,6 +248,10 @@ class _MagicWordsGameScreenState extends State<MagicWordsGameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isGameOver) {
+      return _buildSummaryView();
+    }
+
     bool showAlmostThere = _foundWords.isNotEmpty && _foundWords.length < _puzzle.targetWords.length;
 
     return Scaffold(
@@ -621,6 +554,117 @@ class _MagicWordsGameScreenState extends State<MagicWordsGameScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+  Widget _buildSummaryView() {
+    int stars = 3;
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Spacer(),
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFFF9E6),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.emoji_events_rounded,
+                    color: Colors.amber,
+                    size: 80,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Xuất Sắc! 🎉',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.baloo2(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Bạn đã tìm được tất cả các từ ẩn!',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.baloo2(
+                  fontSize: 16,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 32),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(3, (index) {
+                  final active = index < stars;
+                  return AnimatedScale(
+                    scale: active ? 1.3 : 1.0,
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.elasticOut,
+                    child: Icon(
+                      active ? Icons.star_rounded : Icons.star_outline_rounded,
+                      color: active ? Colors.amber : Colors.grey.shade300,
+                      size: 48,
+                    ),
+                  );
+                }),
+              ),
+              const Spacer(),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _loadPuzzle();
+                  });
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  'Chơi Lại',
+                  style: GoogleFonts.baloo2(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+                child: Text(
+                  'Về Trang Chủ',
+                  style: GoogleFonts.baloo2(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

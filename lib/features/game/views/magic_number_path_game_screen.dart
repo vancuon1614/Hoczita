@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
 import 'dart:math';
 import '../../../core/theme/app_theme.dart';
-import 'daily_checkin_report_dialog.dart'; // Re-use report dialog
 
 class GridCell {
   final int row;
@@ -250,26 +249,6 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
       _isGameOver = true;
     });
     _timer?.cancel();
-    
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => DailyCheckinReportDialog(
-        foundPaths: _currentPath.length,
-        pointsEarned: 20,
-        currentStreak: 1, // Mock
-        onPlayAgain: () {
-          Navigator.pop(context);
-          setState(() {
-            _generatePuzzle();
-          });
-        },
-        onGoHome: () {
-          Navigator.pop(context);
-          Navigator.pop(context);
-        },
-      ),
-    );
   }
 
   void _undo() {
@@ -290,6 +269,10 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isGameOver) {
+      return _buildSummaryView();
+    }
+    
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -587,6 +570,120 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryView() {
+    int stars = 3;
+    if (_secondsElapsed > 30) stars = 2;
+    if (_secondsElapsed > 60) stars = 1;
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Spacer(),
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFFF9E6),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.emoji_events_rounded,
+                    color: Colors.amber,
+                    size: 80,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Xuất Sắc! 🎉',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.baloo2(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Bạn đã nối đường thành công!',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.baloo2(
+                  fontSize: 16,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 32),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(3, (index) {
+                  final active = index < stars;
+                  return AnimatedScale(
+                    scale: active ? 1.3 : 1.0,
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.elasticOut,
+                    child: Icon(
+                      active ? Icons.star_rounded : Icons.star_outline_rounded,
+                      color: active ? Colors.amber : Colors.grey.shade300,
+                      size: 48,
+                    ),
+                  );
+                }),
+              ),
+              const Spacer(),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _generatePuzzle();
+                  });
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  'Chơi Lại',
+                  style: GoogleFonts.baloo2(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+                child: Text(
+                  'Về Trang Chủ',
+                  style: GoogleFonts.baloo2(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
