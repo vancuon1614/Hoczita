@@ -68,8 +68,33 @@ class _DailyCheckinGameScreenState extends State<DailyCheckinGameScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const DailyCheckinReportDialog(),
+      builder: (context) => DailyCheckinReportDialog(
+        foundPaths: _score,
+        pointsEarned: 10, // hardcoded mock or calculated
+        currentStreak: 3, // hardcoded mock or passed from user profile
+        onPlayAgain: () {
+          Navigator.pop(context); // close dialog
+          _restartGame();
+        },
+        onGoHome: () {
+          Navigator.pop(context); // close dialog
+          Navigator.pop(context); // go back to home tab
+        },
+      ),
     );
+  }
+
+  void _restartGame() {
+    setState(() {
+      _score = 0;
+      _timeLeft = 88;
+      _path.clear();
+      _isWrong = false;
+      _isRefilling = false;
+      _targetSum = _random.nextInt(28 - 12 + 1) + 12;
+      _generateSolvableGrid();
+    });
+    _startTimer();
   }
 
   void _generateSolvableGrid() {
