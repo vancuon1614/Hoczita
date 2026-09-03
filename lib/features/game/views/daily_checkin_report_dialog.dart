@@ -444,6 +444,7 @@ class _DailyCheckinReportDialogState extends State<DailyCheckinReportDialog>
         const SizedBox(height: 8),
         // Custom progress bar comparison
         Stack(
+          clipBehavior: Clip.none,
           children: [
             // Background
             Container(
@@ -476,7 +477,7 @@ class _DailyCheckinReportDialogState extends State<DailyCheckinReportDialog>
                   child: Container(
                     width: 4,
                     height: 12,
-                    margin: const EdgeInsets.only(top: -2), // protrude slightly
+                    transform: Matrix4.translationValues(0, -2, 0),
                     decoration: BoxDecoration(
                       color: AppColors.accent,
                       borderRadius: BorderRadius.circular(2),
