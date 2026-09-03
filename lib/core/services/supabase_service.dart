@@ -195,6 +195,40 @@ class SupabaseService {
     }
   }
 
+  Future<void> saveScore({required String gameName, required int stars, required int score}) async {
+    if (isOfflineDemoMode) {
+      _mockScores.insert(0, {
+        'game_name': gameName,
+        'stars': stars,
+        'score': score,
+        'completed_at': DateTime.now().toIso8601String(),
+      });
+      _mockTotalScore += score;
+      return;
+    }
+    try {
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      await client.from(SupabaseConstants.tableGameScores).insert({
+        'profile_id': userId,
+        'game_name': gameName,
+        'stars': stars,
+        'score': score,
+      });
+
+      // Sync and increment total_score in profiles table
+      final currentScore = await getTotalScore();
+      await client.from(SupabaseConstants.tableProfiles).update({
+        'total_score': currentScore + score,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', userId);
+    } catch (e) {
+      debugPrint('Save score error: $e');
+      rethrow;
+    }
+  }
+
   Future<Map<String, dynamic>> saveAndGetGameRank({required String gameName, required int stars, required int score}) async {
     if (isOfflineDemoMode) {
       _mockScores.insert(0, {
