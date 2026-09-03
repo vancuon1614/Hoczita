@@ -128,15 +128,24 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
     }
     
     // 2. Assign checkpoints
-    // Always start at 1, end at K. Add 2-3 random checkpoints in between.
+    // Ensure we don't ask for more checkpoints than the path length
     int k = rand.nextInt(3) + 4; // 4 to 6 checkpoints
+    if (k > path.length) k = path.length;
+    if (k < 2) k = 2; // at least start and end
+
     List<int> cpIndices = [0, path.length - 1]; // Start and end
     
     // Add random middle checkpoints
-    while (cpIndices.length < k) {
-      int idx = rand.nextInt(path.length - 2) + 1;
-      if (!cpIndices.contains(idx)) {
-        cpIndices.add(idx);
+    int attempts = 0;
+    while (cpIndices.length < k && attempts < 100) {
+      attempts++;
+      if (path.length > 2) {
+        int idx = rand.nextInt(path.length - 2) + 1;
+        if (!cpIndices.contains(idx)) {
+          cpIndices.add(idx);
+        }
+      } else {
+        break;
       }
     }
     cpIndices.sort();
@@ -146,7 +155,7 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
       _grid[path[pathIdx].row][path[pathIdx].col].checkpointNumber = i + 1;
     }
     
-    _maxCheckpoint = k;
+    _maxCheckpoint = cpIndices.length;
     _openCellsCount = path.length;
     _currentPath.clear();
     _secondsElapsed = 0;
@@ -156,36 +165,43 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
     _rankData = null;
   }
 
-  // A simple DFS to find a path of specific length
+  // A simple DFS to find a path of specific length, keeping the best found
   List<CellPosition> _generateRandomPath(int r, int c, int targetLen, Random rand) {
-    List<CellPosition> path = [CellPosition(rand.nextInt(r), rand.nextInt(c))];
-    List<List<bool>> visited = List.generate(r, (_) => List.generate(c, (_) => false));
-    visited[path[0].row][path[0].col] = true;
+    List<CellPosition> bestPath = [];
     
-    bool dfs(int cr, int cc) {
-      if (path.length == targetLen) return true;
+    for (int attempt = 0; attempt < 20; attempt++) {
+      List<CellPosition> path = [CellPosition(rand.nextInt(r), rand.nextInt(c))];
+      List<List<bool>> visited = List.generate(r, (_) => List.generate(c, (_) => false));
+      visited[path[0].row][path[0].col] = true;
       
-      List<List<int>> dirs = [[-1,0], [1,0], [0,-1], [0,1]];
-      dirs.shuffle(rand);
-      
-      for (var d in dirs) {
-        int nr = cr + d[0];
-        int nc = cc + d[1];
-        if (nr >= 0 && nr < r && nc >= 0 && nc < c && !visited[nr][nc]) {
-          visited[nr][nc] = true;
-          path.add(CellPosition(nr, nc));
-          if (dfs(nr, nc)) return true;
-          path.removeLast();
-          visited[nr][nc] = false;
+      void dfs(int cr, int cc) {
+        if (path.length > bestPath.length) {
+          bestPath = List.from(path);
+        }
+        if (bestPath.length >= targetLen) return;
+        
+        List<List<int>> dirs = [[-1,0], [1,0], [0,-1], [0,1]];
+        dirs.shuffle(rand);
+        
+        for (var d in dirs) {
+          int nr = cr + d[0];
+          int nc = cc + d[1];
+          if (nr >= 0 && nr < r && nc >= 0 && nc < c && !visited[nr][nc]) {
+            visited[nr][nc] = true;
+            path.add(CellPosition(nr, nc));
+            dfs(nr, nc);
+            if (bestPath.length >= targetLen) return;
+            path.removeLast();
+            visited[nr][nc] = false;
+          }
         }
       }
-      return false;
+      
+      dfs(path[0].row, path[0].col);
+      if (bestPath.length >= targetLen) break;
     }
     
-    dfs(path[0].row, path[0].col);
-    
-    // If it couldn't find a path of targetLen, just return whatever it found (it will just have more walls)
-    return path;
+    return bestPath;
   }
 
   void _handlePanStart(DragStartDetails details, BoxConstraints constraints) {
