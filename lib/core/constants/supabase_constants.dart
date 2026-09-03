@@ -5,4 +5,5 @@ class SupabaseConstants {
   // Table Names
   static const String tableProfiles = 'profiles';
   static const String tableGameScores = 'game_scores';
+  static const String tableDailyCheckins = 'daily_checkins';
 }

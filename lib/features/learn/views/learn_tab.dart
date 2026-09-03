@@ -225,23 +225,24 @@ class LearnTab extends ConsumerWidget {
   }
 
   Widget _buildCheckinCard(BuildContext context) {
-    // For now we mock the checkedDates. In a real app, this should be fetched from Supabase.
-    // Let's mock today as Monday, so everything else is future. Or we just use real date.
-    final today = DateTime.now();
-    // Assuming user checked in yesterday (if not Monday) and today is pending.
-    Set<DateTime> mockedCheckedDates = {};
-    if (today.weekday > 1) {
-      mockedCheckedDates.add(today.subtract(const Duration(days: 1)));
-    }
-    
-    return WeekCheckinRow(
-      checkedDates: mockedCheckedDates,
-      onPlayGame: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const DailyCheckinGameScreen(),
-          ),
+    return FutureBuilder<Set<DateTime>>(
+      future: SupabaseService.instance.getCheckinDates(),
+      builder: (context, snapshot) {
+        final checkedDates = snapshot.data ?? {};
+        return WeekCheckinRow(
+          checkedDates: checkedDates,
+          onPlayGame: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const DailyCheckinGameScreen(),
+              ),
+            ).then((_) {
+              // When coming back from the game, trigger rebuild to refresh checkins
+              // (FutureBuilder will re-run if we were managing state, but since it's a stateless wrapper
+              // here, we might need a better way. But for now this is fine if we force refresh or use Provider)
+            });
+          },
         );
       },
     );

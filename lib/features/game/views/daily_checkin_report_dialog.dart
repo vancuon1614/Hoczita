@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:math';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/supabase_service.dart';
 
 class TodayRankData {
   final int rank;
@@ -59,17 +60,12 @@ class _DailyCheckinReportDialogState extends State<DailyCheckinReportDialog>
   }
 
   void _fetchRank() {
-    // Mock API call to GET /checkin/today-rank?userId={id}
-    _rankFuture = Future.delayed(const Duration(seconds: 2), () {
-      // simulate random network error 10% of the time
-      if (Random().nextDouble() < 0.1) {
-        throw Exception("Network Error");
-      }
+    _rankFuture = SupabaseService.instance.saveAndGetTodayRank(widget.foundPaths).then((data) {
       return TodayRankData(
-        rank: Random().nextInt(100) + 1,
-        totalPlayersToday: 500,
-        yourScore: widget.foundPaths,
-        averageScore: max(1.0, widget.foundPaths - 2 + Random().nextDouble() * 4), // average around user score
+        rank: data['rank'] as int,
+        totalPlayersToday: data['totalPlayersToday'] as int,
+        yourScore: data['yourScore'] as int,
+        averageScore: (data['averageScore'] as num).toDouble(),
       );
     });
   }

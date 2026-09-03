@@ -500,4 +500,108 @@ class SupabaseService {
       rethrow;
     }
   }
+  // --- Daily Check-in ---
+  final Set<DateTime> _mockCheckedDates = {};
+
+  Future<Set<DateTime>> getCheckinDates() async {
+    if (isOfflineDemoMode) {
+      // Return mocked check-in dates
+      final today = DateTime.now();
+      final mocked = {..._mockCheckedDates};
+      if (today.weekday > 1 && !mocked.any((d) => d.year == today.year && d.month == today.month && d.day == today.day - 1)) {
+        mocked.add(today.subtract(const Duration(days: 1)));
+      }
+      return mocked;
+    }
+    
+    try {
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) return {};
+
+      final response = await client
+          .from(SupabaseConstants.tableDailyCheckins)
+          .select('checkin_date')
+          .eq('profile_id', userId);
+
+      Set<DateTime> dates = {};
+      for (var row in response) {
+        if (row['checkin_date'] != null) {
+          dates.add(DateTime.parse(row['checkin_date'].toString()));
+        }
+      }
+      return dates;
+    } catch (e) {
+      debugPrint('Get checkin dates error: $e');
+      return {};
+    }
+  }
+
+  Future<Map<String, dynamic>> saveAndGetTodayRank(int foundPaths) async {
+    if (isOfflineDemoMode) {
+      _mockCheckedDates.add(DateTime.now());
+      await Future.delayed(const Duration(seconds: 1)); // simulate loading
+      return {
+        'rank': 1,
+        'totalPlayersToday': 1,
+        'yourScore': foundPaths,
+        'averageScore': foundPaths.toDouble(),
+      };
+    }
+    
+    try {
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) throw Exception("Not logged in");
+      
+      final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+      
+      // 1. Upsert today's checkin
+      await client.from(SupabaseConstants.tableDailyCheckins).upsert({
+        'profile_id': userId,
+        'checkin_date': todayStr,
+        'found_paths': foundPaths,
+        'updated_at': DateTime.now().toIso8601String(),
+      }, onConflict: 'profile_id, checkin_date');
+
+      // 2. Fetch all checkins for today to calculate rank
+      final response = await client
+          .from(SupabaseConstants.tableDailyCheckins)
+          .select('profile_id, found_paths, updated_at')
+          .eq('checkin_date', todayStr);
+
+      List<Map<String, dynamic>> players = List<Map<String, dynamic>>.from(response);
+      
+      // Sort by found_paths DESC, then updated_at ASC (tie-breaker)
+      players.sort((a, b) {
+        int pathsA = a['found_paths'] as int? ?? 0;
+        int pathsB = b['found_paths'] as int? ?? 0;
+        if (pathsA != pathsB) return pathsB.compareTo(pathsA);
+        
+        String timeA = a['updated_at']?.toString() ?? '';
+        String timeB = b['updated_at']?.toString() ?? '';
+        return timeA.compareTo(timeB);
+      });
+
+      int rank = 1;
+      int totalScore = 0;
+      for (int i = 0; i < players.length; i++) {
+        if (players[i]['profile_id'] == userId) {
+          rank = i + 1;
+        }
+        totalScore += (players[i]['found_paths'] as int? ?? 0);
+      }
+
+      int totalPlayers = players.length;
+      double avgScore = totalPlayers > 0 ? totalScore / totalPlayers : foundPaths.toDouble();
+
+      return {
+        'rank': rank,
+        'totalPlayersToday': totalPlayers,
+        'yourScore': foundPaths,
+        'averageScore': avgScore,
+      };
+    } catch (e) {
+      debugPrint('Save and get rank error: $e');
+      throw Exception('Failed to get rank: $e');
+    }
+  }
 }
