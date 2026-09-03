@@ -7,6 +7,8 @@ import '../../../core/services/supabase_service.dart';
 import 'counting_lesson_screen.dart';
 import 'math_ops_lesson_screen.dart';
 import 'random_flashcard_screen.dart';
+import 'widgets/week_checkin_row.dart';
+import '../../game/views/daily_checkin_game_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 class LearnTab extends ConsumerWidget {
   const LearnTab({super.key});
@@ -109,6 +111,11 @@ class LearnTab extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(height: 24),
+                  // Daily Checkin Card
+                  if (isLoggedIn) ...[
+                    _buildCheckinCard(context),
+                    SizedBox(height: 32),
+                  ],
                   // Main Title
                   Text(
                     'Toán Học 🧮',
@@ -214,6 +221,29 @@ class LearnTab extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildCheckinCard(BuildContext context) {
+    // For now we mock the checkedDates. In a real app, this should be fetched from Supabase.
+    // Let's mock today as Monday, so everything else is future. Or we just use real date.
+    final today = DateTime.now();
+    // Assuming user checked in yesterday (if not Monday) and today is pending.
+    Set<DateTime> mockedCheckedDates = {};
+    if (today.weekday > 1) {
+      mockedCheckedDates.add(today.subtract(const Duration(days: 1)));
+    }
+    
+    return WeekCheckinRow(
+      checkedDates: mockedCheckedDates,
+      onPlayGame: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const DailyCheckinGameScreen(),
+          ),
+        );
+      },
     );
   }
 
