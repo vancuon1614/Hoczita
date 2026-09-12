@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../../../../core/utils/avatar_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_theme.dart';
@@ -25,7 +26,8 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   String? _avatarPath;
 
   String? _selectedGameFilter;
-  String _selectedTimeFilter = 'month'; // default matches the monthly leaderboard
+  String _selectedTimeFilter =
+      'month'; // default matches the monthly leaderboard
 
   // Local caching variables
   String? _cachedName;
@@ -93,14 +95,15 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
       final apiService = ApiService.instance;
       if (apiService.hasToken) {
         final response = await apiService.getUserInfo();
-        final bool isSuccess = response['success'] ?? (response['error'] == null);
+        final bool isSuccess =
+            response['success'] ?? (response['error'] == null);
         if (isSuccess && response['data'] != null) {
           final data = response['data'];
           final email = data['email'] ?? '';
           final name = data['name'] ?? data['username'] ?? email.split('@')[0];
           final avatar = data['avatar'] ?? '';
           final point = data['point'] ?? 0;
-          
+
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('cached_user_name_$email', name);
           await prefs.setString('cached_user_avatar_$email', avatar);
@@ -128,7 +131,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
       if (email != null && email.isNotEmpty) {
         avatarPath = prefs.getString('profile_avatar_path_$email');
       }
-      
+
       // Fallback: lấy avatar_url từ Supabase profiles nếu local chưa có
       if (avatarPath == null || avatarPath.isEmpty) {
         try {
@@ -155,7 +158,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
           debugPrint('Error fetching avatar from Supabase: $e');
         }
       }
-      
+
       setState(() {
         _avatarPath = avatarPath;
       });
@@ -167,6 +170,13 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+
+    ref.listen(authProvider, (previous, next) {
+      if (previous?.email != next.email) {
+        _refreshData();
+      }
+    });
+
     final username = authState.username ?? 'Học sinh';
     final email = authState.email ?? 'guest@hoczita.edu.vn';
 
@@ -174,7 +184,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
       appBar: AppBar(
         title: Text(
           'Hồ sơ của bạn',
-          style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+          style: GoogleFonts.baloo2(
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
         ),
         actions: [
           IconButton(
@@ -282,9 +295,16 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String?>(
                           value: _selectedGameFilter,
-                          hint: Text('Tất cả trò chơi', style: GoogleFonts.baloo2(fontSize: 12)),
+                          hint: Text(
+                            'Tất cả trò chơi',
+                            style: GoogleFonts.baloo2(fontSize: 12),
+                          ),
                           isExpanded: true,
-                          style: GoogleFonts.baloo2(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.bold),
+                          style: GoogleFonts.baloo2(
+                            color: AppColors.textPrimary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
                           borderRadius: BorderRadius.circular(12),
                           items: const [
                             DropdownMenuItem<String?>(
@@ -344,7 +364,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                         child: DropdownButton<String>(
                           value: _selectedTimeFilter,
                           isExpanded: true,
-                          style: GoogleFonts.baloo2(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.bold),
+                          style: GoogleFonts.baloo2(
+                            color: AppColors.textPrimary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
                           borderRadius: BorderRadius.circular(12),
                           items: const [
                             DropdownMenuItem<String>(
@@ -379,12 +403,18 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
               // Leaderboard header
               Row(
                 children: [
-                  Icon(Icons.emoji_events_rounded, color: AppColors.accent, size: 24),
+                  Icon(
+                    Icons.emoji_events_rounded,
+                    color: AppColors.accent,
+                    size: 24,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     _selectedTimeFilter == 'month'
                         ? 'Bảng Xếp Hạng Tháng 🏆'
-                        : (_selectedTimeFilter == 'year' ? 'Bảng Xếp Hạng Năm 🏆' : 'Bảng Xếp Hạng Tổng Hợp 🏆'),
+                        : (_selectedTimeFilter == 'year'
+                              ? 'Bảng Xếp Hạng Năm 🏆'
+                              : 'Bảng Xếp Hạng Tổng Hợp 🏆'),
                     style: GoogleFonts.baloo2(
                       fontSize: 17,
                       fontWeight: FontWeight.bold,
@@ -407,13 +437,17 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                       ),
                     );
                   }
-                  if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                  if (snapshot.hasError ||
+                      !snapshot.hasData ||
+                      snapshot.data!.isEmpty) {
                     return Center(
                       child: Padding(
                         padding: EdgeInsets.symmetric(vertical: 40),
                         child: Text(
                           'Chưa có dữ liệu bảng xếp hạng.',
-                          style: GoogleFonts.baloo2(color: AppColors.textSecondary),
+                          style: GoogleFonts.baloo2(
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ),
                     );
@@ -444,12 +478,18 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
 
                         // Custom styling for top 3
                         Color medalColor = Colors.transparent;
-                        if (rank == 1) medalColor = const Color(0xFFFFD700); // Gold
-                        if (rank == 2) medalColor = const Color(0xFFC0C0C0); // Silver
-                        if (rank == 3) medalColor = const Color(0xFFCD7F32); // Bronze
+                        if (rank == 1)
+                          medalColor = const Color(0xFFFFD700); // Gold
+                        if (rank == 2)
+                          medalColor = const Color(0xFFC0C0C0); // Silver
+                        if (rank == 3)
+                          medalColor = const Color(0xFFCD7F32); // Bronze
 
                         return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
                           child: Row(
                             children: [
                               // Rank number or Medal
@@ -480,7 +520,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                 child: Text(
                                   user,
                                   style: GoogleFonts.baloo2(
-                                    fontWeight: rank <= 3 ? FontWeight.bold : FontWeight.normal,
+                                    fontWeight: rank <= 3
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
                                     color: AppColors.textPrimary,
                                     fontSize: 15,
                                   ),
@@ -510,22 +552,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     );
   }
 
-  ImageProvider? _getAvatarImageProvider(String path) {
-    if (path.isEmpty) return null;
-    if (path.startsWith('data:image/') || 
-        path.startsWith('blob:') || 
-        path.startsWith('http://') || 
-        path.startsWith('https://') || 
-        kIsWeb) {
-      return NetworkImage(path);
-    }
-    return FileImage(File(path));
-  }
 
   Widget _buildUserCard(String username, String email) {
     final String displayName = _cachedName ?? username;
     final String activeAvatar = _cachedAvatar ?? _avatarPath ?? '';
-    final ImageProvider? avatarImage = _getAvatarImageProvider(activeAvatar);
+    final ImageProvider? avatarImage = resolveAvatarImage(activeAvatar);
 
     return GestureDetector(
       onTap: () async {
@@ -557,12 +588,12 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 3),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  width: 3,
+                ),
                 image: avatarImage != null
-                    ? DecorationImage(
-                        image: avatarImage,
-                        fit: BoxFit.cover,
-                      )
+                    ? DecorationImage(image: avatarImage, fit: BoxFit.cover)
                     : null,
                 boxShadow: [
                   BoxShadow(
@@ -582,7 +613,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     ),
             ),
             SizedBox(width: 20),
-  
+
             // User details
             Expanded(
               child: Column(
@@ -611,9 +642,14 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   FutureBuilder<int>(
                     future: _totalScoreFuture,
                     builder: (context, snapshot) {
-                      final points = snapshot.hasData ? snapshot.data! : (_cachedPoint ?? 0);
+                      final points = snapshot.hasData
+                          ? snapshot.data!
+                          : (_cachedPoint ?? 0);
                       return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12),
@@ -621,7 +657,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.stars_rounded, color: AppColors.accent, size: 16),
+                            Icon(
+                              Icons.stars_rounded,
+                              color: AppColors.accent,
+                              size: 16,
+                            ),
                             SizedBox(width: 6),
                             Text(
                               '$points điểm tích lũy',

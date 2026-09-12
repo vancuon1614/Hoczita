@@ -154,22 +154,24 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
 
     if (!mounted) return;
 
-    setState(() {
-      _isLoading = false;
-      _difficulty = diff;
-      _selectedWords = selectedWords;
-      _currentWordIndex = 0;
-      _correctCount = 0;
-      _results.clear();
-      _isPlaying = true;
-      _isGameOver = false;
-    });
-
     if (selectedWords.isNotEmpty) {
+      setState(() {
+        _isLoading = false;
+        _difficulty = diff;
+        _selectedWords = selectedWords;
+        _currentWordIndex = 0;
+        _correctCount = 0;
+        _results.clear();
+        _isPlaying = true;
+        _isGameOver = false;
+      });
       _loadWord(_currentWordIndex);
     } else {
+      setState(() {
+        _isLoading = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lỗi tải dữ liệu. Vui lòng thử lại!')),
+        const SnackBar(content: Text('Không đủ từ vựng cho độ khó này. Vui lòng thử lại!')),
       );
     }
   }

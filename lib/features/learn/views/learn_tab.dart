@@ -41,9 +41,10 @@ class LearnTab extends ConsumerWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                           Text(
                             'Hello, $username! 👋',
                             style: GoogleFonts.baloo2(
@@ -63,7 +64,9 @@ class LearnTab extends ConsumerWidget {
                             ),
                           ),
                         ],
+                        ),
                       ),
+                      const SizedBox(width: 12),
                       if (isLoggedIn)
                         FutureBuilder<int>(
                           future: SupabaseService.instance.getTotalScore(),
@@ -225,25 +228,18 @@ class LearnTab extends ConsumerWidget {
   }
 
   Widget _buildCheckinCard(BuildContext context) {
-    return FutureBuilder<Set<DateTime>>(
-      future: SupabaseService.instance.getCheckinDates(),
-      builder: (context, snapshot) {
-        final checkedDates = snapshot.data ?? {};
-        return WeekCheckinRow(
-          checkedDates: checkedDates,
-          onPlayGame: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const DailyCheckinGameScreen(),
-              ),
-            ).then((_) {
-              // When coming back from the game, trigger rebuild to refresh checkins
-              // (FutureBuilder will re-run if we were managing state, but since it's a stateless wrapper
-              // here, we might need a better way. But for now this is fine if we force refresh or use Provider)
-            });
-          },
-        );
+    return WeekCheckinRow(
+      onPlayGame: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const DailyCheckinGameScreen(),
+          ),
+        ).then((_) {
+          if (context.mounted) {
+             // Let Riverpod handle the state update automatically
+          }
+        });
       },
     );
   }

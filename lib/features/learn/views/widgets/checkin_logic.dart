@@ -17,7 +17,7 @@ class CheckinLogic {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
-  static DayCellState resolveState(DateTime date, DateTime today, Set<DateTime> checkedDates) {
+  static DayCellState resolveState(DateTime date, DateTime today, Set<DateTime> checkedDates, [bool? todayStatus]) {
     DateTime normDate = normalize(date);
     DateTime normToday = normalize(today);
 
@@ -26,7 +26,10 @@ class CheckinLogic {
     bool isToday = isSameDay(normDate, normToday);
 
     if (normDate.isAfter(normToday)) return DayCellState.future;
-    if (isToday) return checked ? DayCellState.todayDone : DayCellState.todayPending;
+    if (isToday) {
+      bool isDone = todayStatus ?? checked;
+      return isDone ? DayCellState.todayDone : DayCellState.todayPending;
+    }
     return checked ? DayCellState.checkedIn : DayCellState.missed;
   }
 

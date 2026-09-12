@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../../../../core/utils/avatar_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
@@ -345,21 +346,17 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
     }
   }
 
-  ImageProvider? _getAvatarImageProvider(String path) {
-    if (path.isEmpty) return null;
-    if (path.startsWith('data:image/') || 
-        path.startsWith('blob:') || 
-        path.startsWith('http://') || 
-        path.startsWith('https://') || 
-        kIsWeb) {
-      return NetworkImage(path);
-    }
-    return FileImage(File(path));
-  }
 
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(authProvider, (previous, next) {
+      if (previous?.email != next.email) {
+        setState(() { _isLoading = true; });
+        _loadProfileDetails();
+      }
+    });
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -402,7 +399,7 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
                                 radius: 54,
                                 backgroundColor: AppColors.primaryLight,
                                 backgroundImage: _avatarPath != null && _avatarPath!.isNotEmpty
-                                    ? _getAvatarImageProvider(_avatarPath!)
+                                    ? resolveAvatarImage(_avatarPath!)
                                     : null,
                                 child: _avatarPath != null && _avatarPath!.isNotEmpty
                                     ? null

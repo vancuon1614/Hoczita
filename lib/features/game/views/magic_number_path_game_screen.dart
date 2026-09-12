@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:hoczita_app/features/game/views/result_report_sheet.dart';
+import 'package:hoczita_app/features/game/utils/game_rating_logic.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
 import 'dart:math';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/constants/game_strings.dart';
 
 class CellPosition {
   final int row;
@@ -54,6 +57,73 @@ class MagicNumberPathGameScreen extends StatefulWidget {
   State<MagicNumberPathGameScreen> createState() => _MagicNumberPathGameScreenState();
 }
 
+class PathColorPalette {
+  final String name;
+  final Color startColor;
+  final Color midColor;
+  final Color endColor;
+  final Color primaryColor;
+
+  const PathColorPalette({
+    required this.name,
+    required this.startColor,
+    required this.midColor,
+    required this.endColor,
+    required this.primaryColor,
+  });
+}
+
+const List<PathColorPalette> _kPathPalettes = [
+  // 1. Neon Purple - Magenta - Coral Red (Default)
+  PathColorPalette(
+    name: 'Purple-Red',
+    startColor: Color(0xFF7B1FA2),
+    midColor: Color(0xFFE91E63),
+    endColor: Color(0xFFE53935),
+    primaryColor: Color(0xFFE91E63),
+  ),
+  // 2. Electric Cyan - Royal Blue - Deep Violet
+  PathColorPalette(
+    name: 'Cyan-Blue',
+    startColor: Color(0xFF00E5FF),
+    midColor: Color(0xFF2979FF),
+    endColor: Color(0xFF651FFF),
+    primaryColor: Color(0xFF2979FF),
+  ),
+  // 3. Sunset Crimson - Orange - Golden Yellow
+  PathColorPalette(
+    name: 'Sunset-Gold',
+    startColor: Color(0xFFFF1744),
+    midColor: Color(0xFFFF6D00),
+    endColor: Color(0xFFFFD600),
+    primaryColor: Color(0xFFFF6D00),
+  ),
+  // 4. Emerald Green - Teal - Electric Mint
+  PathColorPalette(
+    name: 'Emerald-Mint',
+    startColor: Color(0xFF00BFA5),
+    midColor: Color(0xFF00C853),
+    endColor: Color(0xFFAEEA00),
+    primaryColor: Color(0xFF00BFA5),
+  ),
+  // 5. Electric Pink - Fuchsia - Deep Indigo
+  PathColorPalette(
+    name: 'Pink-Indigo',
+    startColor: Color(0xFFFF4081),
+    midColor: Color(0xFFD500F9),
+    endColor: Color(0xFF3D5AFE),
+    primaryColor: Color(0xFFD500F9),
+  ),
+  // 6. Amber Orange - Coral Pink - Deep Berry
+  PathColorPalette(
+    name: 'Amber-Berry',
+    startColor: Color(0xFFFFAB00),
+    midColor: Color(0xFFFF4081),
+    endColor: Color(0xFF880E4F),
+    primaryColor: Color(0xFFFF4081),
+  ),
+];
+
 class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
   bool _showHowToPlay = true;
 
@@ -63,14 +133,13 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
   int _cols = 5;
   int _maxCheckpoint = 0;
   int _openCellsCount = 0;
+  PathColorPalette _currentPalette = _kPathPalettes[0];
 
   Timer? _timer;
   int _secondsElapsed = 0;
   bool _isGameOver = false;
   int _undoCount = 0;
   int _hintCount = 0;
-  Map<String, dynamic>? _rankData;
-  bool _isSavingScore = false;
   
   Offset? _lastLocalPosition;
 
@@ -99,24 +168,40 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
   }
 
   void _generatePuzzle() {
-    _rows = 5;
-    _cols = 5;
-    _grid = List.generate(_rows, (r) => List.generate(_cols, (c) => GridCell(row: r, col: c)));
-    
-    // 1. Randomize walls (0 to 3 walls)
     final rand = Random();
-    int wallCount = rand.nextInt(4);
+    int roll = rand.nextInt(100);
+    int size = 5;
+    if (roll < 72) {
+      size = 5; // 72%
+    } else if (roll < 86) {
+      size = 6; // 14%
+    } else {
+      size = 7; // 14%
+    }
+
+    _rows = size;
+    _cols = size;
+    _grid = List.generate(_rows, (r) => List.generate(_cols, (c) => GridCell(row: r, col: c)));
+    _currentPalette = _kPathPalettes[rand.nextInt(_kPathPalettes.length)];
+
+    // Randomize walls and checkpoints based on grid size
+    int wallCount;
+    int k;
+    if (size == 5) {
+      wallCount = rand.nextInt(4) + 2; // 2 to 5 walls
+      k = rand.nextInt(5) + 6;          // 6 to 10 checkpoints
+    } else if (size == 6) {
+      wallCount = rand.nextInt(5) + 4; // 4 to 8 walls
+      k = rand.nextInt(5) + 10;         // 10 to 14 checkpoints
+    } else {
+      wallCount = rand.nextInt(7) + 6; // 6 to 12 walls
+      k = rand.nextInt(6) + 15;         // 15 to 20 checkpoints
+    }
+
     List<CellPosition> walls = [];
-    
-    // To ensure Hamiltonian path is possible, generating a random snake path first is safest.
-    // Let's generate a random Hamiltonian path on an empty grid, then randomly turn some unused corners into walls if we don't cover them?
-    // Wait, the requirement is to cover ALL OPEN CELLS.
-    // Easiest way to generate a valid puzzle:
-    // a) Start with empty grid.
-    // b) Generate a random snake/DFS path that covers ALL cells. (This can be hard to guarantee quickly without backtracking).
-    // Let's do a simple recursive backtracker to find ONE path that covers N cells, and whatever is left becomes walls.
-    List<CellPosition> path = _generateRandomPath(_rows, _cols, (_rows * _cols) - wallCount, rand);
-    
+    int targetLen = (_rows * _cols) - wallCount;
+    List<CellPosition> path = _generateRandomPath(_rows, _cols, targetLen, rand);
+
     // Mark walls
     for (int r = 0; r < _rows; r++) {
       for (int c = 0; c < _cols; c++) {
@@ -126,15 +211,13 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
         }
       }
     }
-    
-    // 2. Assign checkpoints
-    // Ensure we don't ask for more checkpoints than the path length
-    int k = rand.nextInt(3) + 4; // 4 to 6 checkpoints
+
+    // Assign checkpoints
     if (k > path.length) k = path.length;
     if (k < 2) k = 2; // at least start and end
 
     List<int> cpIndices = [0, path.length - 1]; // Start and end
-    
+
     // Add random middle checkpoints
     int attempts = 0;
     while (cpIndices.length < k && attempts < 100) {
@@ -149,12 +232,12 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
       }
     }
     cpIndices.sort();
-    
+
     for (int i = 0; i < cpIndices.length; i++) {
       int pathIdx = cpIndices[i];
       _grid[path[pathIdx].row][path[pathIdx].col].checkpointNumber = i + 1;
     }
-    
+
     _maxCheckpoint = cpIndices.length;
     _openCellsCount = path.length;
     _currentPath.clear();
@@ -162,45 +245,63 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
     _isGameOver = false;
     _undoCount = 0;
     _hintCount = 0;
-    _rankData = null;
   }
 
-  // A simple DFS to find a path of specific length, keeping the best found
+  // Warnsdorff-heuristic DFS to find a path covering targetLen quickly
   List<CellPosition> _generateRandomPath(int r, int c, int targetLen, Random rand) {
     List<CellPosition> bestPath = [];
-    
-    for (int attempt = 0; attempt < 20; attempt++) {
+
+    int countFreeNeighbors(int cr, int cc, List<List<bool>> visited) {
+      int count = 0;
+      for (var d in const [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+        int nr = cr + d[0];
+        int nc = cc + d[1];
+        if (nr >= 0 && nr < r && nc >= 0 && nc < c && !visited[nr][nc]) {
+          count++;
+        }
+      }
+      return count;
+    }
+
+    for (int attempt = 0; attempt < 50; attempt++) {
       List<CellPosition> path = [CellPosition(rand.nextInt(r), rand.nextInt(c))];
       List<List<bool>> visited = List.generate(r, (_) => List.generate(c, (_) => false));
       visited[path[0].row][path[0].col] = true;
-      
+      int steps = 0;
+
       void dfs(int cr, int cc) {
+        if (++steps > 600) return;
         if (path.length > bestPath.length) {
           bestPath = List.from(path);
         }
         if (bestPath.length >= targetLen) return;
-        
-        List<List<int>> dirs = [[-1,0], [1,0], [0,-1], [0,1]];
-        dirs.shuffle(rand);
-        
-        for (var d in dirs) {
+
+        List<CellPosition> candidates = [];
+        for (var d in const [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
           int nr = cr + d[0];
           int nc = cc + d[1];
           if (nr >= 0 && nr < r && nc >= 0 && nc < c && !visited[nr][nc]) {
-            visited[nr][nc] = true;
-            path.add(CellPosition(nr, nc));
-            dfs(nr, nc);
-            if (bestPath.length >= targetLen) return;
-            path.removeLast();
-            visited[nr][nc] = false;
+            candidates.add(CellPosition(nr, nc));
           }
         }
+        candidates.shuffle(rand);
+        candidates.sort((a, b) => countFreeNeighbors(a.row, a.col, visited)
+            .compareTo(countFreeNeighbors(b.row, b.col, visited)));
+
+        for (var cand in candidates) {
+          visited[cand.row][cand.col] = true;
+          path.add(cand);
+          dfs(cand.row, cand.col);
+          if (bestPath.length >= targetLen) return;
+          path.removeLast();
+          visited[cand.row][cand.col] = false;
+        }
       }
-      
+
       dfs(path[0].row, path[0].col);
       if (bestPath.length >= targetLen) break;
     }
-    
+
     return bestPath;
   }
 
@@ -319,8 +420,7 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
     _timer?.cancel();
     setState(() {
       _isGameOver = true;
-      _isSavingScore = true;
-    });
+      });
 
     // Score logic for Zip
     int baseScore = 100;
@@ -332,24 +432,13 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
     if (_secondsElapsed > 60) stars = 1;
 
     try {
-      final rankData = await SupabaseService.instance.saveAndGetGameRank(
+      await SupabaseService.instance.saveScore(
         gameName: 'magic_number_path',
         stars: stars,
         score: score,
       );
-      if (mounted) {
-        setState(() {
-          _rankData = rankData;
-        });
-      }
     } catch (e) {
-      debugPrint('Error saving Zip score: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSavingScore = false;
-        });
-      }
+      debugPrint('Error saving magic_number_path score: $e');
     }
   }
 
@@ -360,6 +449,13 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
         _currentPath.removeLast();
       });
     }
+  }
+
+  void _replay() {
+    setState(() {
+      _generatePuzzle();
+      _startTimer();
+    });
   }
 
   void _reset() {
@@ -373,7 +469,24 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isGameOver) {
-      return _buildSummaryView();
+      int stars = resolveZipStarRating(Duration(seconds: _secondsElapsed), Duration(seconds: _openCellsCount * 2), 0);
+      return ResultReportSheet(
+        gameType: GameType.zip,
+        starCount: stars,
+        elapsedTime: Duration(seconds: _secondsElapsed),
+        showStars: false,
+        onReplay: _replay,
+        onGoHome: () {
+          Navigator.of(context).pop();
+        },
+        accentColor: _currentPalette.primaryColor,
+        customMiddleWidget: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 250),
+          child: FittedBox(
+            child: _buildGridWidget(readOnlyMode: true),
+          ),
+        ),
+      );
     }
     
     return Scaffold(
@@ -428,7 +541,7 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
           Expanded(
             child: Center(
               child: Text(
-                'Đường Số Diệu Kỳ 🔢',
+                'Đường Số Diệu Kỳ',
                 style: GoogleFonts.baloo2(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
@@ -447,7 +560,7 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
               ),
             ),
             child: Text(
-              'Đặt lại',
+              GameStrings.reset,
               style: GoogleFonts.baloo2(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -461,29 +574,27 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
     );
   }
 
-  Widget _buildGridWidget() {
-    return Container(
-      padding: const EdgeInsets.all(4),
+  Widget _buildGridWidget({bool readOnlyMode = false}) {
+    Widget content = Container(
+      padding: readOnlyMode ? EdgeInsets.zero : const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: readOnlyMode ? Colors.transparent : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade300, width: 1.5),
+        border: readOnlyMode ? null : Border.all(color: Colors.grey.shade300, width: 1.5),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          double size = constraints.maxWidth;
+          double size = constraints.maxWidth == double.infinity ? 300 : constraints.maxWidth;
           double cellWidth = size / _cols;
           double cellHeight = size / _rows;
 
-          return GestureDetector(
-            onPanStart: (d) => _handlePanStart(d, BoxConstraints.tightFor(width: size, height: size)),
-            onPanUpdate: (d) => _handlePanUpdate(d, BoxConstraints.tightFor(width: size, height: size)),
-            child: SizedBox(
-              width: size,
-              height: size,
-              child: Stack(
-                children: [
-                  // Draw grid cells
+          Widget boardContent = SizedBox(
+            width: size,
+            height: size,
+            child: Stack(
+              children: [
+                // 1. Draw grid cells (background & walls) - only in game mode, NOT in report mode
+                if (!readOnlyMode)
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -496,55 +607,99 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
                       int r = index ~/ _cols;
                       int c = index % _cols;
                       GridCell cell = _grid[r][c];
-                      
+
+                      Color cellBg = Colors.transparent;
+                      if (cell.isWall) {
+                        cellBg = Colors.grey.shade300;
+                      } else if (cell.checkpointNumber == 1) {
+                        cellBg = const Color(0xFFBAE6FD); // Sky blue start cell highlight
+                      }
+
                       return Container(
                         decoration: BoxDecoration(
-                          color: cell.isWall ? Colors.grey.shade300 : Colors.transparent,
+                          color: cellBg,
                           border: Border.all(color: Colors.grey.shade200, width: 1),
                         ),
-                        alignment: Alignment.center,
-                        child: cell.checkpointNumber != null
-                            ? Container(
-                                width: cellWidth * 0.6,
-                                height: cellHeight * 0.6,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF0F172A),
-                                  shape: BoxShape.circle,
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  cell.checkpointNumber.toString(),
-                                  style: GoogleFonts.baloo2(
-                                    fontSize: cellWidth * 0.3,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              )
-                            : null,
                       );
                     },
                   ),
-                  
-                  // Draw Path Overlay
-                  if (_currentPath.isNotEmpty)
-                    IgnorePointer(
-                      child: CustomPaint(
-                        size: Size(size, size),
-                        painter: ZipPathPainter(
-                          path: _currentPath,
-                          cellWidth: cellWidth,
-                          cellHeight: cellHeight,
-                        ),
+
+                // 2. Draw Path Overlay (thick glossy gradient path)
+                if (_currentPath.isNotEmpty)
+                  IgnorePointer(
+                    child: CustomPaint(
+                      size: Size(size, size),
+                      painter: ZipPathPainter(
+                        path: _currentPath,
+                        cellWidth: cellWidth,
+                        cellHeight: cellHeight,
+                        palette: _currentPalette,
+                        isCompleted: _isGameOver || readOnlyMode,
                       ),
                     ),
+                  ),
+
+                // 3. Draw Checkpoints ON TOP of the Path
+                ...[
+                  for (int r = 0; r < _rows; r++)
+                    for (int c = 0; c < _cols; c++)
+                      if (_grid[r][c].checkpointNumber != null)
+                        Positioned(
+                          left: c * cellWidth,
+                          top: r * cellHeight,
+                          width: cellWidth,
+                          height: cellHeight,
+                          child: Center(
+                            child: Container(
+                              width: cellWidth * 0.62,
+                              height: cellHeight * 0.62,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0F172A),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.15),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                _grid[r][c].checkpointNumber.toString(),
+                                style: GoogleFonts.baloo2(
+                                  fontSize: (_grid[r][c].checkpointNumber ?? 0) >= 10
+                                      ? cellWidth * 0.26
+                                      : cellWidth * 0.32,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                 ],
-              ),
+              ],
             ),
+          );
+
+          if (readOnlyMode) {
+            return boardContent;
+          }
+
+          return GestureDetector(
+            onPanStart: (d) => _handlePanStart(d, BoxConstraints.tightFor(width: size, height: size)),
+            onPanUpdate: (d) => _handlePanUpdate(d, BoxConstraints.tightFor(width: size, height: size)),
+            child: boardContent,
           );
         },
       ),
     );
+
+    if (readOnlyMode) {
+      return IgnorePointer(child: content);
+    }
+    return content;
   }
 
   Widget _buildActionButtons() {
@@ -562,7 +717,7 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
               ),
             ),
             child: Text(
-              'Hoàn Tác',
+              GameStrings.undo,
               style: GoogleFonts.baloo2(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -583,7 +738,7 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
               ),
             ),
             child: Text(
-              'Gợi Ý 💡',
+              GameStrings.hint,
               style: GoogleFonts.baloo2(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -678,159 +833,7 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
     );
   }
 
-  Widget _buildSummaryView() {
-    int stars = 3;
-    if (_secondsElapsed > 30) stars = 2;
-    if (_secondsElapsed > 60) stars = 1;
-
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Spacer(),
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFFF9E6),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.emoji_events_rounded,
-                    color: Colors.amber,
-                    size: 80,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Xuất Sắc! 🎉',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.baloo2(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Bạn đã nối đường thành công!',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.baloo2(
-                  fontSize: 16,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 24),
-              
-              if (_isSavingScore)
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: CircularProgressIndicator(color: AppColors.primary),
-                  ),
-                )
-              else if (_rankData != null)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        'Xếp hạng của bạn: #${_rankData!['rank']}',
-                        style: GoogleFonts.baloo2(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Điểm: ${_rankData!['yourScore']} / Đỉnh cao trong ${_rankData!['totalPlayers']} người',
-                        style: GoogleFonts.nunito(
-                          fontSize: 14,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              const SizedBox(height: 32),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(3, (index) {
-                  final active = index < stars;
-                  return AnimatedScale(
-                    scale: active ? 1.3 : 1.0,
-                    duration: const Duration(milliseconds: 500),
-                    curve: Curves.elasticOut,
-                    child: Icon(
-                      active ? Icons.star_rounded : Icons.star_outline_rounded,
-                      color: active ? Colors.amber : Colors.grey.shade300,
-                      size: 48,
-                    ),
-                  );
-                }),
-              ),
-              const Spacer(),
-              ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    _generatePuzzle();
-                    _startTimer();
-                  });
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  'Chơi Lại',
-                  style: GoogleFonts.baloo2(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                ),
-                child: Text(
-                  'Về Trang Chủ',
-                  style: GoogleFonts.baloo2(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  
 
   Widget _buildMiniCircle(String text, Color color) {
     return Container(
@@ -858,53 +861,87 @@ class ZipPathPainter extends CustomPainter {
   final List<GridCell> path;
   final double cellWidth;
   final double cellHeight;
+  final PathColorPalette palette;
+  final bool isCompleted;
 
   ZipPathPainter({
     required this.path,
     required this.cellWidth,
     required this.cellHeight,
+    required this.palette,
+    this.isCompleted = false,
   });
+
+  Color _getPathColor(double t) {
+    if (t < 0.5) {
+      return Color.lerp(palette.startColor, palette.midColor, t * 2)!;
+    } else {
+      return Color.lerp(palette.midColor, palette.endColor, (t - 0.5) * 2)!;
+    }
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
     if (path.isEmpty) return;
 
-    final paint = Paint()
-      ..color = AppColors.primary.withValues(alpha: 0.4)
-      ..strokeWidth = min(cellWidth, cellHeight) * 0.4
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke;
+    double strokeW = min(cellWidth, cellHeight) * 0.55;
 
-    final drawPath = Path();
-    for (int i = 0; i < path.length; i++) {
-      double cx = path[i].col * cellWidth + cellWidth / 2;
-      double cy = path[i].row * cellHeight + cellHeight / 2;
-      if (i == 0) {
-        drawPath.moveTo(cx, cy);
-      } else {
-        drawPath.lineTo(cx, cy);
-      }
+    if (path.length == 1) {
+      double cx = path[0].col * cellWidth + cellWidth / 2;
+      double cy = path[0].row * cellHeight + cellHeight / 2;
+      canvas.drawCircle(
+        Offset(cx, cy),
+        strokeW / 2,
+        Paint()..color = _getPathColor(0)..style = PaintingStyle.fill,
+      );
+      return;
     }
 
-    canvas.drawPath(drawPath, paint);
-    
-    // Draw circles at cell centers for a unified trail look
-    final circlePaint = Paint()
-      ..color = AppColors.primary.withValues(alpha: 0.4)
-      ..style = PaintingStyle.fill;
-      
+    // 1. Draw segment by segment with vibrant smooth gradient
+    for (int i = 0; i < path.length - 1; i++) {
+      double t1 = i / max(1, path.length - 1);
+      double t2 = (i + 1) / max(1, path.length - 1);
+
+      Color c1 = _getPathColor(t1);
+      Color c2 = _getPathColor(t2);
+
+      double x1 = path[i].col * cellWidth + cellWidth / 2;
+      double y1 = path[i].row * cellHeight + cellHeight / 2;
+      double x2 = path[i + 1].col * cellWidth + cellWidth / 2;
+      double y2 = path[i + 1].row * cellHeight + cellHeight / 2;
+
+      final segmentPaint = Paint()
+        ..shader = LinearGradient(
+          colors: [c1, c2],
+        ).createShader(Rect.fromPoints(Offset(x1, y1), Offset(x2, y2)))
+        ..strokeWidth = strokeW
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..style = PaintingStyle.stroke;
+
+      canvas.drawLine(Offset(x1, y1), Offset(x2, y2), segmentPaint);
+    }
+
+    // 2. Draw circle joints at cell centers for round smooth corners (clean, no dots)
     for (int i = 0; i < path.length; i++) {
+      double t = i / max(1, path.length - 1);
+      Color c = _getPathColor(t);
       double cx = path[i].col * cellWidth + cellWidth / 2;
       double cy = path[i].row * cellHeight + cellHeight / 2;
-      canvas.drawCircle(Offset(cx, cy), min(cellWidth, cellHeight) * 0.2, circlePaint);
+      canvas.drawCircle(
+        Offset(cx, cy),
+        strokeW / 2,
+        Paint()..color = c..style = PaintingStyle.fill,
+      );
     }
   }
 
   @override
   bool shouldRepaint(covariant ZipPathPainter oldDelegate) {
-    return oldDelegate.path != path || 
-           oldDelegate.cellWidth != cellWidth || 
-           oldDelegate.cellHeight != cellHeight;
+    return oldDelegate.path != path ||
+        oldDelegate.cellWidth != cellWidth ||
+        oldDelegate.cellHeight != cellHeight ||
+        oldDelegate.palette != palette ||
+        oldDelegate.isCompleted != isCompleted;
   }
 }

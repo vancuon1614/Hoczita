@@ -1,24 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../providers/checkin_provider.dart';
+import '../checkin_celebration_banner.dart';
 import 'checkin_logic.dart';
 import 'month_checkin_sheet.dart';
 
-class WeekCheckinRow extends StatefulWidget {
-  final Set<DateTime> checkedDates;
+class WeekCheckinRow extends ConsumerStatefulWidget {
   final VoidCallback onPlayGame;
 
   const WeekCheckinRow({
     super.key,
-    required this.checkedDates,
     required this.onPlayGame,
   });
 
   @override
-  State<WeekCheckinRow> createState() => _WeekCheckinRowState();
+  ConsumerState<WeekCheckinRow> createState() => _WeekCheckinRowState();
 }
 
-class _WeekCheckinRowState extends State<WeekCheckinRow> with SingleTickerProviderStateMixin {
+class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   late DateTime _today;
@@ -28,9 +29,10 @@ class _WeekCheckinRowState extends State<WeekCheckinRow> with SingleTickerProvid
   void initState() {
     super.initState();
     _initData();
+
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 1),
+      duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
 
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
@@ -40,14 +42,14 @@ class _WeekCheckinRowState extends State<WeekCheckinRow> with SingleTickerProvid
 
   void _initData() {
     _today = DateTime.now();
-    _weekDays = CheckinLogic.getDaysInWeek(_today);
-  }
+    _today = DateTime(_today.year, _today.month, _today.day);
+    int currentWeekday = _today.weekday;
+    DateTime startOfWeek = _today.subtract(Duration(days: currentWeekday - 1));
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Refresh today on resume
-    _initData();
+    _weekDays = [];
+    for (int i = 0; i < 7; i++) {
+      _weekDays.add(startOfWeek.add(Duration(days: i)));
+    }
   }
 
   @override
@@ -56,20 +58,30 @@ class _WeekCheckinRowState extends State<WeekCheckinRow> with SingleTickerProvid
     super.dispose();
   }
 
-  void _showMonthSheet() {
+  void _showMonthSheet(Set<DateTime> checkedDates, bool hasCheckedInToday) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => MonthCheckinSheet(
-        checkedDates: widget.checkedDates,
+        checkedDates: checkedDates,
         today: _today,
+        hasCheckedInToday: hasCheckedInToday,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    // Lắng nghe sự kiện điểm danh thành công để hiển thị popup
+    ref.listen<CheckinState>(checkinProvider, (previous, next) {
+      if (previous != null && !previous.hasCheckedInToday && next.hasCheckedInToday) {
+        CheckinCelebrationBanner.show(context);
+      }
+    });
+
+    final checkinState = ref.watch(checkinProvider);
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -83,35 +95,37 @@ class _WeekCheckinRowState extends State<WeekCheckinRow> with SingleTickerProvid
           ),
         ],
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          // Banner
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(22),
-                topRight: Radius.circular(22),
+          // Banner - tự ẩn khi đã điểm danh xong
+          if (!checkinState.hasCheckedInToday)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: const BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(22),
+                  topRight: Radius.circular(22),
+                ),
               ),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.notifications_active_rounded, color: AppColors.primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    "🎯 Đừng quên 'check-in' lớp học hôm nay nhé!",
-                    style: GoogleFonts.baloo2(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
+              child: Row(
+                children: [
+                  const Icon(Icons.notifications_active_rounded, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "🎯 Đừng quên 'check-in' lớp học hôm nay nhé!",
+                      style: GoogleFonts.baloo2(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
           // Content
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -130,7 +144,7 @@ class _WeekCheckinRowState extends State<WeekCheckinRow> with SingleTickerProvid
                       ),
                     ),
                     GestureDetector(
-                      onTap: _showMonthSheet,
+                      onTap: () => _showMonthSheet(checkinState.checkedDates, checkinState.hasCheckedInToday),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                         decoration: BoxDecoration(
@@ -156,37 +170,40 @@ class _WeekCheckinRowState extends State<WeekCheckinRow> with SingleTickerProvid
                 ),
                 const SizedBox(height: 20),
                 GestureDetector(
-                  onTap: _showMonthSheet,
+                  onTap: () => _showMonthSheet(checkinState.checkedDates, checkinState.hasCheckedInToday),
                   behavior: HitTestBehavior.opaque,
-                  child: _buildWeeklyTracker(),
+                  child: _buildWeeklyTracker(checkinState.checkedDates),
                 ),
                 const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.info.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.info.withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.rocket_launch_rounded, color: AppColors.info),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Hãy điểm danh hôm nay để bắt đầu chuỗi học tập mới!',
-                          style: GoogleFonts.baloo2(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.info,
+                // TỰ ĐỘNG ẨN BANNER KHI ĐÃ CHECK-IN
+                if (!checkinState.hasCheckedInToday) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.info.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.info.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.rocket_launch_rounded, color: AppColors.info),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Hãy điểm danh hôm nay để bắt đầu chuỗi học tập mới!',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.info,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                _buildPlayGameButton(),
+                  const SizedBox(height: 20),
+                ],
+                _buildPlayGameButton(checkinState.hasCheckedInToday),
               ],
             ),
           ),
@@ -195,12 +212,12 @@ class _WeekCheckinRowState extends State<WeekCheckinRow> with SingleTickerProvid
     );
   }
 
-  Widget _buildWeeklyTracker() {
+  Widget _buildWeeklyTracker(Set<DateTime> checkedDates) {
     List<Widget> children = [];
     final labels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
     
     for (int i = 0; i < 7; i++) {
-      DayCellState state = CheckinLogic.resolveState(_weekDays[i], _today, widget.checkedDates);
+      DayCellState state = CheckinLogic.resolveState(_weekDays[i], _today, checkedDates);
       children.add(_buildDayCell(labels[i], state));
       if (i < 6) {
         children.add(_buildLine(state));
@@ -303,7 +320,32 @@ class _WeekCheckinRowState extends State<WeekCheckinRow> with SingleTickerProvid
     );
   }
 
-  Widget _buildPlayGameButton() {
+  Widget _buildPlayGameButton(bool hasCheckedIn) {
+    if (hasCheckedIn) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.green,
+          borderRadius: BorderRadius.circular(30),
+        ),
+        alignment: Alignment.center,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(
+              'Đã Điểm Danh Hôm Nay',
+              style: GoogleFonts.baloo2(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),

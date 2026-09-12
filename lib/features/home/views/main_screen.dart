@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../learn/providers/checkin_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -15,7 +16,7 @@ class MainScreen extends ConsumerStatefulWidget {
   ConsumerState<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends ConsumerState<MainScreen> {
+class _MainScreenState extends ConsumerState<MainScreen> with WidgetsBindingObserver {
   int _selectedIndex = 0;
   final List<bool> _isHovered = [false, false, false];
 
@@ -24,6 +25,28 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     const GameTab(),
     const ProfileTab(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(checkinProvider.notifier).refreshStatus();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.read(checkinProvider.notifier).refreshStatus();
+    }
+  }
 
   void _onItemTapped(int index) {
     final authState = ref.read(authProvider);

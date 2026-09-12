@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../learn/providers/checkin_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:math';
 import 'dart:async';
 import '../../../core/theme/app_theme.dart';
 import 'daily_checkin_report_dialog.dart';
+import '../../../core/services/supabase_service.dart';
 
 class Cell {
   final int row;
@@ -16,14 +19,14 @@ class Cell {
 
 enum Direction { up, down, left, right }
 
-class DailyCheckinGameScreen extends StatefulWidget {
+class DailyCheckinGameScreen extends ConsumerStatefulWidget {
   const DailyCheckinGameScreen({super.key});
 
   @override
-  State<DailyCheckinGameScreen> createState() => _DailyCheckinGameScreenState();
+  ConsumerState<DailyCheckinGameScreen> createState() => _DailyCheckinGameScreenState();
 }
 
-class _DailyCheckinGameScreenState extends State<DailyCheckinGameScreen> {
+class _DailyCheckinGameScreenState extends ConsumerState<DailyCheckinGameScreen> {
   late int _targetSum;
   List<List<Cell>> _grid = [];
   List<Cell> _path = [];
@@ -64,7 +67,40 @@ class _DailyCheckinGameScreenState extends State<DailyCheckinGameScreen> {
     });
   }
 
-  void _onTimeUp() {
+  void _onTimeUp() async {
+    // 1. Optimistic local update so it immediately turns green
+    if (mounted) {
+      ref.read(checkinProvider.notifier).markTodayAsCompletedLocal();
+    }
+    // 2. Record check-in immediately when the game finishes
+    try {
+      await SupabaseService.instance.saveAndGetTodayRank(_score);
+      // 3. Sync with single source of truth provider IMMEDIATELY
+      if (mounted) {
+        ref.read(checkinProvider.notifier).refreshStatus();
+      }
+    } catch (e) {
+        debugPrint('Lỗi lưu điểm danh: $e');
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Lỗi Database Supabase'),
+              content: SingleChildScrollView(child: Text(e.toString())),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+          return;
+        }
+      }
+
+    if (!mounted) return;
+
     showDialog(
       context: context,
       barrierDismissible: false,

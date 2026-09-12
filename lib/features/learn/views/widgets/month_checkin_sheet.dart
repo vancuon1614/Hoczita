@@ -5,11 +5,13 @@ import 'checkin_logic.dart';
 
 class MonthCheckinSheet extends StatefulWidget {
   final Set<DateTime> checkedDates;
+  final bool hasCheckedInToday;
   final DateTime today;
 
   const MonthCheckinSheet({
     super.key,
     required this.checkedDates,
+    required this.hasCheckedInToday,
     required this.today,
   });
 
@@ -136,7 +138,7 @@ class _MonthCheckinSheetState extends State<MonthCheckinSheet> with SingleTicker
           );
         }
 
-        DayCellState state = CheckinLogic.resolveState(date, widget.today, widget.checkedDates);
+        DayCellState state = CheckinLogic.resolveState(date, widget.today, widget.checkedDates, widget.hasCheckedInToday);
         return _buildMonthCell(date, state);
       },
     );

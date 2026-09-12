@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../../../core/utils/avatar_utils.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -224,36 +225,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  /// Trả về [ImageProvider] phù hợp với định dạng lưu trữ avatar.
-  /// - Data URL (base64): dùng MemoryImage
-  /// - File path (mobile): dùng FileImage
-  ImageProvider? _resolveAvatarImageProvider(String avatarPath) {
-    if (avatarPath.isEmpty) return null;
-    if (avatarPath.startsWith('data:image/')) {
-      // Lấy phần base64 sau dấu phẩy
-      final commaIndex = avatarPath.indexOf(',');
-      if (commaIndex == -1) return null;
-      try {
-        final base64Str = avatarPath.substring(commaIndex + 1);
-        final bytes = base64Decode(base64Str);
-        return MemoryImage(bytes);
-      } catch (e) {
-        debugPrint('Error decoding avatar base64: $e');
-        return null;
-      }
-    }
-    if (kIsWeb) {
-      // blob: URL hoặc http URL trên web
-      return NetworkImage(avatarPath);
-    }
-    // Đường dẫn file trên mobile/desktop
-    return FileImage(File(avatarPath));
-  }
 
   Widget _buildAvatarWidget(String email, double radius, double iconSize) {
     final avatarPath = _emailToAvatarPath[email];
     final hasAvatar = avatarPath != null && avatarPath.isNotEmpty;
-    final imageProvider = hasAvatar ? _resolveAvatarImageProvider(avatarPath) : null;
+    final imageProvider = hasAvatar ? resolveAvatarImage(avatarPath) : null;
     final showAvatar = imageProvider != null;
 
     return CircleAvatar(

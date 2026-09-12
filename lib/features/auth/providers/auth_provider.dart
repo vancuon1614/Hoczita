@@ -1,14 +1,33 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/services/api_service.dart';
 
-enum AuthStatus {
-  unauthenticated,
-  authenticating,
-  authenticated,
+Future<void> syncSupabaseSession(String companyAccessToken) async {
+  final res = await http.post(
+    Uri.parse(
+      'https://sinqzsswmecneliyjfrg.supabase.co/functions/v1/exchange-session',
+    ),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({'company_access_token': companyAccessToken}),
+  );
+
+  if (res.statusCode != 200) {
+    throw Exception('Không lấy được session Supabase: ${res.body}');
+  }
+
+  final data = jsonDecode(res.body);
+  final refreshToken = data['refresh_token'] as String;
+
+  // In Supabase V2/Flutter, setSession updates the session.
+  await Supabase.instance.client.auth.setSession(refreshToken);
 }
+
+enum AuthStatus { unauthenticated, authenticating, authenticated }
 
 class AuthState {
   final AuthStatus status;
@@ -25,25 +44,37 @@ class AuthState {
 
   factory AuthState.initial() {
     final apiService = ApiService.instance;
+    final service = SupabaseService.instance;
+
     if (apiService.hasToken) {
+      // NKS API là Source of Truth (SOT) với độ ưu tiên mức độ cao nhất.
+      // Tuy nhiên, nếu Supabase bị mất session (desync), chúng ta phải buộc user
+      // đăng nhập lại để session 2 bên đồng bộ (liên kết tài khoản).
+      if (!service.hasSession) {
+        apiService.clearSession(); // Xóa token cũ
+        return AuthState(
+          status: AuthStatus.unauthenticated,
+          errorMessage:
+              'Phiên đăng nhập yêu cầu đồng bộ bảo mật. Vui lòng đăng nhập lại!',
+        );
+      }
+
       final userInfo = apiService.cachedUserInfo;
       final email = userInfo?['email'] ?? '';
-      final username = userInfo?['name'] ?? userInfo?['username'] ?? email.split('@')[0];
+      final username =
+          userInfo?['name'] ?? userInfo?['username'] ?? email.split('@')[0];
       return AuthState(
         status: AuthStatus.authenticated,
         email: email.isNotEmpty ? email : 'guest@hoczita.edu.vn',
         username: username.isNotEmpty ? username : 'Học sinh',
       );
     }
-    
-    final service = SupabaseService.instance;
+
+    // Nếu NKS mất token mà Supabase vẫn còn -> Xóa luôn Supabase để bảo vệ SOT
     if (service.hasSession) {
-      return AuthState(
-        status: AuthStatus.authenticated,
-        email: service.currentUserEmail,
-        username: service.currentUsername,
-      );
+      service.signOut();
     }
+
     return AuthState(status: AuthStatus.unauthenticated);
   }
 
@@ -75,7 +106,8 @@ class AuthNotifier extends Notifier<AuthState> {
     if (apiService.hasToken) {
       final userInfo = apiService.cachedUserInfo;
       final email = userInfo?['email'] ?? '';
-      final username = userInfo?['name'] ?? userInfo?['username'] ?? email.split('@')[0];
+      final username =
+          userInfo?['name'] ?? userInfo?['username'] ?? email.split('@')[0];
       state = AuthState(
         status: AuthStatus.authenticated,
         email: email.isNotEmpty ? email : 'guest@hoczita.edu.vn',
@@ -117,19 +149,34 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       // 1. Thử đăng nhập qua NKS API trước
       try {
-        final response = await ApiService.instance.login(username: email, password: password);
-        final bool isSuccess = response['success'] ?? (response['error'] == null);
+        final response = await ApiService.instance.login(
+          username: email,
+          password: password,
+        );
+        final bool isSuccess =
+            response['success'] ?? (response['error'] == null);
         if (isSuccess && ApiService.instance.hasToken) {
           final userInfo = ApiService.instance.cachedUserInfo;
-          final userEmail = userInfo?['email'] ?? email;
-          final username = userInfo?['name'] ?? userInfo?['username'] ?? userEmail.split('@')[0];
-          
+          final rawEmail = userInfo?['email'];
+          // Ensure we have a valid email format for Supabase
+          String userEmail = (rawEmail != null && rawEmail.isNotEmpty)
+              ? rawEmail
+              : email;
+          if (!userEmail.contains('@')) {
+            userEmail = '$userEmail@hoczita.edu.vn';
+          }
+
+          final username =
+              userInfo?['name'] ??
+              userInfo?['username'] ??
+              userEmail.split('@')[0];
+
           state = AuthState(
             status: AuthStatus.authenticated,
             email: userEmail,
             username: username,
           );
-          
+
           // Đồng bộ cache cục bộ của user
           await syncUserDataToCache(
             name: username,
@@ -138,23 +185,22 @@ class AuthNotifier extends Notifier<AuthState> {
             email: userEmail,
           );
 
-          // Đồng bộ đăng nhập sang Supabase trong nền để có session
+          // Gọi Edge Function để đổi lấy session Supabase chuẩn từ token của NKS API
           try {
-            await _service.signIn(email: userEmail, password: password);
-          } catch (supabaseError) {
-            debugPrint('Failed to sign in to Supabase in background: $supabaseError');
-            try {
-              await _service.signUp(email: userEmail, password: password, username: username);
-              await _service.signIn(email: userEmail, password: password);
-            } catch (signUpError) {
-              debugPrint('Failed to sign up/in to Supabase in background: $signUpError');
+            final companyToken = ApiService.instance.accessToken;
+            if (companyToken != null) {
+              await syncSupabaseSession(companyToken);
             }
+          } catch (syncError) {
+            debugPrint('Lỗi đồng bộ Supabase qua Edge Function: $syncError');
           }
-          
+
           return true;
         }
       } catch (apiError) {
-        debugPrint('NKS API Sign In failed, falling back to Supabase: $apiError');
+        debugPrint(
+          'NKS API Sign In failed, falling back to Supabase: $apiError',
+        );
       }
 
       // 2. Fallback sang Supabase
@@ -169,23 +215,30 @@ class AuthNotifier extends Notifier<AuthState> {
       } else {
         state = AuthState(
           status: AuthStatus.unauthenticated,
-          errorMessage: 'Tài khoản không tồn tại trong hệ thống, vui lòng tạo mới.',
+          errorMessage:
+              'Tài khoản không tồn tại trong hệ thống, vui lòng tạo mới.',
         );
         return false;
       }
     } catch (e) {
       String errMsg = e.toString().replaceFirst('Exception: ', '');
       final lowerMsg = errMsg.toLowerCase();
-      if (lowerMsg.contains('invalid login credentials') || 
+      if (lowerMsg.contains('invalid login credentials') ||
           lowerMsg.contains('invalid_credentials') ||
           lowerMsg.contains('user not found')) {
         errMsg = 'Tài khoản không tồn tại trong hệ thống, vui lòng tạo mới.';
-      } else if (lowerMsg.contains('email_not_confirmed') || 
-                 lowerMsg.contains('email not confirmed')) {
-        errMsg = 'Tài khoản đã được tạo nhưng chưa xác nhận Email. Bạn hãy check hòm thư để xác nhận, hoặc tắt tính năng bắt buộc xác nhận Email trên Supabase Dashboard nhé!';
-      } else if (lowerMsg.contains('timeout') || lowerMsg.contains('time out') || lowerMsg.contains('timed out')) {
+      } else if (lowerMsg.contains('email_not_confirmed') ||
+          lowerMsg.contains('email not confirmed')) {
+        errMsg =
+            'Tài khoản đã được tạo nhưng chưa xác nhận Email. Bạn hãy check hòm thư để xác nhận, hoặc tắt tính năng bắt buộc xác nhận Email trên Supabase Dashboard nhé!';
+      } else if (lowerMsg.contains('timeout') ||
+          lowerMsg.contains('time out') ||
+          lowerMsg.contains('timed out')) {
         errMsg = 'Kết nối đến máy chủ thất bại (quá thời gian chờ).';
-      } else if (lowerMsg.contains('socketexception') || lowerMsg.contains('failed host lookup') || lowerMsg.contains('network_error') || lowerMsg.contains('503')) {
+      } else if (lowerMsg.contains('socketexception') ||
+          lowerMsg.contains('failed host lookup') ||
+          lowerMsg.contains('network_error') ||
+          lowerMsg.contains('503')) {
         errMsg = 'Không có kết nối mạng hoặc máy chủ hiện đang bảo trì (503).';
       }
       state = AuthState(
@@ -199,11 +252,13 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<bool> signUp(String email, String password, String username) async {
     state = state.copyWith(status: AuthStatus.authenticating);
     try {
-      final success = await _service.signUp(email: email, password: password, username: username);
+      final success = await _service.signUp(
+        email: email,
+        password: password,
+        username: username,
+      );
       if (success) {
-        state = AuthState(
-          status: AuthStatus.unauthenticated,
-        );
+        state = AuthState(status: AuthStatus.unauthenticated);
         return true;
       } else {
         state = AuthState(
@@ -214,7 +269,7 @@ class AuthNotifier extends Notifier<AuthState> {
       }
     } catch (e) {
       String errMsg = e.toString().replaceFirst('Exception: ', '');
-      if (errMsg.toLowerCase().contains('already exists') || 
+      if (errMsg.toLowerCase().contains('already exists') ||
           errMsg.toLowerCase().contains('already registered')) {
         errMsg = 'Email này đã được đăng ký bởi một tài khoản khác.';
       }

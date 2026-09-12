@@ -1,85 +1,135 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/constants/game_strings.dart';
+import '../../../core/providers/hint_quota_provider.dart';
+
+import 'package:hoczita_app/features/game/views/magic_words_report_sheet.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:math';
 import 'dart:async';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../utils/wend_puzzle_generator.dart';
 
-class CellPosition {
-  final int row;
-  final int col;
-  const CellPosition(this.row, this.col);
+class CompletedGridSnapshot {
+  final List<List<LetterCell?>> grid;
+  final PuzzleAnswer puzzle;
+  final List<String> foundWords;
+
+  CompletedGridSnapshot({
+    required this.grid,
+    required this.puzzle,
+    required this.foundWords,
+  });
+}
+
+
+extension FirstWhereOrNullExt<E> on Iterable<E> {
+  E? firstWhereOrNull(bool Function(E) test) {
+    for (E element in this) {
+      if (test(element)) return element;
+    }
+    return null;
+  }
+}
+
+class _DiagonalSlashPainter extends CustomPainter {
+  final Color color;
+  const _DiagonalSlashPainter({required this.color});
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CellPosition &&
-          runtimeType == other.runtimeType &&
-          row == other.row &&
-          col == other.col;
+  void paint(Canvas canvas, Size size) {
+    double strokeWidth = size.width < 22 ? 1.5 : 2.0;
+    double offset = size.width < 22 ? 2.5 : 4.0;
+
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    // Draw diagonal slash from bottom-left to top-right
+    canvas.drawLine(
+      Offset(offset, size.height - offset),
+      Offset(size.width - offset, offset),
+      paint,
+    );
+  }
 
   @override
-  int get hashCode => row.hashCode ^ col.hashCode;
+  bool shouldRepaint(covariant _DiagonalSlashPainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
+class TargetWord {
+  final String id;
+  final String word;
+  bool isFilled = false;
+  bool isSolved = false;
+  List<String?> displayCells;
+  List<String> overflowDisplay;
+  Color? assignedColor;
+  List<LetterCell>? userPath;
+
+  TargetWord(this.word)
+      : id = word,
+        displayCells = List.filled(word.length, null),
+        overflowDisplay = [];
+
+  void reset() {
+    isFilled = false;
+    isSolved = false;
+    displayCells = List.filled(word.length, null);
+    overflowDisplay = [];
+    assignedColor = null;
+    userPath = null;
+  }
 }
 
 class LetterCell {
   final int row;
   final int col;
   final String letter;
-  String? lockedWordId; // If null, it's not locked. If locked, stores the word string or ID.
+  String?
+  lockedWordId; // If null, it's not locked. If locked, stores the word string or ID.
   Color? lockedColor;
 
   LetterCell(this.row, this.col, this.letter);
 }
 
-class PuzzleAnswer {
-  final List<String> targetWords;
-  final Map<String, List<CellPosition>> wordPaths;
-
-  PuzzleAnswer({required this.targetWords, required this.wordPaths});
-}
-
-class MagicWordsGameScreen extends StatefulWidget {
+class MagicWordsGameScreen extends ConsumerStatefulWidget {
   const MagicWordsGameScreen({super.key});
 
   @override
-  State<MagicWordsGameScreen> createState() => _MagicWordsGameScreenState();
+  ConsumerState<MagicWordsGameScreen> createState() => _MagicWordsGameScreenState();
 }
 
-class _MagicWordsGameScreenState extends State<MagicWordsGameScreen> {
+class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
   bool _showHowToPlay = true;
 
   late List<List<LetterCell?>> _grid; // null means empty space (wall)
   late PuzzleAnswer _puzzle;
-  
+
   List<LetterCell> _currentSelection = [];
-  List<String> _foundWords = [];
-  
+  List<TargetWord> _sortedWords = [];
+  List<String> _undoStack = [];
+  List<String> get _foundWords => _sortedWords.where((w) => w.isSolved).map((w) => w.id).toList();
+
   int _rows = 5;
   int _cols = 5;
 
   // Colors for locked words
-  final List<Color> _wordColors = [
-    Colors.red.shade400,
-    Colors.blue.shade400,
-    Colors.green.shade400,
-    Colors.orange.shade400,
-    Colors.purple.shade400,
-    Colors.teal.shade400,
-  ];
-  
+
   Offset? _lastLocalPosition;
   bool _isError = false; // For red flash on wrong word
 
   bool _isGameOver = false;
+  bool _isGridDragging = false; // Fix scroll conflict
 
   Timer? _timer;
   int _secondsElapsed = 0;
   int _undoCount = 0;
   int _hintCount = 0;
   int _errorCount = 0;
-  Map<String, dynamic>? _rankData;
-  bool _isSavingScore = false;
 
   @override
   void initState() {
@@ -87,7 +137,7 @@ class _MagicWordsGameScreenState extends State<MagicWordsGameScreen> {
     _loadPuzzle();
     _startTimer();
   }
-  
+
   @override
   void dispose() {
     _timer?.cancel();
@@ -111,83 +161,24 @@ class _MagicWordsGameScreenState extends State<MagicWordsGameScreen> {
     _undoCount = 0;
     _hintCount = 0;
     _errorCount = 0;
-    _rankData = null;
+
+    _puzzle = WendPuzzleGenerator.generate();
+    _rows = _puzzle.rows;
+    _cols = _puzzle.cols;
     
-    // Bank of pre-made exact cover puzzles
-    final List<Map<String, dynamic>> puzzleBank = [
-      {
-        'rows': 3,
-        'cols': 3,
-        'grid': [
-          ['C', 'A', 'T'],
-          ['D', 'O', 'G'],
-          ['P', 'I', 'G'],
-        ],
-        'words': ["CAT", "DOG", "PIG"]
-      },
-      {
-        'rows': 4,
-        'cols': 4,
-        'grid': [
-          ['S', 'U', 'N', 'S'],
-          ['T', 'A', 'R', 'K'],
-          ['M', 'O', 'O', 'Y'],
-          ['F', 'I', 'S', 'H'],
-        ],
-        'words': ["SUN", "STAR", "SKY", "MOON", "FISH"] // Wait, S-K-Y is not adjacent.
-        // Let's use simple valid puzzles.
-      },
-      {
-        'rows': 3,
-        'cols': 4,
-        'grid': [
-          ['B', 'I', 'R', 'D'],
-          ['S', 'O', 'N', 'G'],
-          ['W', 'I', 'N', 'D'],
-        ],
-        'words': ["BIRD", "SONG", "WIND"]
-      },
-      {
-        'rows': 4,
-        'cols': 4,
-        'grid': [
-          ['F', 'I', 'R', 'E'],
-          ['W', 'A', 'T', 'R'],
-          ['E', 'A', 'R', 'E'],
-          ['A', 'I', 'R', 'T'], // WATER, FIRE, EARTH, AIR
-        ],
-        'words': ["FIRE", "WATER", "EARTH", "AIR"]
-      },
-      {
-        'rows': 3,
-        'cols': 3,
-        'grid': [
-          ['A', 'P', 'P'],
-          ['L', 'E', 'B'],
-          ['O', 'Y', 'O'],
-        ],
-        'words': ["APPLE", "BOY", "OO"] // dummy
-      }
-    ];
-    
-    final rand = Random();
-    int pIdx = rand.nextInt(puzzleBank.length);
-    // Ensure FIRE/WATER/EARTH puzzle is valid:
-    // F I R E (4)
-    // W A T R
-    // E A R E
-    // A I R T -> W A T E R? EARTH? AIR? It's just a mockup. The logic works if words are in the list.
-    
-    var p = puzzleBank[pIdx];
-    _rows = p['rows'];
-    _cols = p['cols'];
-    List<List<String>> gridStr = p['grid'];
-    _puzzle = PuzzleAnswer(
-      targetWords: p['words'],
-      wordPaths: {},
+    List<String> tempWords = List<String>.from(_puzzle.targetWords);
+    tempWords.sort((a, b) => a.length.compareTo(b.length));
+    _sortedWords = tempWords.map((w) => TargetWord(w)).toList();
+    _undoStack.clear();
+
+    _grid = List.generate(
+      _rows,
+      (r) => List.generate(_cols, (c) {
+        if (_puzzle.gridStr[r][c] == null) return null;
+        return LetterCell(r, c, _puzzle.gridStr[r][c]!);
+      }),
     );
-    
-    _grid = List.generate(_rows, (r) => List.generate(_cols, (c) => LetterCell(r, c, gridStr[r][c])));
+
     _foundWords.clear();
     _currentSelection.clear();
   }
@@ -224,84 +215,174 @@ class _MagicWordsGameScreenState extends State<MagicWordsGameScreen> {
 
     if (row >= 0 && row < _rows && col >= 0 && col < _cols) {
       LetterCell? hovered = _grid[row][col];
-      
+
       if (hovered == null) return; // Wall
       if (hovered.lockedWordId != null) return; // Already locked
 
       if (_currentSelection.isEmpty) {
-        setState(() => _currentSelection.add(hovered));
+        setState(() {
+          _currentSelection.add(hovered);
+          _updateLiveFill();
+        });
       } else {
         LetterCell last = _currentSelection.last;
-        
+
         // Allow backtracking (removing last letter)
-        if (_currentSelection.length >= 2 && _currentSelection[_currentSelection.length - 2] == hovered) {
+        if (_currentSelection.length >= 2 &&
+            _currentSelection[_currentSelection.length - 2] == hovered) {
           setState(() {
             _currentSelection.removeLast();
+            _updateLiveFill();
           });
           return;
         }
 
         if (_currentSelection.contains(hovered)) return;
 
-        bool isAdjacent = (last.row == row && (last.col - col).abs() == 1) ||
-                          (last.col == col && (last.row - row).abs() == 1);
-        
+        bool isAdjacent =
+            (last.row == row && (last.col - col).abs() == 1) ||
+            (last.col == col && (last.row - row).abs() == 1);
+
         if (isAdjacent) {
           setState(() {
             _currentSelection.add(hovered);
+            _updateLiveFill();
           });
         }
       }
     }
   }
 
-  void _handlePanEnd(DragEndDetails details) {
-    if (_currentSelection.isEmpty || _isError || _isGameOver) return;
-    _validateSelection();
+  TargetWord? _findTargetRowForSelection(int len) {
+    var available = _sortedWords.where((w) => !w.isFilled).toList();
+    if (available.isEmpty) return null;
+
+    // 1. Exact match on word length
+    var exact = available.firstWhereOrNull((w) => w.word.length == len);
+    if (exact != null) return exact;
+
+    // 2. If selection exceeds all available rows, pick the longest available row
+    var longest = available.last;
+    if (len >= longest.word.length) {
+      return longest;
+    }
+
+    // 3. Best fit (first row with length >= len)
+    var bestFit = available.firstWhereOrNull((w) => w.word.length >= len);
+    return bestFit ?? available.first;
   }
 
-  void _validateSelection() async {
-    String wordForwards = _currentSelection.map((c) => c.letter).join('').toUpperCase();
+  void _updateLiveFill() {
+    // Clear live fill from any row that is not permanently committed
+    for (var w in _sortedWords) {
+      if (!w.isFilled) {
+        w.displayCells.fillRange(0, w.displayCells.length, null);
+        w.overflowDisplay.clear();
+      }
+    }
+
+    if (_currentSelection.isEmpty) return;
+
+    TargetWord? target = _findTargetRowForSelection(_currentSelection.length);
+    if (target != null) {
+      final selectedLetters = _currentSelection.map((c) => c.letter).toList();
+      for (int i = 0; i < target.word.length; i++) {
+        if (i < selectedLetters.length) {
+          target.displayCells[i] = selectedLetters[i];
+        } else {
+          target.displayCells[i] = null;
+        }
+      }
+      if (selectedLetters.length > target.word.length) {
+        target.overflowDisplay = selectedLetters.sublist(target.word.length);
+      } else {
+        target.overflowDisplay = [];
+      }
+    }
+  }
+
+  void _handlePanEnd(DragEndDetails details) {
+    if (_currentSelection.isEmpty || _isGameOver) return;
+
+    TargetWord? target = _findTargetRowForSelection(_currentSelection.length);
+    if (target == null) {
+      setState(() {
+        _currentSelection.clear();
+        _updateLiveFill();
+      });
+      return;
+    }
+
+    String wordForwards = _currentSelection
+        .map((c) => c.letter)
+        .join('')
+        .toUpperCase();
     String wordBackwards = wordForwards.split('').reversed.join('');
 
+    // Check forwards and backwards against remaining unsolved words
     String? matchedWord;
-    
-    // Check forwards and backwards against remaining words
-    for (String target in _puzzle.targetWords) {
-      if (!_foundWords.contains(target)) {
-        if (wordForwards == target.toUpperCase() || wordBackwards == target.toUpperCase()) {
-          matchedWord = target;
+    for (var w in _sortedWords) {
+      if (!w.isSolved) {
+        if (wordForwards == w.word.toUpperCase() ||
+            wordBackwards == w.word.toUpperCase()) {
+          matchedWord = w.word;
           break;
         }
       }
     }
 
-    if (matchedWord != null) {
-      // Success
-      setState(() {
-        _foundWords.add(matchedWord!);
-        Color c = _wordColors[(_foundWords.length - 1) % _wordColors.length];
-        for (var cell in _currentSelection) {
-          cell.lockedWordId = matchedWord;
-          cell.lockedColor = c;
+    setState(() {
+      bool isMatch = matchedWord != null;
+      TargetWord commitRow = target;
+
+      // If matched, ensure it commits to the exact target word row if available
+      if (isMatch) {
+        var exactRow = _sortedWords.firstWhereOrNull((w) => w.word == matchedWord);
+        if (exactRow != null && !exactRow.isFilled) {
+          commitRow = exactRow;
         }
-        _currentSelection.clear();
-      });
-      _checkPuzzleComplete();
-    } else {
-      // Fail
-      setState(() {
-        _isError = true;
-        _errorCount++;
-      });
-      await Future.delayed(const Duration(milliseconds: 400));
-      if (mounted) {
-        setState(() {
-          _isError = false;
-          _currentSelection.clear();
-        });
       }
-    }
+
+      Color opColor = commitRow.assignedColor ??
+          _puzzle.wordColors[_sortedWords.indexOf(commitRow) % _puzzle.wordColors.length];
+
+      commitRow.isFilled = true;
+      commitRow.isSolved = isMatch;
+      commitRow.assignedColor = opColor;
+      commitRow.userPath = List.from(_currentSelection);
+
+      final selectedLetters = _currentSelection.map((c) => c.letter).toList();
+      for (int i = 0; i < commitRow.word.length; i++) {
+        if (i < selectedLetters.length) {
+          commitRow.displayCells[i] = selectedLetters[i];
+        } else {
+          commitRow.displayCells[i] = null;
+        }
+      }
+
+      if (selectedLetters.length > commitRow.word.length) {
+        commitRow.overflowDisplay = selectedLetters.sublist(commitRow.word.length);
+      } else {
+        commitRow.overflowDisplay = [];
+      }
+
+      // Lock cells on grid
+      String lockId = isMatch ? matchedWord : 'attempt_${commitRow.id}';
+      for (var cell in _currentSelection) {
+        cell.lockedWordId = lockId;
+        cell.lockedColor = opColor;
+      }
+
+      _undoStack.add(commitRow.id);
+      _currentSelection.clear();
+      _updateLiveFill();
+
+      if (!isMatch) {
+        _errorCount++;
+      }
+
+      _checkPuzzleComplete();
+    });
   }
 
   void _checkPuzzleComplete() async {
@@ -318,60 +399,67 @@ class _MagicWordsGameScreenState extends State<MagicWordsGameScreen> {
       }
     }
 
-    if (lockedLetters == totalLetters && _foundWords.length == _puzzle.targetWords.length) {
+    if (lockedLetters == totalLetters &&
+        _sortedWords.every((w) => w.isSolved)) {
       // WIN
       _timer?.cancel();
       setState(() {
         _isGameOver = true;
-        _isSavingScore = true;
       });
 
       // Score logic for Wend
       int basePoints = _foundWords.length * 50;
-      int score = basePoints - (_errorCount * 5) - (_hintCount * 15);
+      int score = basePoints - (_errorCount * 5) - (_hintCount * 15) - (_undoCount * 2);
       if (_secondsElapsed < 30) score += 50; // time bonus
       if (score < 10) score = 10;
-      
+
       int stars = 3;
       if (_secondsElapsed > 30) stars = 2;
       if (_secondsElapsed > 60) stars = 1;
 
       try {
-        final rankData = await SupabaseService.instance.saveAndGetGameRank(
+        await SupabaseService.instance.saveScore(
           gameName: 'magic_words',
           stars: stars,
           score: score,
         );
-        if (mounted) {
-          setState(() {
-            _rankData = rankData;
-          });
-        }
       } catch (e) {
-        debugPrint('Error saving Wend score: $e');
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isSavingScore = false;
-          });
-        }
+        debugPrint('Error saving magic_words score: $e');
       }
     }
   }
 
-  void _undo() {
-    if (_foundWords.isNotEmpty && !_isGameOver) {
-      setState(() {
-        _undoCount++;
-        String lastWord = _foundWords.removeLast();
-        for (int r = 0; r < _rows; r++) {
-          for (int c = 0; c < _cols; c++) {
-            if (_grid[r][c]?.lockedWordId == lastWord) {
-              _grid[r][c]!.lockedWordId = null;
-              _grid[r][c]!.lockedColor = null;
-            }
+  
+  void _removeSolvedWord(String wordId) {
+    setState(() {
+      var target = _sortedWords.firstWhereOrNull((w) => w.id == wordId);
+      if (target == null) return;
+
+      String lockId1 = target.word;
+      String lockId2 = 'attempt_${target.id}';
+      for (int r = 0; r < _rows; r++) {
+        for (int c = 0; c < _cols; c++) {
+          if (_grid[r][c]?.lockedWordId == lockId1 ||
+              _grid[r][c]?.lockedWordId == lockId2 ||
+              _grid[r][c]?.lockedWordId == target.id) {
+            _grid[r][c]!.lockedWordId = null;
+            _grid[r][c]!.lockedColor = null;
           }
         }
+      }
+
+      target.reset();
+      _undoStack.remove(wordId);
+      _updateLiveFill();
+    });
+  }
+
+  void _undo() {
+    if (_undoStack.isNotEmpty && !_isGameOver) {
+      setState(() {
+        _undoCount++;
+        String lastWordId = _undoStack.removeLast();
+        _removeSolvedWord(lastWordId);
         _currentSelection.clear();
       });
     }
@@ -380,10 +468,15 @@ class _MagicWordsGameScreenState extends State<MagicWordsGameScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isGameOver) {
-      return _buildSummaryView();
+      return MagicWordsReportSheet(
+        targetWords: _sortedWords.map((w) => w.word).toList(),
+        secondsElapsed: _secondsElapsed,
+        onReplay: _loadPuzzle,
+        onGoHome: () {
+          Navigator.of(context).pop();
+        },
+      );
     }
-
-    bool showAlmostThere = _foundWords.isNotEmpty && _foundWords.length < _puzzle.targetWords.length;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -391,24 +484,20 @@ class _MagicWordsGameScreenState extends State<MagicWordsGameScreen> {
         child: Column(
           children: [
             _buildAppBar(),
-            if (showAlmostThere)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                color: Colors.orange.shade100,
-                child: Text(
-                  "Almost there! You haven't found all the correct hidden words.",
-                  style: GoogleFonts.nunito(color: Colors.orange.shade900, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
-                ),
-              ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                physics: _isGridDragging
+                    ? const NeverScrollableScrollPhysics()
+                    : const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 8.0,
+                ),
                 child: Column(
                   children: [
                     _buildGridWidget(),
-                    const SizedBox(height: 24),
+                    _buildSelectionPreview(), // Thanh preview nằm ngay dưới lưới chữ
+                    const SizedBox(height: 8),
                     _buildWordHints(),
                     const SizedBox(height: 24),
                     _buildActionButtons(),
@@ -434,10 +523,17 @@ class _MagicWordsGameScreenState extends State<MagicWordsGameScreen> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+            icon: const Icon(
+              Icons.arrow_back_rounded,
+              color: AppColors.textPrimary,
+            ),
             onPressed: () => Navigator.pop(context),
           ),
-          const Icon(Icons.access_time_rounded, size: 20, color: AppColors.textPrimary),
+          const Icon(
+            Icons.access_time_rounded,
+            size: 20,
+            color: AppColors.textPrimary,
+          ),
           const SizedBox(width: 4),
           Text(
             timeStr,
@@ -450,7 +546,7 @@ class _MagicWordsGameScreenState extends State<MagicWordsGameScreen> {
           Expanded(
             child: Center(
               child: Text(
-                'Magic Words 🔤',
+                'Magic Words',
                 style: GoogleFonts.baloo2(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
@@ -459,22 +555,41 @@ class _MagicWordsGameScreenState extends State<MagicWordsGameScreen> {
               ),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary),
-            onPressed: () {
-              setState(() {
-                _loadPuzzle();
-                _startTimer();
-              });
-            },
+          TextButton.icon(
+            onPressed: _resetPuzzle,
+            icon: const Icon(
+              Icons.refresh_rounded,
+              size: 18,
+              color: AppColors.textPrimary,
+            ),
+            label: Text(
+              GameStrings.reset,
+              style: GoogleFonts.baloo2(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              backgroundColor: Colors.grey.shade200,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildGridWidget() {
-    return Container(
+  Widget _buildGridWidget({bool readOnlyMode = false, CompletedGridSnapshot? snapshot}) {
+    final gridData = snapshot?.grid ?? _grid;
+    final puzzleData = snapshot?.puzzle ?? _puzzle;
+    final foundWordsData = snapshot?.foundWords ?? _foundWords;
+    final selectionData = readOnlyMode ? <LetterCell>[] : _currentSelection;
+
+    Widget contentWidget = Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -483,131 +598,351 @@ class _MagicWordsGameScreenState extends State<MagicWordsGameScreen> {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          double size = constraints.maxWidth;
-          double cellWidth = size / _cols;
-          double cellHeight = size / _rows;
+          // If constraints are infinite (e.g., inside FittedBox), fallback to 300
+          double size = constraints.maxWidth == double.infinity ? 300 : constraints.maxWidth;
+          double cellWidth = size / puzzleData.cols;
+          double cellHeight = size / puzzleData.rows;
 
-          return GestureDetector(
-            onPanStart: (d) => _handlePanStart(d, BoxConstraints.tightFor(width: size, height: size)),
-            onPanUpdate: (d) => _handlePanUpdate(d, BoxConstraints.tightFor(width: size, height: size)),
-            onPanEnd: _handlePanEnd,
-            child: SizedBox(
-              width: size,
-              height: size,
-              child: Stack(
-                children: [
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: _cols,
-                      childAspectRatio: cellWidth / cellHeight,
-                    ),
-                    itemCount: _rows * _cols,
-                    itemBuilder: (context, index) {
-                      int r = index ~/ _cols;
-                      int c = index % _cols;
-                      LetterCell? cell = _grid[r][c];
-                      
-                      if (cell == null) {
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade300,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        );
-                      }
-                      
-                      bool isSelected = _currentSelection.contains(cell);
-                      Color bgColor = Colors.white;
-                      if (cell.lockedColor != null) {
-                        bgColor = cell.lockedColor!.withValues(alpha: 0.3);
-                      } else if (isSelected) {
-                        bgColor = _isError ? AppColors.error.withValues(alpha: 0.3) : AppColors.primary.withValues(alpha: 0.3);
-                      }
+          Widget gridStack = SizedBox(
+            width: size,
+            height: size,
+            child: Stack(
+              children: [
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: puzzleData.cols,
+                    childAspectRatio: cellWidth / cellHeight,
+                  ),
+                  itemCount: puzzleData.rows * puzzleData.cols,
+                  itemBuilder: (context, index) {
+                    int r = index ~/ puzzleData.cols;
+                    int c = index % puzzleData.cols;
+                    LetterCell? cell = gridData[r][c];
 
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
+                    if (cell == null) {
+                      return Container(
                         decoration: BoxDecoration(
-                          color: bgColor,
+                          color: Colors.grey.shade300,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade200),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          cell.letter,
-                          style: GoogleFonts.baloo2(
-                            fontSize: cellWidth * 0.4,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
                         ),
                       );
-                    },
-                  ),
-                  
-                  // Draw Selection Path
-                  if (_currentSelection.isNotEmpty)
-                    IgnorePointer(
+                    }
+
+                    bool isSelected = selectionData.contains(cell);
+                    Color bgColor = Colors.white;
+                    if (cell.lockedColor != null) {
+                      bgColor = cell.lockedColor!.withValues(alpha: 0.3);
+                    } else if (isSelected) {
+                      bgColor = _isError
+                          ? AppColors.error.withValues(alpha: 0.3)
+                          : AppColors.primary.withValues(alpha: 0.3);
+                    }
+
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      decoration: BoxDecoration(
+                        color: bgColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        cell.letter,
+                        style: GoogleFonts.baloo2(
+                          fontSize: cellWidth * 0.4,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                // Draw Locked Paths
+                if (readOnlyMode)
+                  ...foundWordsData.map((word) {
+                    return IgnorePointer(
                       child: CustomPaint(
                         size: Size(size, size),
                         painter: WendPathPainter(
-                          path: _currentSelection,
+                          path: puzzleData.wordPaths[word]!
+                              .map((p) => gridData[p.row][p.col]!)
+                              .toList(),
                           cellWidth: cellWidth,
                           cellHeight: cellHeight,
-                          pathColor: _isError ? AppColors.error : AppColors.primary,
+                          pathColor: puzzleData
+                              .wordColors[puzzleData.targetWords.indexOf(word)],
+                          isLocked: true,
+                          isSolved: true,
                         ),
                       ),
+                    );
+                  })
+                else
+                  ..._sortedWords
+                      .where((w) => w.isFilled && w.userPath != null && w.userPath!.isNotEmpty)
+                      .map((targetWord) {
+                    return IgnorePointer(
+                      child: CustomPaint(
+                        size: Size(size, size),
+                        painter: WendPathPainter(
+                          path: targetWord.userPath!,
+                          cellWidth: cellWidth,
+                          cellHeight: cellHeight,
+                          pathColor: targetWord.assignedColor ??
+                              puzzleData.wordColors[_sortedWords.indexOf(targetWord) % puzzleData.wordColors.length],
+                          isLocked: true,
+                          isSolved: targetWord.isSolved,
+                        ),
+                      ),
+                    );
+                  }),
+                // Draw Selection Path
+                if (selectionData.isNotEmpty)
+                  IgnorePointer(
+                    child: CustomPaint(
+                      size: Size(size, size),
+                      painter: WendPathPainter(
+                        path: selectionData,
+                        cellWidth: cellWidth,
+                        cellHeight: cellHeight,
+                        pathColor: _isError ? AppColors.error : AppColors.primary,
+                        isLocked: false,
+                      ),
                     ),
-                ],
-              ),
+                  ),
+              ],
+            ),
+          );
+
+          if (readOnlyMode) {
+            return gridStack;
+          }
+
+          return Listener(
+            onPointerDown: (_) => setState(() => _isGridDragging = true),
+            onPointerUp: (_) => setState(() => _isGridDragging = false),
+            onPointerCancel: (_) => setState(() => _isGridDragging = false),
+            child: GestureDetector(
+              onPanStart: (d) => _handlePanStart(d, BoxConstraints.tightFor(width: size, height: size)),
+              onPanUpdate: (d) => _handlePanUpdate(d, BoxConstraints.tightFor(width: size, height: size)),
+              onPanEnd: _handlePanEnd,
+              child: gridStack,
             ),
           );
         },
       ),
     );
+
+    if (readOnlyMode) {
+      // Return un-interactive grid with fixed aspect ratio
+      return IgnorePointer(child: contentWidget);
+    }
+    return contentWidget;
+  }
+
+
+
+  Widget _buildSelectionPreview() {
+    TargetWord? target = _findTargetRowForSelection(_currentSelection.length);
+    Color barColor = target != null
+        ? (target.assignedColor ??
+            _puzzle.wordColors[_sortedWords.indexOf(target) % _puzzle.wordColors.length])
+        : AppColors.primary;
+
+    final int count = _currentSelection.length;
+    double boxSize;
+    double fontSize;
+    double radius;
+    double spacing;
+    double runSpacing;
+
+    if (count > 14) {
+      boxSize = 18.0;
+      fontSize = 10.5;
+      radius = 4.0;
+      spacing = 2.5;
+      runSpacing = 3.0;
+    } else if (count > 8) {
+      boxSize = 24.0;
+      fontSize = 12.5;
+      radius = 5.0;
+      spacing = 4.0;
+      runSpacing = 4.0;
+    } else {
+      boxSize = 32.0;
+      fontSize = 16.0;
+      radius = 8.0;
+      spacing = 6.0;
+      runSpacing = 6.0;
+    }
+
+    return Container(
+      height: 54, // Fixed height keeps result rows below completely stationary
+      margin: const EdgeInsets.only(top: 10, bottom: 6),
+      alignment: Alignment.center,
+      child: _currentSelection.isEmpty
+          ? const SizedBox.shrink()
+          : SizedBox(
+              width: double.infinity,
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: spacing,
+                runSpacing: runSpacing,
+                children: _currentSelection.map((cell) {
+                  return Container(
+                    width: boxSize,
+                    height: boxSize,
+                    decoration: BoxDecoration(
+                      color: barColor,
+                      borderRadius: BorderRadius.circular(radius),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      cell.letter,
+                      style: GoogleFonts.baloo2(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: fontSize,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+    );
   }
 
   Widget _buildWordHints() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: _puzzle.targetWords.map((word) {
-        bool isFound = _foundWords.contains(word);
-        Color wordColor = isFound 
-            ? _wordColors[_foundWords.indexOf(word) % _wordColors.length] 
-            : Colors.grey.shade300;
-            
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8.0),
-          child: Row(
-            children: [
-              ...word.split('').map((char) => Container(
-                width: 32,
-                height: 32,
-                margin: const EdgeInsets.only(right: 6),
-                decoration: BoxDecoration(
-                  color: isFound ? wordColor.withValues(alpha: 0.3) : Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: isFound ? wordColor : Colors.grey.shade300),
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: _sortedWords.map((targetRow) {
+          bool isFilled = targetRow.isFilled;
+          bool isSolved = targetRow.isSolved;
+
+          Color rowColor = targetRow.assignedColor ??
+              _puzzle.wordColors[_sortedWords.indexOf(targetRow) % _puzzle.wordColors.length];
+
+          // Dynamic sizing for this row: scales down if the row has a very long sequence
+          final int totalLetters = targetRow.word.length + targetRow.overflowDisplay.length;
+          double boxSize;
+          double fontSize;
+          double radius;
+          double spacing;
+          double runSpacing;
+
+          if (totalLetters > 14) {
+            boxSize = 18.0;
+            fontSize = 10.5;
+            radius = 4.0;
+            spacing = 2.5;
+            runSpacing = 3.0;
+          } else if (totalLetters > 8) {
+            boxSize = 24.0;
+            fontSize = 12.5;
+            radius = 5.0;
+            spacing = 4.0;
+            runSpacing = 4.0;
+          } else {
+            boxSize = 32.0;
+            fontSize = 16.0;
+            radius = 8.0;
+            spacing = 6.0;
+            runSpacing = 6.0;
+          }
+
+          return GestureDetector(
+            onTap: isFilled ? () => _removeSolvedWord(targetRow.id) : null,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: SizedBox(
+                width: double.infinity,
+                child: Wrap(
+                  spacing: spacing,
+                  runSpacing: runSpacing,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    // Normal target letter boxes
+                    ...List.generate(targetRow.word.length, (i) {
+                      String? char = targetRow.displayCells[i];
+                      bool hasChar = char != null && char.isNotEmpty;
+
+                      return Container(
+                        width: boxSize,
+                        height: boxSize,
+                        decoration: BoxDecoration(
+                          color: hasChar ? rowColor : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(radius),
+                          border: Border.all(
+                            color: hasChar ? rowColor : Colors.grey.shade300,
+                            width: totalLetters > 14 ? 1.0 : 1.5,
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          char ?? '',
+                          style: GoogleFonts.baloo2(
+                            fontWeight: FontWeight.bold,
+                            fontSize: fontSize,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      );
+                    }),
+
+                    // Overflow boxes with diagonal strikethrough matching rowColor
+                    ...targetRow.overflowDisplay.map((char) {
+                      return Container(
+                        width: boxSize,
+                        height: boxSize,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(radius),
+                          border: Border.all(
+                            color: rowColor,
+                            width: totalLetters > 14 ? 1.0 : 1.5,
+                          ),
+                        ),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Text(
+                              char,
+                              style: GoogleFonts.baloo2(
+                                fontWeight: FontWeight.bold,
+                                fontSize: fontSize,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            CustomPaint(
+                              size: Size(boxSize, boxSize),
+                              painter: _DiagonalSlashPainter(color: rowColor),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+
+                    // Solved checkmark
+                    if (isSolved)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: Icon(
+                          Icons.check_rounded,
+                          color: Colors.green,
+                          size: boxSize * 0.75 > 18 ? boxSize * 0.75 : 18,
+                        ),
+                      ),
+                  ],
                 ),
-                alignment: Alignment.center,
-                child: Text(
-                  isFound ? char : '',
-                  style: GoogleFonts.baloo2(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              )),
-              if (isFound)
-                Padding(
-                  padding: const EdgeInsets.only(left: 8.0),
-                  child: Icon(Icons.check_circle_rounded, color: wordColor, size: 24),
-                )
-            ],
-          ),
-        );
-      }).toList(),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -616,49 +951,200 @@ class _MagicWordsGameScreenState extends State<MagicWordsGameScreen> {
       children: [
         Expanded(
           child: ElevatedButton(
-            onPressed: _foundWords.isNotEmpty ? _undo : null,
+            onPressed: _undo,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.grey.shade300,
-              disabledBackgroundColor: Colors.grey.shade200,
+              backgroundColor: Colors.grey.shade200,
+              foregroundColor: Colors.grey.shade700,
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(16),
               ),
+              elevation: 0,
             ),
             child: Text(
-              'Hoàn Tác',
-              style: GoogleFonts.baloo2(
-                fontSize: 16,
+              GameStrings.undo,
+              style: GoogleFonts.nunito(
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: _foundWords.isNotEmpty ? AppColors.textPrimary : Colors.grey.shade500,
               ),
             ),
           ),
         ),
         const SizedBox(width: 16),
         Expanded(
-          child: OutlinedButton(
-            onPressed: () {},
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              side: const BorderSide(color: AppColors.primary, width: 2),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
-              ),
-            ),
-            child: Text(
-              'Gợi Ý 💡',
-              style: GoogleFonts.baloo2(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
-              ),
-            ),
+          child: Consumer(
+            builder: (context, ref, _) {
+              final quotaState = ref.watch(hintQuotaProvider);
+              final canHint = !quotaState.isLoading && quotaState.remaining > 0;
+              return ElevatedButton(
+                onPressed: canHint ? () => _requestHint(ref) : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryLight,
+                  foregroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  "${GameStrings.hint} (${quotaState.isLoading ? '-' : quotaState.remaining})",
+                  style: GoogleFonts.nunito(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ],
     );
   }
+
+  Future<void> _checkWinCondition() async {
+    bool allSolved = _sortedWords.every((w) => w.isSolved);
+    if (allSolved) {
+      _timer?.cancel();
+      setState(() {
+        _isGameOver = true;
+      });
+
+      int basePoints = _sortedWords.length * 50;
+      int score = basePoints - (_errorCount * 5) - (_hintCount * 15);
+      if (_secondsElapsed < 30) score += 50;
+      if (score < 10) score = 10;
+
+      int stars = 3;
+      if (_secondsElapsed > 30) stars = 2;
+      if (_secondsElapsed > 60) stars = 1;
+
+      try {
+        await SupabaseService.instance.saveScore(
+          gameName: 'magic_words',
+          stars: stars,
+          score: score,
+        );
+      } catch (e) {
+        debugPrint('Error saving magic_words score: ');
+      }
+    }
+  }
+
+  void _resetPuzzle() {
+    setState(() {
+      for (int r = 0; r < _rows; r++) {
+        for (int c = 0; c < _cols; c++) {
+          if (_grid[r][c] != null) {
+            _grid[r][c]!.lockedWordId = null;
+            _grid[r][c]!.lockedColor = null;
+          }
+        }
+      }
+      for (var w in _sortedWords) {
+        w.reset();
+      }
+      _undoStack.clear();
+      _currentSelection.clear();
+      _currentlyHintingWordIndex = -1;
+      _currentlyHintingCharIndex = 0;
+      _secondsElapsed = 0;
+      _updateLiveFill();
+    });
+  }
+
+  int _currentlyHintingWordIndex = -1;
+  int _currentlyHintingCharIndex = 0;
+
+  Future<void> _requestHint(WidgetRef ref) async {
+    // 1. Determine target
+    TargetWord? targetRow;
+    try {
+      if (_currentlyHintingWordIndex != -1) {
+         targetRow = _sortedWords.firstWhere((w) => w.id == _sortedWords[_currentlyHintingWordIndex].id && !w.isSolved, orElse: () => _sortedWords.firstWhere((w) => !w.isSolved));
+      } else {
+         targetRow = _sortedWords.firstWhere((w) => !w.isSolved);
+      }
+    } catch (e) {
+      return;
+    }
+    
+    // Check if new word
+    bool isNewWord = _currentlyHintingWordIndex == -1 || targetRow.id != _sortedWords[_currentlyHintingWordIndex].id;
+
+    if (isNewWord) {
+       try {
+         // Trừ quota NGAY TẠI THỜI ĐIỂM BẮT ĐẦU từ mới (ký tự đầu tiên)
+         final res = await SupabaseService.instance.client.rpc('request_hint_start');
+         if (!mounted) return;
+         if (res['allowed'] == false) {
+           return;
+         }
+         if (res['allowed'] == 'needs_confirmation') {
+           // Modal cảnh báo chỉ hiện đúng 1 lần nhờ cờ warning_shown lưu phía server
+           bool? confirm = await showDialog<bool>(
+             context: context,
+             builder: (ctx) => AlertDialog(
+               title: Text(GameStrings.hintWarningTitle),
+               content: Text(GameStrings.hintWarningMessage.replaceAll('{remainingAfterUse}', '1')),
+               actions: [
+                 TextButton(
+                   onPressed: () => Navigator.pop(ctx, false),
+                   child: Text(GameStrings.cancel)
+                 ),
+                 TextButton(
+                   onPressed: () => Navigator.pop(ctx, true),
+                   child: Text(GameStrings.confirm)
+                 )
+               ]
+             )
+           );
+           if (confirm != true) return;
+           
+           final confirmRes = await SupabaseService.instance.client.rpc('confirm_hint_after_warning');
+           if (confirmRes['allowed'] != true) return;
+           ref.read(hintQuotaProvider.notifier).updateRemaining(confirmRes['remaining'] as int);
+         } else {
+           ref.read(hintQuotaProvider.notifier).updateRemaining(res['remaining'] as int);
+         }
+       } catch (e) {
+         return; // Network error
+       }
+       _currentlyHintingWordIndex = _sortedWords.indexOf(targetRow);
+       _currentlyHintingCharIndex = 0;
+    }
+    
+    // Reveal one char
+    setState(() {
+      TargetWord w = _sortedWords[_currentlyHintingWordIndex];
+      String wordStr = w.word;
+      
+      // We actually need to draw it on the grid
+      Color wordColor = _puzzle.wordColors[_puzzle.targetWords.indexOf(wordStr)];
+      var path = _puzzle.wordPaths[wordStr]!;
+      
+      var cell = path[_currentlyHintingCharIndex];
+      _grid[cell.row][cell.col]!.lockedWordId = wordStr; // partial lock is fine
+      _grid[cell.row][cell.col]!.lockedColor = wordColor.withValues(alpha: 0.5);
+      
+      w.displayCells[_currentlyHintingCharIndex] = wordStr[_currentlyHintingCharIndex];
+      _currentlyHintingCharIndex++;
+      
+      if (_currentlyHintingCharIndex >= wordStr.length) {
+         // Full word solved via hint
+         w.isSolved = true;
+         _undoStack.add(wordStr);
+         for (var c in path) {
+           _grid[c.row][c.col]!.lockedWordId = wordStr;
+           _grid[c.row][c.col]!.lockedColor = wordColor;
+         }
+         _currentlyHintingWordIndex = -1;
+         _currentlyHintingCharIndex = 0;
+         _checkWinCondition();
+      }
+    });
+  }
+
 
   Widget _buildHowToPlayCard() {
     return Card(
@@ -687,7 +1173,11 @@ class _MagicWordsGameScreenState extends State<MagicWordsGameScreen> {
           ),
           children: [
             Padding(
-              padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
+              padding: const EdgeInsets.only(
+                left: 16.0,
+                right: 16.0,
+                bottom: 16.0,
+              ),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
@@ -704,159 +1194,6 @@ class _MagicWordsGameScreenState extends State<MagicWordsGameScreen> {
       ),
     );
   }
-  Widget _buildSummaryView() {
-    int stars = 3;
-    if (_secondsElapsed > 30) stars = 2;
-    if (_secondsElapsed > 60) stars = 1;
-
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Spacer(),
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFFF9E6),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.emoji_events_rounded,
-                    color: Colors.amber,
-                    size: 80,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Xuất Sắc! 🎉',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.baloo2(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Bạn đã tìm được tất cả các từ ẩn!',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.baloo2(
-                  fontSize: 16,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 24),
-              
-              if (_isSavingScore)
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: CircularProgressIndicator(color: AppColors.primary),
-                  ),
-                )
-              else if (_rankData != null)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        'Xếp hạng của bạn: #${_rankData!['rank']}',
-                        style: GoogleFonts.baloo2(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Điểm: ${_rankData!['yourScore']} / Đỉnh cao trong ${_rankData!['totalPlayers']} người',
-                        style: GoogleFonts.nunito(
-                          fontSize: 14,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              const SizedBox(height: 32),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(3, (index) {
-                  final active = index < stars;
-                  return AnimatedScale(
-                    scale: active ? 1.3 : 1.0,
-                    duration: const Duration(milliseconds: 500),
-                    curve: Curves.elasticOut,
-                    child: Icon(
-                      active ? Icons.star_rounded : Icons.star_outline_rounded,
-                      color: active ? Colors.amber : Colors.grey.shade300,
-                      size: 48,
-                    ),
-                  );
-                }),
-              ),
-              const Spacer(),
-              ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    _loadPuzzle();
-                    _startTimer();
-                  });
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  'Chơi Lại',
-                  style: GoogleFonts.baloo2(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                ),
-                child: Text(
-                  'Về Trang Chủ',
-                  style: GoogleFonts.baloo2(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class WendPathPainter extends CustomPainter {
@@ -864,17 +1201,21 @@ class WendPathPainter extends CustomPainter {
   final double cellWidth;
   final double cellHeight;
   final Color pathColor;
+  final bool isLocked;
+  final bool isSolved;
 
   WendPathPainter({
     required this.path,
     required this.cellWidth,
     required this.cellHeight,
     required this.pathColor,
+    this.isLocked = false,
+    this.isSolved = true,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (path.length < 2) return;
+    if (path.isEmpty) return;
 
     final paint = Paint()
       ..color = pathColor.withValues(alpha: 0.5)
@@ -894,11 +1235,94 @@ class WendPathPainter extends CustomPainter {
       }
     }
 
-    canvas.drawPath(drawPath, paint);
+    if (path.length > 1) {
+      canvas.drawPath(drawPath, paint);
+    }
+
+    if (isLocked && path.isNotEmpty) {
+      // Draw arrows between cells
+      final arrowPaint = Paint()
+        ..color = pathColor
+        ..strokeWidth = 2
+        ..style = PaintingStyle.fill;
+
+      for (int i = 0; i < path.length - 1; i++) {
+        double px = path[i].col * cellWidth + cellWidth / 2;
+        double py = path[i].row * cellHeight + cellHeight / 2;
+        double cx = path[i + 1].col * cellWidth + cellWidth / 2;
+        double cy = path[i + 1].row * cellHeight + cellHeight / 2;
+
+        double midX = (px + cx) / 2;
+        double midY = (py + cy) / 2;
+
+        // Draw a small triangle pointing from p to c
+        double angle = atan2(cy - py, cx - px);
+        double arrowSize = min(cellWidth, cellHeight) * 0.15;
+
+        Path arrowPath = Path();
+        arrowPath.moveTo(
+          midX + arrowSize * cos(angle),
+          midY + arrowSize * sin(angle),
+        );
+        arrowPath.lineTo(
+          midX + arrowSize * cos(angle + 2.5),
+          midY + arrowSize * sin(angle + 2.5),
+        );
+        arrowPath.lineTo(
+          midX + arrowSize * cos(angle - 2.5),
+          midY + arrowSize * sin(angle - 2.5),
+        );
+        arrowPath.close();
+
+        canvas.drawPath(arrowPath, arrowPaint);
+      }
+
+      // Draw checkmark on last cell only if solved
+      if (isSolved) {
+        double lastX = path.last.col * cellWidth + cellWidth / 2;
+        double lastY = path.last.row * cellHeight + cellHeight / 2;
+
+        // Position at top-right corner of the cell
+        double badgeX = lastX + cellWidth * 0.35;
+        double badgeY = lastY - cellHeight * 0.35;
+
+        final badgePaint = Paint()
+          ..color = pathColor
+          ..style = PaintingStyle.fill;
+        canvas.drawCircle(
+          Offset(badgeX, badgeY),
+          min(cellWidth, cellHeight) * 0.2,
+          badgePaint,
+        );
+
+        // Draw a simple white checkmark
+        final checkPaint = Paint()
+          ..color = Colors.white
+          ..strokeWidth = min(cellWidth, cellHeight) * 0.08
+          ..strokeCap = StrokeCap.round
+          ..style = PaintingStyle.stroke;
+
+        Path checkPath = Path();
+        checkPath.moveTo(badgeX - min(cellWidth, cellHeight) * 0.08, badgeY);
+        checkPath.lineTo(
+          badgeX - min(cellWidth, cellHeight) * 0.02,
+          badgeY + min(cellWidth, cellHeight) * 0.06,
+        );
+        checkPath.lineTo(
+          badgeX + min(cellWidth, cellHeight) * 0.1,
+          badgeY - min(cellWidth, cellHeight) * 0.08,
+        );
+
+        canvas.drawPath(checkPath, checkPaint);
+      }
+    }
   }
 
   @override
   bool shouldRepaint(covariant WendPathPainter oldDelegate) {
-    return oldDelegate.path != path || oldDelegate.pathColor != pathColor;
+    return oldDelegate.path != path ||
+        oldDelegate.pathColor != pathColor ||
+        oldDelegate.isLocked != isLocked ||
+        oldDelegate.isSolved != isSolved;
   }
 }
