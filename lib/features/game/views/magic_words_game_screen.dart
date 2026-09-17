@@ -9,6 +9,7 @@ import 'dart:math';
 import 'dart:async';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../models/word_completion_entry.dart';
 import '../utils/wend_puzzle_generator.dart';
 
 class CompletedGridSnapshot {
@@ -65,6 +66,7 @@ class TargetWord {
   final String word;
   bool isFilled = false;
   bool isSolved = false;
+  int? slotOrder;              // MỚI: thứ tự trong nhóm cùng độ dài, gán khi giải đúng
   List<String?> displayCells;
   List<String> overflowDisplay;
   Color? assignedColor;
@@ -78,6 +80,7 @@ class TargetWord {
   void reset() {
     isFilled = false;
     isSolved = false;
+    slotOrder = null;          // MỚI
     displayCells = List.filled(word.length, null);
     overflowDisplay = [];
     assignedColor = null;
@@ -109,10 +112,12 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
   late List<List<LetterCell?>> _grid; // null means empty space (wall)
   late PuzzleAnswer _puzzle;
 
-  List<LetterCell> _currentSelection = [];
+  final List<LetterCell> _currentSelection = [];
   List<TargetWord> _sortedWords = [];
-  List<String> _undoStack = [];
+  final List<WordCompletionEntry> _completionLog = [];
   List<String> get _foundWords => _sortedWords.where((w) => w.isSolved).map((w) => w.id).toList();
+
+  final Map<int, int> _groupFillCounter = {};
 
   int _rows = 5;
   int _cols = 5;
@@ -120,7 +125,6 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
   // Colors for locked words
 
   Offset? _lastLocalPosition;
-  bool _isError = false; // For red flash on wrong word
 
   bool _isGameOver = false;
   bool _isGridDragging = false; // Fix scroll conflict
@@ -161,6 +165,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
     _undoCount = 0;
     _hintCount = 0;
     _errorCount = 0;
+    _groupFillCounter.clear();
 
     _puzzle = WendPuzzleGenerator.generate();
     _rows = _puzzle.rows;
@@ -169,7 +174,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
     List<String> tempWords = List<String>.from(_puzzle.targetWords);
     tempWords.sort((a, b) => a.length.compareTo(b.length));
     _sortedWords = tempWords.map((w) => TargetWord(w)).toList();
-    _undoStack.clear();
+    _completionLog.clear();
 
     _grid = List.generate(
       _rows,
@@ -184,13 +189,13 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
   }
 
   void _handlePanStart(DragStartDetails details, BoxConstraints constraints) {
-    if (_isError || _isGameOver) return;
+    if (_isGameOver) return;
     _lastLocalPosition = details.localPosition;
     _hitTestCell(details.localPosition, constraints);
   }
 
   void _handlePanUpdate(DragUpdateDetails details, BoxConstraints constraints) {
-    if (_isError || _lastLocalPosition == null || _isGameOver) return;
+    if (_lastLocalPosition == null || _isGameOver) return;
 
     double dx = details.localPosition.dx - _lastLocalPosition!.dx;
     double dy = details.localPosition.dy - _lastLocalPosition!.dy;
@@ -253,21 +258,39 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
     }
   }
 
+  List<TargetWord> get _renderOrderWords {
+    final groups = <int, List<TargetWord>>{};
+    for (var w in _sortedWords) {
+      groups.putIfAbsent(w.word.length, () => []).add(w);
+    }
+    final lengths = groups.keys.toList()..sort();
+    final result = <TargetWord>[];
+    for (var len in lengths) {
+      final group = groups[len]!;
+      final filled = group.where((w) => w.isFilled).toList()
+        ..sort((a, b) => (a.slotOrder ?? 0).compareTo(b.slotOrder ?? 0));
+      final unfilled = group.where((w) => !w.isFilled).toList();
+      result.addAll(filled);
+      result.addAll(unfilled);
+    }
+    return result;
+  }
+
   TargetWord? _findTargetRowForSelection(int len) {
-    var available = _sortedWords.where((w) => !w.isFilled).toList();
+    var available = _renderOrderWords.where((w) => !w.isFilled).toList();
     if (available.isEmpty) return null;
 
-    // 1. Exact match on word length
+    // 1. Khớp chính xác độ dài (ưu tiên hàng trên trước theo đúng _renderOrderWords)
     var exact = available.firstWhereOrNull((w) => w.word.length == len);
     if (exact != null) return exact;
 
-    // 2. If selection exceeds all available rows, pick the longest available row
+    // 2. Nếu số ký tự dài hơn hoặc bằng mọi hàng trống còn lại, chọn hàng dài nhất
     var longest = available.last;
     if (len >= longest.word.length) {
       return longest;
     }
 
-    // 3. Best fit (first row with length >= len)
+    // 3. Best fit: hàng trống đầu tiên có độ dài >= len (đẩy xuống các hàng bên dưới)
     var bestFit = available.firstWhereOrNull((w) => w.word.length >= len);
     return bestFit ?? available.first;
   }
@@ -313,34 +336,28 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
       return;
     }
 
-    String wordForwards = _currentSelection
-        .map((c) => c.letter)
-        .join('')
-        .toUpperCase();
+    String wordForwards = _currentSelection.map((c) => c.letter).join('').toUpperCase();
     String wordBackwards = wordForwards.split('').reversed.join('');
 
-    // Check forwards and backwards against remaining unsolved words
     String? matchedWord;
     for (var w in _sortedWords) {
-      if (!w.isSolved) {
-        if (wordForwards == w.word.toUpperCase() ||
-            wordBackwards == w.word.toUpperCase()) {
-          matchedWord = w.word;
-          break;
-        }
+      if (!w.isSolved &&
+          (wordForwards == w.word.toUpperCase() || wordBackwards == w.word.toUpperCase())) {
+        matchedWord = w.word;
+        break;
       }
     }
 
     setState(() {
       bool isMatch = matchedWord != null;
-      TargetWord commitRow = target;
+      TargetWord commitRow;
 
-      // If matched, ensure it commits to the exact target word row if available
       if (isMatch) {
-        var exactRow = _sortedWords.firstWhereOrNull((w) => w.word == matchedWord);
-        if (exactRow != null && !exactRow.isFilled) {
-          commitRow = exactRow;
-        }
+        // ĐÚNG: Gán thẳng vào TargetWord có word == matchedWord
+        commitRow = _sortedWords.firstWhere((w) => w.word == matchedWord);
+      } else {
+        // SAI: Gán vào hàng tương ứng với độ dài/vị trí đang chọn (target)
+        commitRow = target;
       }
 
       Color opColor = commitRow.assignedColor ??
@@ -351,85 +368,65 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
       commitRow.assignedColor = opColor;
       commitRow.userPath = List.from(_currentSelection);
 
-      final selectedLetters = _currentSelection.map((c) => c.letter).toList();
-      for (int i = 0; i < commitRow.word.length; i++) {
-        if (i < selectedLetters.length) {
-          commitRow.displayCells[i] = selectedLetters[i];
+      // Gán slotOrder theo thứ tự trong nhóm cùng độ dài
+      final len = commitRow.word.length;
+      if (commitRow.slotOrder == null) {
+        commitRow.slotOrder = _groupFillCounter.putIfAbsent(len, () => 0);
+        _groupFillCounter[len] = commitRow.slotOrder! + 1;
+      }
+
+      if (isMatch) {
+        for (int i = 0; i < commitRow.word.length; i++) {
+          commitRow.displayCells[i] = commitRow.word[i];
+        }
+        commitRow.overflowDisplay = [];
+      } else {
+        final selectedLetters = _currentSelection.map((c) => c.letter).toList();
+        for (int i = 0; i < commitRow.word.length; i++) {
+          if (i < selectedLetters.length) {
+            commitRow.displayCells[i] = selectedLetters[i];
+          } else {
+            commitRow.displayCells[i] = null;
+          }
+        }
+        if (selectedLetters.length > commitRow.word.length) {
+          commitRow.overflowDisplay = selectedLetters.sublist(commitRow.word.length);
         } else {
-          commitRow.displayCells[i] = null;
+          commitRow.overflowDisplay = [];
         }
       }
 
-      if (selectedLetters.length > commitRow.word.length) {
-        commitRow.overflowDisplay = selectedLetters.sublist(commitRow.word.length);
-      } else {
-        commitRow.overflowDisplay = [];
-      }
-
       // Lock cells on grid
-      String lockId = isMatch ? matchedWord : 'attempt_${commitRow.id}';
+      String lockId = isMatch ? commitRow.word : 'attempt_${commitRow.id}';
       for (var cell in _currentSelection) {
         cell.lockedWordId = lockId;
         cell.lockedColor = opColor;
       }
 
-      _undoStack.add(commitRow.id);
-      _currentSelection.clear();
-      _updateLiveFill();
-
-      if (!isMatch) {
+      if (isMatch) {
+        _completionLog.add(WordCompletionEntry(
+          word: commitRow.word,
+          elapsedSeconds: _secondsElapsed,
+          viaHint: false,
+        ));
+      } else {
+        _completionLog.add(WordCompletionEntry(
+          word: commitRow.id,
+          elapsedSeconds: _secondsElapsed,
+          viaHint: false,
+        ));
         _errorCount++;
       }
 
-      _checkPuzzleComplete();
+      _currentSelection.clear();
+      _updateLiveFill();
+
+      if (isMatch) {
+        _checkWinCondition();
+      }
     });
   }
 
-  void _checkPuzzleComplete() async {
-    int totalLetters = 0;
-    int lockedLetters = 0;
-    for (int r = 0; r < _rows; r++) {
-      for (int c = 0; c < _cols; c++) {
-        if (_grid[r][c] != null) {
-          totalLetters++;
-          if (_grid[r][c]!.lockedWordId != null) {
-            lockedLetters++;
-          }
-        }
-      }
-    }
-
-    if (lockedLetters == totalLetters &&
-        _sortedWords.every((w) => w.isSolved)) {
-      // WIN
-      _timer?.cancel();
-      setState(() {
-        _isGameOver = true;
-      });
-
-      // Score logic for Wend
-      int basePoints = _foundWords.length * 50;
-      int score = basePoints - (_errorCount * 5) - (_hintCount * 15) - (_undoCount * 2);
-      if (_secondsElapsed < 30) score += 50; // time bonus
-      if (score < 10) score = 10;
-
-      int stars = 3;
-      if (_secondsElapsed > 30) stars = 2;
-      if (_secondsElapsed > 60) stars = 1;
-
-      try {
-        await SupabaseService.instance.saveScore(
-          gameName: 'magic_words',
-          stars: stars,
-          score: score,
-        );
-      } catch (e) {
-        debugPrint('Error saving magic_words score: $e');
-      }
-    }
-  }
-
-  
   void _removeSolvedWord(String wordId) {
     setState(() {
       var target = _sortedWords.firstWhereOrNull((w) => w.id == wordId);
@@ -448,18 +445,30 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
         }
       }
 
+      final removedOrder = target.slotOrder;
+      final len = target.word.length;
+      if (removedOrder != null) {
+        for (var w in _sortedWords) {
+          if (w.word.length == len && w.isFilled && (w.slotOrder ?? -1) > removedOrder) {
+            w.slotOrder = w.slotOrder! - 1;
+          }
+        }
+        _groupFillCounter[len] = (_groupFillCounter[len] ?? 1) - 1;
+        if ((_groupFillCounter[len] ?? 0) < 0) _groupFillCounter[len] = 0;
+      }
+
       target.reset();
-      _undoStack.remove(wordId);
+      _completionLog.removeWhere((e) => e.word == wordId);
       _updateLiveFill();
     });
   }
 
   void _undo() {
-    if (_undoStack.isNotEmpty && !_isGameOver) {
+    if (_completionLog.isNotEmpty && !_isGameOver) {
       setState(() {
         _undoCount++;
-        String lastWordId = _undoStack.removeLast();
-        _removeSolvedWord(lastWordId);
+        String lastWord = _completionLog.last.word;
+        _removeSolvedWord(lastWord);
         _currentSelection.clear();
       });
     }
@@ -471,6 +480,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
       return MagicWordsReportSheet(
         targetWords: _sortedWords.map((w) => w.word).toList(),
         secondsElapsed: _secondsElapsed,
+        completionLog: _completionLog,
         onReplay: _loadPuzzle,
         onGoHome: () {
           Navigator.of(context).pop();
@@ -603,6 +613,12 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
           double cellWidth = size / puzzleData.cols;
           double cellHeight = size / puzzleData.rows;
 
+          final activeTarget = _findTargetRowForSelection(selectionData.length);
+          final activeColor = activeTarget != null
+              ? (activeTarget.assignedColor ??
+                  puzzleData.wordColors[_sortedWords.indexOf(activeTarget) % puzzleData.wordColors.length])
+              : const Color(0xFFFF6D00);
+
           Widget gridStack = SizedBox(
             width: size,
             height: size,
@@ -635,9 +651,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
                     if (cell.lockedColor != null) {
                       bgColor = cell.lockedColor!.withValues(alpha: 0.3);
                     } else if (isSelected) {
-                      bgColor = _isError
-                          ? AppColors.error.withValues(alpha: 0.3)
-                          : AppColors.primary.withValues(alpha: 0.3);
+                      bgColor = activeColor.withValues(alpha: 0.3);
                     }
 
                     return AnimatedContainer(
@@ -707,7 +721,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
                         path: selectionData,
                         cellWidth: cellWidth,
                         cellHeight: cellHeight,
-                        pathColor: _isError ? AppColors.error : AppColors.primary,
+                        pathColor: activeColor,
                         isLocked: false,
                       ),
                     ),
@@ -819,7 +833,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
       alignment: Alignment.centerLeft,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: _sortedWords.map((targetRow) {
+        children: _renderOrderWords.map((targetRow) {
           bool isFilled = targetRow.isFilled;
           bool isSolved = targetRow.isSolved;
 
@@ -1011,7 +1025,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
       });
 
       int basePoints = _sortedWords.length * 50;
-      int score = basePoints - (_errorCount * 5) - (_hintCount * 15);
+      int score = basePoints - (_errorCount * 5) - (_hintCount * 15) - (_undoCount * 2);
       if (_secondsElapsed < 30) score += 50;
       if (score < 10) score = 10;
 
@@ -1024,15 +1038,18 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
           gameName: 'magic_words',
           stars: stars,
           score: score,
+          durationSeconds: _secondsElapsed,
+          completionLog: _completionLog.map((e) => e.toJson()).toList(),
         );
       } catch (e) {
-        debugPrint('Error saving magic_words score: ');
+        debugPrint('Error saving magic_words score: $e');
       }
     }
   }
 
   void _resetPuzzle() {
     setState(() {
+      _groupFillCounter.clear();
       for (int r = 0; r < _rows; r++) {
         for (int c = 0; c < _cols; c++) {
           if (_grid[r][c] != null) {
@@ -1044,7 +1061,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
       for (var w in _sortedWords) {
         w.reset();
       }
-      _undoStack.clear();
+      _completionLog.clear();
       _currentSelection.clear();
       _currentlyHintingWordIndex = -1;
       _currentlyHintingCharIndex = 0;
@@ -1132,8 +1149,19 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
       
       if (_currentlyHintingCharIndex >= wordStr.length) {
          // Full word solved via hint
+         w.isFilled = true;
          w.isSolved = true;
-         _undoStack.add(wordStr);
+         w.assignedColor = wordColor;
+         final len = w.word.length;
+         if (w.slotOrder == null) {
+           w.slotOrder = _groupFillCounter.putIfAbsent(len, () => 0);
+           _groupFillCounter[len] = w.slotOrder! + 1;
+         }
+         _completionLog.add(WordCompletionEntry(
+           word: wordStr,
+           elapsedSeconds: _secondsElapsed,
+           viaHint: true,
+         ));
          for (var c in path) {
            _grid[c.row][c.col]!.lockedWordId = wordStr;
            _grid[c.row][c.col]!.lockedColor = wordColor;

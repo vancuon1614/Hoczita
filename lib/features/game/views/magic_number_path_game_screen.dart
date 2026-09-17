@@ -25,6 +25,20 @@ class CellPosition {
   int get hashCode => row.hashCode ^ col.hashCode;
 }
 
+typedef GridPos = CellPosition;
+
+class _DifficultyRange {
+  final int minMarkers, maxMarkers, minWalls, maxWalls;
+  final int minGap; // MỚI - khoảng cách tối thiểu (số bước path) giữa 2 marker liên tiếp
+  const _DifficultyRange({
+    required this.minMarkers,
+    required this.maxMarkers,
+    required this.minWalls,
+    required this.maxWalls,
+    required this.minGap,
+  });
+}
+
 class GridCell {
   final int row;
   final int col;
@@ -128,7 +142,7 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
   bool _showHowToPlay = true;
 
   late List<List<GridCell>> _grid;
-  List<GridCell> _currentPath = [];
+  final List<GridCell> _currentPath = [];
   int _rows = 5;
   int _cols = 5;
   int _maxCheckpoint = 0;
@@ -167,40 +181,66 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
     });
   }
 
+  static final Random _rand = Random();
+
+  static const Map<int, _DifficultyRange> _ranges = {
+    5: _DifficultyRange(minMarkers: 4, maxMarkers: 6, minWalls: 2, maxWalls: 4, minGap: 3),
+    6: _DifficultyRange(minMarkers: 6, maxMarkers: 12, minWalls: 2, maxWalls: 14, minGap: 3),
+    7: _DifficultyRange(minMarkers: 7, maxMarkers: 16, minWalls: 6, maxWalls: 18, minGap: 2),
+    8: _DifficultyRange(minMarkers: 8, maxMarkers: 18, minWalls: 8, maxWalls: 20, minGap: 2),
+  };
+
+  static List<GridPos> _pickMarkers(List<GridPos> path, int count, int minGap) {
+    final total = path.length;
+
+    // Giới hạn lại count cho THỰC TẾ khả thi với minGap đã cho, tránh vòng lặp
+    // chạy vô ích hoặc chọn thiếu marker so với dự kiến mà không ai biết
+    final maxFeasible = (total / minGap).floor();
+    final actualCount = count.clamp(2, maxFeasible);
+
+    final chosen = <int>{0}; // luôn có ô đầu tiên = số 1
+
+    final candidates = List<int>.generate(total, (i) => i)
+      ..removeWhere((i) => i == 0 || i == total - 1)
+      ..shuffle(_rand);
+
+    for (final idx in candidates) {
+      if (chosen.length >= actualCount - 1) break; // chừa 1 suất cho ô cuối
+      bool farEnoughFromAll = chosen.every((c) => (idx - c).abs() >= minGap) &&
+          (total - 1 - idx).abs() >= minGap;
+      if (farEnoughFromAll) chosen.add(idx);
+    }
+
+    chosen.add(total - 1); // luôn có ô cuối = số lớn nhất
+    final sorted = chosen.toList()..sort();
+    return sorted.map((i) => path[i]).toList();
+  }
+
   void _generatePuzzle() {
-    final rand = Random();
-    int roll = rand.nextInt(100);
+    int roll = _rand.nextInt(100);
     int size = 5;
-    if (roll < 72) {
-      size = 5; // 72%
-    } else if (roll < 86) {
-      size = 6; // 14%
+    if (roll < 65) {
+      size = 5; // 65%
+    } else if (roll < 85) {
+      size = 6; // 20%
+    } else if (roll < 95) {
+      size = 7; // 10%
     } else {
-      size = 7; // 14%
+      size = 8; // 5%
     }
 
     _rows = size;
     _cols = size;
     _grid = List.generate(_rows, (r) => List.generate(_cols, (c) => GridCell(row: r, col: c)));
-    _currentPalette = _kPathPalettes[rand.nextInt(_kPathPalettes.length)];
+    _currentPalette = _kPathPalettes[_rand.nextInt(_kPathPalettes.length)];
 
-    // Randomize walls and checkpoints based on grid size
-    int wallCount;
-    int k;
-    if (size == 5) {
-      wallCount = rand.nextInt(4) + 2; // 2 to 5 walls
-      k = rand.nextInt(5) + 6;          // 6 to 10 checkpoints
-    } else if (size == 6) {
-      wallCount = rand.nextInt(5) + 4; // 4 to 8 walls
-      k = rand.nextInt(5) + 10;         // 10 to 14 checkpoints
-    } else {
-      wallCount = rand.nextInt(7) + 6; // 6 to 12 walls
-      k = rand.nextInt(6) + 15;         // 15 to 20 checkpoints
-    }
+    final range = _ranges[size] ?? _ranges[5]!;
+    final wallCount = range.minWalls + _rand.nextInt(range.maxWalls - range.minWalls + 1);
+    final markerCount = range.minMarkers + _rand.nextInt(range.maxMarkers - range.minMarkers + 1);
 
     List<CellPosition> walls = [];
     int targetLen = (_rows * _cols) - wallCount;
-    List<CellPosition> path = _generateRandomPath(_rows, _cols, targetLen, rand);
+    List<CellPosition> path = _generateRandomPath(_rows, _cols, targetLen, _rand);
 
     // Mark walls
     for (int r = 0; r < _rows; r++) {
@@ -212,33 +252,15 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
       }
     }
 
-    // Assign checkpoints
-    if (k > path.length) k = path.length;
-    if (k < 2) k = 2; // at least start and end
+    // Assign checkpoints with minGap constraint
+    final markers = _pickMarkers(path, markerCount, range.minGap);
 
-    List<int> cpIndices = [0, path.length - 1]; // Start and end
-
-    // Add random middle checkpoints
-    int attempts = 0;
-    while (cpIndices.length < k && attempts < 100) {
-      attempts++;
-      if (path.length > 2) {
-        int idx = rand.nextInt(path.length - 2) + 1;
-        if (!cpIndices.contains(idx)) {
-          cpIndices.add(idx);
-        }
-      } else {
-        break;
-      }
-    }
-    cpIndices.sort();
-
-    for (int i = 0; i < cpIndices.length; i++) {
-      int pathIdx = cpIndices[i];
-      _grid[path[pathIdx].row][path[pathIdx].col].checkpointNumber = i + 1;
+    for (int i = 0; i < markers.length; i++) {
+      final pos = markers[i];
+      _grid[pos.row][pos.col].checkpointNumber = i + 1;
     }
 
-    _maxCheckpoint = cpIndices.length;
+    _maxCheckpoint = markers.length;
     _openCellsCount = path.length;
     _currentPath.clear();
     _secondsElapsed = 0;
@@ -436,6 +458,7 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
         gameName: 'magic_number_path',
         stars: stars,
         score: score,
+        durationSeconds: _secondsElapsed,
       );
     } catch (e) {
       debugPrint('Error saving magic_number_path score: $e');

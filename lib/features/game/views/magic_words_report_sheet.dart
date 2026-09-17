@@ -1,10 +1,12 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../models/word_completion_entry.dart';
 
 class MagicWordsReportSheet extends StatefulWidget {
   final List<String> targetWords;
   final int secondsElapsed;
+  final List<WordCompletionEntry> completionLog; // MỚI - thay cho việc chỉ dùng targetWords
   final VoidCallback onReplay;
   final VoidCallback onGoHome;
 
@@ -12,6 +14,7 @@ class MagicWordsReportSheet extends StatefulWidget {
     super.key,
     required this.targetWords,
     required this.secondsElapsed,
+    required this.completionLog, // MỚI
     required this.onReplay,
     required this.onGoHome,
   });
@@ -29,26 +32,18 @@ class _MagicWordsReportSheetState extends State<MagicWordsReportSheet> {
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
-  String _getStationSpeedText(int index, int totalCount, int totalSeconds) {
-    int safeSec = totalSeconds <= 0 ? 25 : totalSeconds;
-    if (index == totalCount - 1) {
-      return 'Về đích ${safeSec}s';
-    }
+  String _getStationSpeedText(int index) {
+    final entry = widget.completionLog[index];
+    final prevElapsed = index == 0 ? 0 : widget.completionLog[index - 1].elapsedSeconds;
+    final timeForThisWord = entry.elapsedSeconds - prevElapsed;
+    final secondsPerLetter = timeForThisWord / entry.word.length;
+    final isLast = index == widget.completionLog.length - 1;
 
-    if (totalCount <= 3) {
-      if (index == 0) return 'Đạt chuẩn ${(safeSec * 0.4).round().clamp(5, 999)}s';
-      return 'Siêu nhanh ${(safeSec * 0.75).round().clamp(8, 999)}s';
-    }
-
-    if (index == 0) {
-      return 'Đạt chuẩn ${(safeSec * 0.35).round().clamp(5, 999)}s';
-    } else if (index == 1) {
-      return 'Bứt phá ${(safeSec * 0.58).round().clamp(8, 999)}s';
-    } else if (index == 2) {
-      return 'Siêu nhanh ${(safeSec * 0.82).round().clamp(12, 999)}s';
-    } else {
-      return 'Tăng tốc ${(safeSec * 0.90).round().clamp(15, 999)}s';
-    }
+    if (isLast) return 'Về đích ${timeForThisWord}s';
+    if (secondsPerLetter <= 3) return 'Siêu nhanh ${timeForThisWord}s';
+    if (secondsPerLetter <= 5) return 'Bứt phá ${timeForThisWord}s';
+    if (secondsPerLetter <= 8) return 'Đạt chuẩn ${timeForThisWord}s';
+    return 'Tăng tốc ${timeForThisWord}s';
   }
 
   static const List<Color> _nodeColors = [
@@ -61,7 +56,7 @@ class _MagicWordsReportSheetState extends State<MagicWordsReportSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final words = widget.targetWords;
+    final entries = widget.completionLog;
 
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0.0, end: 1.0),
@@ -188,16 +183,12 @@ class _MagicWordsReportSheetState extends State<MagicWordsReportSheet> {
                       ListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        itemCount: words.length,
+                        itemCount: entries.length,                    // THAY: words.length
                         itemBuilder: (context, index) {
-                          bool isLast = index == words.length - 1;
+                          bool isLast = index == entries.length - 1;   // THAY: words.length - 1
                           Color nodeColor = _nodeColors[index % _nodeColors.length];
-                          String word = words[index];
-                          String speedText = _getStationSpeedText(
-                            index,
-                            words.length,
-                            widget.secondsElapsed,
-                          );
+                          String word = entries[index].word;           // THAY: words[index]
+                          String speedText = _getStationSpeedText(index); // THAY: bỏ 3 tham số cũ
 
                           return Row(
                             crossAxisAlignment: CrossAxisAlignment.start,

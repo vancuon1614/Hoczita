@@ -195,12 +195,20 @@ class SupabaseService {
     }
   }
 
-  Future<void> saveScore({required String gameName, required int stars, required int score}) async {
+  Future<void> saveScore({
+    required String gameName,
+    required int stars,
+    required int score,
+    int durationSeconds = 0,                        // MỚI - optional, mặc định 0
+    List<Map<String, dynamic>>? completionLog,       // MỚI - optional
+  }) async {
     if (isOfflineDemoMode) {
       _mockScores.insert(0, {
         'game_name': gameName,
         'stars': stars,
         'score': score,
+        'duration_seconds': durationSeconds,
+        'completion_log': completionLog,
         'completed_at': DateTime.now().toIso8601String(),
       });
       _mockTotalScore += score;
@@ -209,14 +217,14 @@ class SupabaseService {
     try {
       final userId = client.auth.currentUser?.id;
       if (userId == null) return;
-
       await client.from(SupabaseConstants.tableGameScores).insert({
         'profile_id': userId,
         'game_name': gameName,
         'stars': stars,
         'score': score,
+        'duration_seconds': durationSeconds,
+        'completion_log': completionLog,
       });
-
       // Sync and increment total_score in profiles table
       final currentScore = await getTotalScore();
       await client.from(SupabaseConstants.tableProfiles).update({

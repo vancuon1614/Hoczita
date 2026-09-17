@@ -443,29 +443,20 @@ class WendPuzzleGenerator {
   }
 
   static List<Color> _generateColors(int count, Random rand) {
-    // LOẠI TRỪ MÀU ĐỎ (không dùng Colors.red/redAccent)
-    List<Color> available = [
-      Colors.blue.shade400,
-      Colors.green.shade400,
-      Colors.orange.shade400,
-      Colors.purple.shade400,
-      Colors.teal.shade400,
-      Colors.pink.shade400,
-      Colors.indigo.shade400,
-      Colors.amber.shade400,
-      Colors.cyan.shade400,
-      Colors.lightGreen.shade400,
+    // Bảng màu nét, sống động lấy từ Đường số diệu kỳ (không trùng lặp màu giữa các câu)
+    const List<Color> palette = [
+      Color(0xFFFF6D00), // Sunset Orange
+      Color(0xFF2979FF), // Electric Royal Blue
+      Color(0xFF00C853), // Emerald Green
+      Color(0xFFD500F9), // Electric Fuchsia / Magenta
+      Color(0xFF00BFA5), // Deep Teal / Mint
+      Color(0xFF7B1FA2), // Vivid Purple
+      Color(0xFFFFAB00), // Amber Gold
+      Color(0xFF00E5FF), // Electric Cyan
+      Color(0xFFE91E63), // Pink Coral
+      Color(0xFF3D5AFE), // Deep Indigo
     ];
-    List<Color> res = [];
-    Color? lastColor;
-    for (int i = 0; i < count; i++) {
-      Color c;
-      do {
-        c = available[rand.nextInt(available.length)];
-      } while (c == lastColor);
-      res.add(c);
-      lastColor = c;
-    }
-    return res;
+    List<Color> shuffled = List<Color>.from(palette)..shuffle(rand);
+    return List<Color>.generate(count, (i) => shuffled[i % shuffled.length]);
   }
 }
