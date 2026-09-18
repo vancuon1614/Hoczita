@@ -60,13 +60,13 @@ Deno.serve(async (req) => {
       : '';
 
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [
-            { role: "user", parts: [{ text: `${SYSTEM_PROMPT}\n\n${contextText}\n\nHọc sinh hỏi: ${message}` }] }
+            { role: "user", parts: [{ text: `${SYSTEM_PROMPT}\n\n${contextText}\n\nNgười dùng hỏi: ${message}\n(Lưu ý: Luôn xưng "HocDi" hoặc "mình", gọi người dùng là "bạn", tuyệt đối không dùng "con", "bé", "thầy", "cô".)` }] }
           ],
           safetySettings: [
             { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_LOW_AND_ABOVE" },

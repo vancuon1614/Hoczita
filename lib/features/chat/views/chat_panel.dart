@@ -7,6 +7,20 @@ import '../services/chat_service.dart';
 class ChatPanel extends ConsumerStatefulWidget {
   const ChatPanel({super.key});
 
+  static Future<void> show(BuildContext context, WidgetRef ref) async {
+    ref.read(isChatPanelOpenProvider.notifier).state = true;
+    try {
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => const ChatPanel(),
+      );
+    } finally {
+      ref.read(isChatPanelOpenProvider.notifier).state = false;
+    }
+  }
+
   @override
   ConsumerState<ChatPanel> createState() => _ChatPanelState();
 }

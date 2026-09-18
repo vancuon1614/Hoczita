@@ -8,3 +8,4 @@ class ChatContext {
 }
 
 final chatContextProvider = StateProvider<ChatContext?>((ref) => null);
+final isChatPanelOpenProvider = StateProvider<bool>((ref) => false);

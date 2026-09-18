@@ -64,7 +64,7 @@ class LearnTab extends ConsumerWidget {
                   ],
 
                   // HOCDI AI COMPANION CARD
-                  _buildHocDiCard(context),
+                  _buildHocDiCard(context, ref),
                   const SizedBox(height: 24),
 
                   // SUBJECTS HEADER
@@ -206,7 +206,7 @@ class LearnTab extends ConsumerWidget {
   }
 
   /// HocDi AI Assistant Companion Card
-  Widget _buildHocDiCard(BuildContext context) {
+  Widget _buildHocDiCard(BuildContext context, WidgetRef ref) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -239,7 +239,7 @@ class LearnTab extends ConsumerWidget {
                 ),
                 child: const Icon(Icons.smart_toy_rounded, color: Colors.white, size: 26),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -270,9 +270,9 @@ class LearnTab extends ConsumerWidget {
             spacing: 8,
             runSpacing: 6,
             children: [
-              _buildQuickChip(context, '📖 Hỏi từ vựng'),
-              _buildQuickChip(context, '🧮 Gợi ý giải toán'),
-              _buildQuickChip(context, '✨ Gửi lời động viên'),
+              _buildQuickChip(context, ref, '📖 Hỏi từ vựng'),
+              _buildQuickChip(context, ref, '🧮 Gợi ý giải toán'),
+              _buildQuickChip(context, ref, '✨ Gửi lời động viên'),
             ],
           ),
           const SizedBox(height: 14),
@@ -296,14 +296,7 @@ class LearnTab extends ConsumerWidget {
               color: Colors.transparent,
               child: InkWell(
                 borderRadius: BorderRadius.circular(9999),
-                onTap: () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (_) => const ChatPanel(),
-                  );
-                },
+                onTap: () => ChatPanel.show(context, ref),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -327,16 +320,9 @@ class LearnTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildQuickChip(BuildContext context, String text) {
+  Widget _buildQuickChip(BuildContext context, WidgetRef ref, String text) {
     return InkWell(
-      onTap: () {
-        showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (_) => const ChatPanel(),
-        );
-      },
+      onTap: () => ChatPanel.show(context, ref),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/chat/views/chat_panel.dart';
+import '../providers/chat_context_provider.dart';
 
 class GlobalChatOverlay extends ConsumerWidget {
   final Widget child;
@@ -11,25 +12,19 @@ class GlobalChatOverlay extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
     final isLoggedIn = authState.email != null;
+    final isChatOpen = ref.watch(isChatPanelOpenProvider);
 
     return Stack(
       children: [
         child,
-        if (isLoggedIn)
+        if (isLoggedIn && !isChatOpen)
           Positioned(
             right: 16,
             bottom: 90, // Tránh đè lên bottom navigation bar
             child: Material(
               color: Colors.transparent,
               child: _ChatBubbleButton(
-                onTap: () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (_) => const ChatPanel(),
-                  );
-                },
+                onTap: () => ChatPanel.show(context, ref),
               ),
             ),
           ),
