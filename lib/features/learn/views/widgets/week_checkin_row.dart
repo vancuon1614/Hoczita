@@ -91,13 +91,13 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: !hasCheckedIn ? const Color(0xFFFE9D00) : const Color(0xFFE0E3E6),
+              color: !hasCheckedIn ? const Color(0xFF0047AB) : const Color(0xFFE0E3E6),
               width: !hasCheckedIn ? 2.5 : 1.5,
             ),
             boxShadow: [
               if (!hasCheckedIn)
                 BoxShadow(
-                  color: const Color(0xFFFE9D00).withValues(alpha: 0.25 * _pulseAnimation.value),
+                  color: const Color(0xFF0047AB).withValues(alpha: 0.25 * _pulseAnimation.value),
                   blurRadius: 14,
                   spreadRadius: 2,
                 )
@@ -119,7 +119,7 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: !hasCheckedIn ? const Color(0xFFFFF4E5) : const Color(0xFFECFDF5),
+              color: !hasCheckedIn ? const Color(0xFFEBF3FC) : const Color(0xFFECFDF5),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(22),
                 topRight: Radius.circular(22),
@@ -129,7 +129,7 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
               children: [
                 Icon(
                   !hasCheckedIn ? Icons.notifications_active_rounded : Icons.check_circle_rounded,
-                  color: !hasCheckedIn ? const Color(0xFFFE9D00) : const Color(0xFF00B460),
+                  color: !hasCheckedIn ? const Color(0xFF0047AB) : const Color(0xFF00B460),
                   size: 20,
                 ),
                 const SizedBox(width: 8),
@@ -141,7 +141,7 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
                     style: GoogleFonts.baloo2(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: !hasCheckedIn ? const Color(0xFFD97706) : const Color(0xFF006D38),
+                      color: !hasCheckedIn ? const Color(0xFF0047AB) : const Color(0xFF006D38),
                     ),
                   ),
                 ),
@@ -244,13 +244,13 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFF4E5),
+            color: const Color(0xFFF0F5FF),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFFED7AA)),
+            border: Border.all(color: const Color(0xFFCCE0FF)),
           ),
           child: Row(
             children: [
-              const Icon(Icons.rocket_launch_rounded, color: Color(0xFFD97706), size: 22),
+              const Icon(Icons.rocket_launch_rounded, color: Color(0xFF0047AB), size: 22),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -258,7 +258,7 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
                   style: GoogleFonts.baloo2(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFFB45309),
+                    color: const Color(0xFF003882),
                   ),
                 ),
               ),
@@ -341,7 +341,7 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
         innerCell = _buildCircle(const Color(0xFFE0E3E6), Icons.close_rounded, const Color(0xFF6F7883));
         break;
       case DayCellState.todayPending:
-        innerCell = _buildCircle(Colors.white, Icons.star_rounded, const Color(0xFFFE9D00), border: const Color(0xFFFE9D00));
+        innerCell = _buildCircle(Colors.white, Icons.star_rounded, const Color(0xFF0047AB), border: const Color(0xFF0047AB));
         break;
       case DayCellState.future:
         innerCell = _buildCircle(const Color(0xFFF2F4F7), Icons.lock_outline_rounded, const Color(0xFFBEC7D4));
@@ -356,7 +356,7 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Color(0x50FE9D00),
+                color: Color(0x400047AB),
                 blurRadius: 10,
                 offset: Offset(0, 2),
               )
@@ -371,7 +371,7 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
     String displayLabel = label;
     Color labelColor = const Color(0xFF3F4852);
     if (state == DayCellState.todayPending) {
-      labelColor = const Color(0xFFFE9D00);
+      labelColor = const Color(0xFF0047AB);
       displayLabel = 'Hôm nay';
     } else if (state == DayCellState.todayDone) {
       labelColor = const Color(0xFF00B460);
@@ -458,13 +458,13 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(9999),
         gradient: const LinearGradient(
-          colors: [Color(0xFFFE9D00), Color(0xFFE08A00)],
+          colors: [Color(0xFF0A58CA), Color(0xFF0047AB)],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
         boxShadow: const [
           BoxShadow(
-            color: Color(0xFFB26E00),
+            color: Color(0xFF003380),
             offset: Offset(0, 4),
             blurRadius: 0,
           ),
@@ -481,7 +481,7 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
               const Icon(Icons.sports_esports_rounded, color: Colors.white, size: 24),
               const SizedBox(width: 8),
               Text(
-                '🎮 Chơi Game Điểm Danh',
+                'Chơi Game Điểm Danh',
                 style: GoogleFonts.baloo2(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,

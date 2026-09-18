@@ -157,7 +157,7 @@ class _MonthCheckinSheetState extends State<MonthCheckinSheet> with SingleTicker
         style: GoogleFonts.baloo2(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
       );
     } else if (state == DayCellState.missed) {
-      decoration = BoxDecoration(color: AppColors.border.withOpacity(0.5), shape: BoxShape.circle);
+      decoration = BoxDecoration(color: AppColors.border.withValues(alpha: 0.5), shape: BoxShape.circle);
       innerContent = Text(
         '${date.day}',
         style: GoogleFonts.baloo2(color: AppColors.textSecondary, fontSize: 16),
@@ -198,7 +198,7 @@ class _MonthCheckinSheetState extends State<MonthCheckinSheet> with SingleTicker
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withOpacity(0.3),
+                color: AppColors.primary.withValues(alpha: 0.3),
                 blurRadius: 8,
               )
             ],
