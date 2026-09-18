@@ -24,7 +24,7 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
     _messages.add(
       ChatMessage(
         id: 'welcome',
-        text: 'Chào con! Mình là HocDi 🤖 - Trợ lý học tập thông minh. Con có thắc mắc về từ vựng, toán học hay bài tập, cứ hỏi HocDi nhé! 🌟',
+        text: 'Chào bạn! Mình là HocDi 🤖 - trợ lý học tập thông minh và là người bạn đồng hành của bạn. Bạn có thắc mắc về từ vựng, toán học hay bài tập, cứ hỏi HocDi nhé! 🌟',
         isUser: false,
         timestamp: DateTime.now(),
       ),
@@ -99,7 +99,7 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
           _messages.add(
             ChatMessage(
               id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
-              text: 'Xin lỗi con, mạng đang hơi chập chờn. Con thử hỏi lại lần nữa nhé! 🔄',
+              text: 'Xin lỗi bạn, mạng đang hơi chập chờn. Bạn thử hỏi lại lần nữa nhé! 🔄',
               isUser: false,
               timestamp: DateTime.now(),
             ),
@@ -124,12 +124,12 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
 
   List<String> _getQuickSuggestions(ChatContext? context) {
     if (context?.screenName == 'magic_words_game') {
-      return ['💡 Cho con xin 1 gợi ý', '📖 Giải thích nghĩa từ', '🎯 Cách chơi game này'];
+      return ['💡 Gợi ý cho mình nhé', '📖 Giải thích nghĩa từ', '🎯 Cách chơi game này'];
     }
     if (context?.screenName == 'sudoku_game') {
       return ['💡 Mẹo giải hàng này', '🔢 Hướng dẫn luật Sudoku'];
     }
-    return ['📚 Cho con ví dụ câu tiếng Anh', '✨ Khen ngợi con đi'];
+    return ['📚 Cho ví dụ câu tiếng Anh', '✨ Gửi lời động viên'];
   }
 
   @override

@@ -253,7 +253,7 @@ class LearnTab extends ConsumerWidget {
                       ),
                     ),
                     Text(
-                      'Giải đáp bài học, gợi ý mẹo giải đố cho bé!',
+                      'Giải đáp bài học, gợi ý mẹo giải đố cho bạn!',
                       style: GoogleFonts.baloo2(
                         fontSize: 13,
                         color: const Color(0xFF3F4852),
@@ -272,7 +272,7 @@ class LearnTab extends ConsumerWidget {
             children: [
               _buildQuickChip(context, '📖 Hỏi từ vựng'),
               _buildQuickChip(context, '🧮 Gợi ý giải toán'),
-              _buildQuickChip(context, '✨ Khen ngợi con đi'),
+              _buildQuickChip(context, '✨ Gửi lời động viên'),
             ],
           ),
           const SizedBox(height: 14),

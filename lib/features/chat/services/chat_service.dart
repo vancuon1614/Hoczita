@@ -61,7 +61,7 @@ class ChatService {
       }
 
       if (response.status == 429) {
-        return 'Con đã dùng hết lượt hỏi hôm nay rồi. Mai chúng mình lại cùng học tiếp nhé! 🌟';
+        return 'Bạn đã dùng hết lượt hỏi hôm nay rồi. Mai chúng mình lại cùng học tiếp nhé! 🌟';
       }
 
       throw Exception('Lỗi gọi AI: mã lỗi ${response.status}');
@@ -71,7 +71,7 @@ class ChatService {
     }
   }
 
-  /// Phản hồi dự phòng thông minh, thân thiện với lứa tuổi tiểu học
+  /// Phản hồi dự phòng thông minh, thân thiện với lứa tuổi học sinh
   String _generateOfflineTutorReply(String message, ChatContext? context) {
     final lower = message.toLowerCase().trim();
 
@@ -80,30 +80,30 @@ class ChatService {
       if (lower.contains('gợi ý') || lower.contains('hint') || lower.contains('giúp')) {
         final lengths = context?.data['unsolved_word_lengths'] as List?;
         if (lengths != null && lengths.isNotEmpty) {
-          return 'HocDi thấy con còn các từ có độ dài ${lengths.join(", ")} chữ cái đó! Con thử tìm các chữ cái quen thuộc trên bảng rồi nối liền nhau xem sao nhé! 💡';
+          return 'HocDi thấy bạn còn các từ có độ dài ${lengths.join(", ")} chữ cái đó! Bạn thử tìm các chữ cái quen thuộc trên bảng rồi nối liền nhau xem sao nhé! 💡';
         }
-        return 'Con hãy quan sát kỹ các góc của bảng chữ, tìm những nguyên âm (A, E, I, O, U) trước để dễ ghép thành từ tiếng Anh nha! 🌟';
+        return 'Bạn hãy quan sát kỹ các góc của bảng chữ, tìm những nguyên âm (A, E, I, O, U) trước để dễ ghép thành từ tiếng Anh nha! 🌟';
       }
     }
 
     // Hỏi về game Sudoku
     if (context?.screenName == 'sudoku_game') {
       if (lower.contains('gợi ý') || lower.contains('cách chơi') || lower.contains('giúp')) {
-        return 'Trong Sudoku, mỗi hàng ngang, hàng dọc và khối 3×3 đều phải chứa đủ các số từ 1 đến 9 không trùng lặp. Con hãy ưu tiên điền những hàng hoặc khối có sẵn nhiều số nhất trước nhé! 🔢';
+        return 'Trong Sudoku, mỗi hàng ngang, hàng dọc và khối 3×3 đều phải chứa đủ các số từ 1 đến 9 không trùng lặp. Bạn hãy ưu tiên điền những hàng hoặc khối có sẵn nhiều số nhất trước nhé! 🔢';
       }
     }
 
     // Hỏi chào hỏi
     if (lower.contains('chào') || lower.contains('hello') || lower.contains('hi')) {
-      return 'Chào con! HocDi rất vui được gặp con. Hôm nay con muốn học từ vựng hay cần hỗ trợ giải bài tập nào nè? 🌈';
+      return 'Chào bạn! HocDi rất vui được đồng hành cùng bạn. Hôm nay bạn muốn học từ vựng hay cần hỗ trợ bài tập nào nè? 🌈';
     }
 
     // Hỏi cảm ơn
     if (lower.contains('cảm ơn') || lower.contains('thank')) {
-      return 'Không có chi nè! Cố gắng học tập thật tốt nhé, con làm rất giỏi đó! 🎉';
+      return 'Không có chi nè! Cố gắng học tập thật tốt nhé, bạn làm rất tốt đó! 🎉';
     }
 
     // Câu trả lời chung khuyến khích
-    return 'HocDi đã nhận được câu hỏi của con rồi! Con hãy tập trung vào bài học và mini-game hiện tại, nếu có từ nào chưa hiểu con cứ gõ từ đó ra để HocDi giải thích nha! 📚✨';
+    return 'HocDi đã nhận được câu hỏi của bạn rồi! Bạn hãy tập trung vào bài học và mini-game hiện tại, nếu có từ nào chưa hiểu bạn cứ gõ từ đó ra để HocDi giải thích nha! 📚✨';
   }
 }
