@@ -3,9 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
   // Brand Colors
-  static const Color primary = Color(0xFF0077BB);
-  static const Color primaryLight = Color(0xFFE6F2FA);
-  static const Color secondary = Color(0xFF00A2FF);
+  static const Color primary = Color(0xFF0047AB); // Cobalt Blue
+  static const Color primaryLight = Color(0xFFE8F0FE);
+  static const Color secondary = Color(0xFF1E60D0);
   
   // Neutral Colors
   static const Color background = Color(0xFFF4F9FC);

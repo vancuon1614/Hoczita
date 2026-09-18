@@ -21,65 +21,92 @@ class LearnTab extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FC),
-      body: SafeArea(
-        bottom: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. HEADER GREETING (stitch_daily_check_in_dashboard)
-              _buildGreetingHeader(context, username, isLoggedIn),
-              const SizedBox(height: 20),
-
-              // 2. DAILY CHECK-IN CARD (Reminder State)
-              if (isLoggedIn) ...[
-                _buildCheckinCard(context),
-                const SizedBox(height: 24),
-              ],
-
-              // 3. HOCDI AI COMPANION CARD
-              _buildHocDiCard(context),
-              const SizedBox(height: 24),
-
-              // 4. SUBJECTS HEADER
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Khóa Học & Rèn Luyện 📚',
-                    style: GoogleFonts.baloo2(
-                      fontSize: 21,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF191C1E),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE0E3E6),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      'Học kỳ 1',
-                      style: GoogleFonts.baloo2(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF3F4852),
-                      ),
-                    ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 1. TOP HEADER CONTAINER (COBALT BLUE #0047AB)
+            Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: Color(0xFF0047AB), // Cobalt Blue
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(32),
+                  bottomRight: Radius.circular(32),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x330047AB),
+                    blurRadius: 16,
+                    offset: Offset(0, 6),
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                  child: _buildGreetingHeader(context, username, isLoggedIn),
+                ),
+              ),
+            ),
 
-              // 5. SUBJECTS: TOÁN HỌC & TIẾNG ANH (stitch_daily_check_in_dashboard)
-              _buildMathSubjectCard(context),
-              const SizedBox(height: 18),
-              _buildEnglishSubjectCard(context),
-              const SizedBox(height: 48),
-            ],
-          ),
+            // 2. MAIN CONTENT (BELOW HEADER)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // DAILY CHECK-IN CARD (Reminder State)
+                  if (isLoggedIn) ...[
+                    _buildCheckinCard(context),
+                    const SizedBox(height: 24),
+                  ],
+
+                  // HOCDI AI COMPANION CARD
+                  _buildHocDiCard(context),
+                  const SizedBox(height: 24),
+
+                  // SUBJECTS HEADER
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Khóa Học & Rèn Luyện 📚',
+                        style: GoogleFonts.baloo2(
+                          fontSize: 21,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF191C1E),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE0E3E6),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          'Học kỳ 1',
+                          style: GoogleFonts.baloo2(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF3F4852),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // SUBJECTS: TOÁN HỌC & TIẾNG ANH (stitch_daily_check_in_dashboard)
+                  _buildMathSubjectCard(context),
+                  const SizedBox(height: 18),
+                  _buildEnglishSubjectCard(context),
+                  const SizedBox(height: 48),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -105,15 +132,15 @@ class LearnTab extends ConsumerWidget {
                 style: GoogleFonts.baloo2(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: const Color(0xFF3F4852),
+                  color: Colors.white.withValues(alpha: 0.85),
                 ),
               ),
               Text(
                 '$username! 👋',
                 style: GoogleFonts.baloo2(
-                  fontSize: 24,
+                  fontSize: 23,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF191C1E),
+                  color: Colors.white,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -133,9 +160,9 @@ class LearnTab extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(9999),
                   boxShadow: const [
                     BoxShadow(
-                      color: Color(0x0D000000),
-                      blurRadius: 10,
-                      offset: Offset(0, 4),
+                      color: Color(0x20000000),
+                      blurRadius: 8,
+                      offset: Offset(0, 3),
                     ),
                   ],
                 ),
