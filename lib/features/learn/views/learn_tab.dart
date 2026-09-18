@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/animated_icon.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/services/supabase_service.dart';
 import 'counting_lesson_screen.dart';
@@ -10,6 +8,8 @@ import 'random_flashcard_screen.dart';
 import 'widgets/week_checkin_row.dart';
 import '../../game/views/daily_checkin_game_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../chat/views/chat_panel.dart';
+
 class LearnTab extends ConsumerWidget {
   const LearnTab({super.key});
 
@@ -20,210 +20,148 @@ class LearnTab extends ConsumerWidget {
     final isLoggedIn = authState.status == AuthStatus.authenticated;
 
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header with blue gradient
-            Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                gradient: AppColors.primaryGradient,
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(36),
-                  bottomRight: Radius.circular(36),
-                ),
-              ),
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                          Text(
-                            'Hello, $username! 👋',
-                            style: GoogleFonts.baloo2(
-                              color: Colors.white,
-                              fontSize: 21,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            isLoggedIn
-                                ? 'Hãy bắt đầu rèn luyện hôm nay!'
-                                : 'Đăng nhập để lưu lại tiến trình học',
-                            style: GoogleFonts.baloo2(
-                              color: Colors.white.withValues(alpha: 0.8),
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      if (isLoggedIn)
-                        FutureBuilder<int>(
-                          future: SupabaseService.instance.getTotalScore(),
-                          builder: (context, snapshot) {
-                            final points = snapshot.data ?? 0;
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.stars_rounded,
-                                    color: AppColors.accent,
-                                    size: 20,
-                                  ),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    '$points điểm',
-                                    style: GoogleFonts.baloo2(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+      backgroundColor: const Color(0xFFF7F9FC),
+      body: SafeArea(
+        bottom: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 1. HEADER GREETING (stitch_daily_check_in_dashboard)
+              _buildGreetingHeader(context, username, isLoggedIn),
+              const SizedBox(height: 20),
 
-            // Content below header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              // 2. DAILY CHECK-IN CARD (Reminder State)
+              if (isLoggedIn) ...[
+                _buildCheckinCard(context),
+                const SizedBox(height: 24),
+              ],
+
+              // 3. HOCDI AI COMPANION CARD
+              _buildHocDiCard(context),
+              const SizedBox(height: 24),
+
+              // 4. SUBJECTS HEADER
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  SizedBox(height: 24),
-                  // Daily Checkin Card
-                  if (isLoggedIn) ...[
-                    _buildCheckinCard(context),
-                    SizedBox(height: 32),
-                  ],
-                  // Main Title
                   Text(
-                    'Toán Học 🧮',
+                    'Khóa Học & Rèn Luyện 📚',
                     style: GoogleFonts.baloo2(
-                      fontSize: 23,
+                      fontSize: 21,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                      color: const Color(0xFF191C1E),
                     ),
                   ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Lựa chọn nội dung học tập để rèn luyện tư duy không giới hạn thời gian.',
-                    style: GoogleFonts.baloo2(
-                      color: AppColors.textSecondary,
-                      fontSize: 13,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE0E3E6),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      'Học kỳ 1',
+                      style: GoogleFonts.baloo2(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF3F4852),
+                      ),
                     ),
                   ),
-                  SizedBox(height: 24),
-
-                  // Lesson card 1: Counting (Using mathcount.gif animation)
-                  _buildLessonCard(
-                    context: context,
-                    title: 'Đếm Số Thông Minh',
-                    subtitle:
-                        'Nhìn hình ảnh sinh động và đếm số lượng vật thể phù hợp.',
-                    icon: Icons.apple_rounded,
-                    color: Colors.redAccent,
-                    animationType: GameAnimationType.pulse,
-                    imagePath: 'ImageFolder/mathcount.gif',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const CountingLessonScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  SizedBox(height: 20),
-
-                  // Lesson card 2: Math operations (Using thembotvuinhon.gif animation)
-                  _buildLessonCard(
-                    context: context,
-                    title: 'Thêm Bớt Vui Nhộn',
-                    subtitle:
-                        'Luyện tập các phép tính cộng, trừ trong phạm vi 100.',
-                    icon: Icons.add_circle_outline_rounded,
-                    color: Colors.blueAccent,
-                    animationType: GameAnimationType.bounce,
-                    imagePath: 'ImageFolder/thembotvuinhon.gif',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const MathOpsLessonScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  SizedBox(height: 32),
-
-                  // English Section Title
-                  Text(
-                    'Tiếng Anh 🇬🇧',
-                    style: GoogleFonts.baloo2(
-                      fontSize: 23,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Cải thiện vốn từ vựng mỗi ngày với phương pháp lặp lại ngẫu nhiên.',
-                    style: GoogleFonts.baloo2(
-                      color: AppColors.textSecondary,
-                      fontSize: 13,
-                    ),
-                  ),
-                  SizedBox(height: 24),
-
-                  // Lesson card 3: Random Flashcards
-                  _buildLessonCard(
-                    context: context,
-                    title: 'Flashcard Từ Vựng',
-                    subtitle: 'Học từ vựng không giới hạn với hình ảnh sinh động và phát âm.',
-                    icon: Icons.flash_on_rounded,
-                    color: Colors.amber,
-                    animationType: GameAnimationType.bounce,
-                    imagePath: 'ImageFolder/flashcard.gif',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const RandomFlashcardScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  SizedBox(height: 40),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 14),
+
+              // 5. SUBJECTS: TOÁN HỌC & TIẾNG ANH (stitch_daily_check_in_dashboard)
+              _buildMathSubjectCard(context),
+              const SizedBox(height: 18),
+              _buildEnglishSubjectCard(context),
+              const SizedBox(height: 48),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  /// Header Greeting: Chào buổi sáng + Username + Point Badge
+  Widget _buildGreetingHeader(BuildContext context, String username, bool isLoggedIn) {
+    final hour = DateTime.now().hour;
+    final greetingPrefix = hour < 12
+        ? 'Chào buổi sáng,'
+        : (hour < 18 ? 'Chào buổi chiều,' : 'Chào buổi tối,');
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                greetingPrefix,
+                style: GoogleFonts.baloo2(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF3F4852),
+                ),
+              ),
+              Text(
+                '$username! 👋',
+                style: GoogleFonts.baloo2(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF191C1E),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+        if (isLoggedIn)
+          FutureBuilder<int>(
+            future: SupabaseService.instance.getTotalScore(),
+            builder: (context, snapshot) {
+              final points = snapshot.data ?? 0;
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFDCBB),
+                  borderRadius: BorderRadius.circular(9999),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x0D000000),
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.stars_rounded,
+                      color: Color(0xFFFFB800),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '$points Điểm',
+                      style: GoogleFonts.baloo2(
+                        color: const Color(0xFF2C1700),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+      ],
     );
   }
 
@@ -235,104 +173,539 @@ class LearnTab extends ConsumerWidget {
           MaterialPageRoute(
             builder: (context) => const DailyCheckinGameScreen(),
           ),
-        ).then((_) {
-          if (context.mounted) {
-             // Let Riverpod handle the state update automatically
-          }
-        });
+        );
       },
     );
   }
 
-  Widget _buildLessonCard({
-    required BuildContext context,
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-    required GameAnimationType animationType,
-    String? imagePath,
-    required VoidCallback onTap,
-  }) {
+  /// HocDi AI Assistant Companion Card
+  Widget _buildHocDiCard(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
+        border: Border.all(color: const Color(0xFFCFE5FF), width: 1.5),
+        boxShadow: const [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Color(0x0D00629D),
+            blurRadius: 12,
+            offset: Offset(0, 4),
           ),
         ],
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF00629D), Color(0xFF00A3FF)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: const Icon(Icons.smart_toy_rounded, color: Colors.white, size: 26),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'HocDi - Trợ Lý Học Tập 🤖',
+                      style: GoogleFonts.baloo2(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF191C1E),
+                      ),
+                    ),
+                    Text(
+                      'Giải đáp bài học, gợi ý mẹo giải đố cho bé!',
+                      style: GoogleFonts.baloo2(
+                        fontSize: 13,
+                        color: const Color(0xFF3F4852),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // Quick suggestion chips
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              _buildQuickChip(context, '📖 Hỏi từ vựng'),
+              _buildQuickChip(context, '🧮 Gợi ý giải toán'),
+              _buildQuickChip(context, '✨ Khen ngợi con đi'),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // Squishy button to open ChatPanel
+          Container(
+            height: 46,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(9999),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF00629D), Color(0xFF0077BB)],
+              ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0xFF004A77),
+                  offset: Offset(0, 3),
+                  blurRadius: 0,
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(9999),
+                onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => const ChatPanel(),
+                  );
+                },
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Trò chuyện cùng HocDi ngay',
+                      style: GoogleFonts.baloo2(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickChip(BuildContext context, String text) {
+    return InkWell(
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => const ChatPanel(),
+        );
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF2F4F7),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE0E3E6)),
+        ),
+        child: Text(
+          text,
+          style: GoogleFonts.baloo2(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF00629D),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Math Subject Card (stitch_daily_check_in_dashboard)
+  Widget _buildMathSubjectCard(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFCFE5FF),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.calculate_rounded,
+                  color: Color(0xFF00629D),
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Toán Học',
+                      style: GoogleFonts.baloo2(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF191C1E),
+                      ),
+                    ),
+                    Text(
+                      'Phép cộng & trừ trong phạm vi 100',
+                      style: GoogleFonts.baloo2(
+                        fontSize: 13,
+                        color: const Color(0xFF3F4852),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCFE5FF),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  'Cơ bản',
+                  style: GoogleFonts.baloo2(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF00629D),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Thick 16px Gel Progress Bar
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Tiến độ bài học',
+                    style: GoogleFonts.baloo2(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF3F4852),
+                    ),
+                  ),
+                  Text(
+                    '60%',
+                    style: GoogleFonts.baloo2(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF00629D),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Container(
+                height: 16,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0E3E6),
+                  borderRadius: BorderRadius.circular(9999),
+                ),
+                child: FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: 0.60,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(9999),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF00629D), Color(0xFF00A3FF)],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Two Sub-lessons
+          Row(
+            children: [
+              Expanded(
+                child: _buildLessonSubButton(
+                  title: 'Đếm Số',
+                  icon: Icons.apple_rounded,
+                  color: Colors.redAccent,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const CountingLessonScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildLessonSubButton(
+                  title: 'Thêm Bớt',
+                  icon: Icons.add_circle_outline_rounded,
+                  color: const Color(0xFF00629D),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MathOpsLessonScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// English Subject Card (stitch_daily_check_in_dashboard)
+  Widget _buildEnglishSubjectCard(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF6CFE9F),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.translate_rounded,
+                  color: Color(0xFF006D38),
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tiếng Anh',
+                      style: GoogleFonts.baloo2(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF191C1E),
+                      ),
+                    ),
+                    Text(
+                      'Từ vựng sinh động & Flashcards',
+                      style: GoogleFonts.baloo2(
+                        fontSize: 13,
+                        color: const Color(0xFF3F4852),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6CFE9F).withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  'Mới',
+                  style: GoogleFonts.baloo2(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF006D38),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Thick 16px Gel Progress Bar
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Tiến độ bài học',
+                    style: GoogleFonts.baloo2(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF3F4852),
+                    ),
+                  ),
+                  Text(
+                    '45%',
+                    style: GoogleFonts.baloo2(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF006D38),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Container(
+                height: 16,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0E3E6),
+                  borderRadius: BorderRadius.circular(9999),
+                ),
+                child: FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: 0.45,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(9999),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF006D38), Color(0xFF00B460)],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Squishy Pill Button "Bắt đầu học Flashcard"
+          Container(
+            height: 48,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(9999),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF00B460), Color(0xFF008A4A)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0xFF006D38),
+                  offset: Offset(0, 3),
+                  blurRadius: 0,
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(9999),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const RandomFlashcardScreen(),
+                    ),
+                  );
+                },
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Bắt đầu học Flashcard',
+                      style: GoogleFonts.baloo2(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLessonSubButton({
+    required String title,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      height: 46,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2F4F7),
+        borderRadius: BorderRadius.circular(9999),
+        border: Border.all(color: const Color(0xFFE0E3E6)),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
+          borderRadius: BorderRadius.circular(9999),
           onTap: onTap,
-          borderRadius: BorderRadius.circular(24),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Row(
-              children: [
-                // Icon/Image frame (using padding adjustment for larger images)
-                Container(
-                  padding: imagePath != null
-                      ? const EdgeInsets.all(10)
-                      : const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: imagePath != null
-                      ? Image.asset(
-                          imagePath,
-                          width: 44,
-                          height: 44,
-                          fit: BoxFit.contain,
-                        )
-                      : AnimatedGameIcon(
-                          icon: icon,
-                          color: color,
-                          size: 32,
-                          animationType: animationType,
-                        ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: GoogleFonts.baloo2(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF191C1E),
                 ),
-                SizedBox(width: 20),
-                // Texts
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: GoogleFonts.baloo2(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        style: GoogleFonts.baloo2(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                          height: 1.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(width: 8),
-                Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 16,
-                  color: AppColors.textSecondary,
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

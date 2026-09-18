@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../providers/checkin_provider.dart';
 import '../checkin_celebration_banner.dart';
 import 'checkin_logic.dart';
@@ -81,54 +80,77 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
     });
 
     final checkinState = ref.watch(checkinProvider);
+    final hasCheckedIn = checkinState.hasCheckedInToday;
+    final streak = CheckinLogic.calculateStreak(checkinState.checkedDates, _today);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.primary, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.1),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+    return AnimatedBuilder(
+      animation: _pulseAnimation,
+      builder: (context, child) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: !hasCheckedIn ? const Color(0xFFFE9D00) : const Color(0xFFE0E3E6),
+              width: !hasCheckedIn ? 2.5 : 1.5,
+            ),
+            boxShadow: [
+              if (!hasCheckedIn)
+                BoxShadow(
+                  color: const Color(0xFFFE9D00).withValues(alpha: 0.25 * _pulseAnimation.value),
+                  blurRadius: 14,
+                  spreadRadius: 2,
+                )
+              else
+                const BoxShadow(
+                  color: Color(0x0D000000),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
+                ),
+            ],
           ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
+          clipBehavior: Clip.antiAlias,
+          child: child,
+        );
+      },
       child: Column(
         children: [
-          // Banner - tự ẩn khi đã điểm danh xong
-          if (!checkinState.hasCheckedInToday)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: const BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(22),
-                  topRight: Radius.circular(22),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.notifications_active_rounded, color: AppColors.primary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      "🎯 Đừng quên 'check-in' lớp học hôm nay nhé!",
-                      style: GoogleFonts.baloo2(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ),
-                ],
+          // 1. Reminder / Celebration Banner
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: !hasCheckedIn ? const Color(0xFFFFF4E5) : const Color(0xFFECFDF5),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(22),
+                topRight: Radius.circular(22),
               ),
             ),
-          // Content
+            child: Row(
+              children: [
+                Icon(
+                  !hasCheckedIn ? Icons.notifications_active_rounded : Icons.check_circle_rounded,
+                  color: !hasCheckedIn ? const Color(0xFFFE9D00) : const Color(0xFF00B460),
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    !hasCheckedIn
+                        ? "🎯 Đừng quên 'check-in' lớp học hôm nay nhé!"
+                        : "🎉 Bạn đã hoàn thành điểm danh hôm nay!",
+                    style: GoogleFonts.baloo2(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: !hasCheckedIn ? const Color(0xFFD97706) : const Color(0xFF006D38),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // 2. Body
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(18.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -140,76 +162,136 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
                       style: GoogleFonts.baloo2(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+                        color: const Color(0xFF191C1E),
                       ),
                     ),
                     GestureDetector(
-                      onTap: () => _showMonthSheet(checkinState.checkedDates, checkinState.hasCheckedInToday),
+                      onTap: () => _showMonthSheet(checkinState.checkedDates, hasCheckedIn),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                         decoration: BoxDecoration(
-                          color: AppColors.background,
+                          color: const Color(0xFFF2F4F7),
                           borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFFE0E3E6)),
                         ),
                         child: Row(
                           children: [
                             Text(
-                              'Tuần này',
+                              'Tháng ${_today.month}',
                               style: GoogleFonts.baloo2(
-                                fontSize: 14,
+                                fontSize: 13,
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.textSecondary,
+                                color: const Color(0xFF3F4852),
                               ),
                             ),
-                            const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary, size: 18),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.calendar_month_rounded, color: Color(0xFF6F7883), size: 16),
                           ],
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
+                // 3. Weekly Tracker
                 GestureDetector(
-                  onTap: () => _showMonthSheet(checkinState.checkedDates, checkinState.hasCheckedInToday),
+                  onTap: () => _showMonthSheet(checkinState.checkedDates, hasCheckedIn),
                   behavior: HitTestBehavior.opaque,
                   child: _buildWeeklyTracker(checkinState.checkedDates),
                 ),
-                const SizedBox(height: 20),
-                // TỰ ĐỘNG ẨN BANNER KHI ĐÃ CHECK-IN
-                if (!checkinState.hasCheckedInToday) ...[
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.info.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.info.withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.rocket_launch_rounded, color: AppColors.info),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Hãy điểm danh hôm nay để bắt đầu chuỗi học tập mới!',
-                            style: GoogleFonts.baloo2(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.info,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
-                _buildPlayGameButton(checkinState.hasCheckedInToday),
+                const SizedBox(height: 18),
+                // 4. Streak Box
+                _buildStreakBox(hasCheckedIn, streak),
+                const SizedBox(height: 18),
+                // 5. Tactile 3D Action Button
+                _buildPlayGameButton(hasCheckedIn),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildStreakBox(bool hasCheckedIn, int streak) {
+    if (!hasCheckedIn) {
+      if (streak > 0) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF8F0),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFFDE68A)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '⚠️ Chuỗi $streak ngày sắp bị mất nếu không điểm danh hôm nay!',
+                  style: GoogleFonts.baloo2(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFFB45309),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      } else {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF4E5),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFFED7AA)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.rocket_launch_rounded, color: Color(0xFFD97706), size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '🚀 Hãy điểm danh hôm nay để bắt đầu chuỗi học tập mới!',
+                  style: GoogleFonts.baloo2(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFFB45309),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    } else {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFECFDF5),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFA7F3D0)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.local_fire_department_rounded, color: Color(0xFF059669), size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '🔥 Tuyệt vời! Bạn đang duy trì chuỗi ${streak > 0 ? streak : 1} ngày học tập liên tiếp!',
+                style: GoogleFonts.baloo2(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF065F46),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   Widget _buildWeeklyTracker(Set<DateTime> checkedDates) {
@@ -235,9 +317,9 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
     return Expanded(
       child: Container(
         height: 4,
-        margin: const EdgeInsets.symmetric(horizontal: 4),
+        margin: const EdgeInsets.symmetric(horizontal: 3),
         decoration: BoxDecoration(
-          color: isDone ? AppColors.success.withOpacity(0.5) : AppColors.border,
+          color: isDone ? const Color(0xFF00B460).withValues(alpha: 0.6) : const Color(0xFFE0E3E6),
           borderRadius: BorderRadius.circular(2),
         ),
       ),
@@ -250,20 +332,19 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
     Widget innerCell;
     switch (state) {
       case DayCellState.checkedIn:
+        innerCell = _buildCircle(const Color(0xFF00B460), Icons.check_rounded, Colors.white);
+        break;
       case DayCellState.todayDone:
-        innerCell = _buildCircle(AppColors.success, Icons.check_rounded, Colors.white);
+        innerCell = _buildCircle(const Color(0xFF00B460), Icons.check_rounded, Colors.white);
         break;
       case DayCellState.missed:
-        innerCell = _buildCircle(AppColors.border, Icons.close_rounded, Colors.white);
+        innerCell = _buildCircle(const Color(0xFFE0E3E6), Icons.close_rounded, const Color(0xFF6F7883));
         break;
       case DayCellState.todayPending:
-        innerCell = _buildCircle(Colors.white, Icons.star_rounded, AppColors.primary, border: AppColors.primary);
+        innerCell = _buildCircle(Colors.white, Icons.star_rounded, const Color(0xFFFE9D00), border: const Color(0xFFFE9D00));
         break;
       case DayCellState.future:
-        innerCell = Opacity(
-          opacity: 0.3,
-          child: _buildCircle(AppColors.border, Icons.lock_outline_rounded, AppColors.textSecondary),
-        );
+        innerCell = _buildCircle(const Color(0xFFF2F4F7), Icons.lock_outline_rounded, const Color(0xFFBEC7D4));
         break;
     }
 
@@ -271,13 +352,13 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
       innerCell = ScaleTransition(
         scale: _pulseAnimation,
         child: Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withOpacity(0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+                color: Color(0x50FE9D00),
+                blurRadius: 10,
+                offset: Offset(0, 2),
               )
             ],
           ),
@@ -286,19 +367,27 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
       );
     }
 
-    // Wrap label
-    Color labelColor = AppColors.textSecondary;
-    if (state == DayCellState.todayPending || state == DayCellState.todayDone) labelColor = AppColors.primary;
-    if (state == DayCellState.future) labelColor = AppColors.textSecondary.withOpacity(0.3);
+    // Label styling
+    String displayLabel = label;
+    Color labelColor = const Color(0xFF3F4852);
+    if (state == DayCellState.todayPending) {
+      labelColor = const Color(0xFFFE9D00);
+      displayLabel = 'Hôm nay';
+    } else if (state == DayCellState.todayDone) {
+      labelColor = const Color(0xFF00B460);
+      displayLabel = 'Hôm nay';
+    } else if (state == DayCellState.future) {
+      labelColor = const Color(0xFF6F7883);
+    }
 
     return Column(
       children: [
-        SizedBox(width: 48, height: 48, child: Center(child: innerCell)),
-        const SizedBox(height: 4),
+        SizedBox(width: 44, height: 44, child: Center(child: innerCell)),
+        const SizedBox(height: 5),
         Text(
-          label,
+          displayLabel,
           style: GoogleFonts.baloo2(
-            fontSize: 14,
+            fontSize: displayLabel == 'Hôm nay' ? 12 : 13.5,
             fontWeight: FontWeight.bold,
             color: labelColor,
           ),
@@ -314,7 +403,7 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
       decoration: BoxDecoration(
         color: bgColor,
         shape: BoxShape.circle,
-        border: border != null ? Border.all(color: border, width: 3) : null,
+        border: border != null ? Border.all(color: border, width: 3.5) : null,
       ),
       child: Icon(icon, color: iconColor, size: 20),
     );
@@ -323,57 +412,84 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
   Widget _buildPlayGameButton(bool hasCheckedIn) {
     if (hasCheckedIn) {
       return Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        height: 54,
         decoration: BoxDecoration(
-          color: Colors.green,
-          borderRadius: BorderRadius.circular(30),
-        ),
-        alignment: Alignment.center,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.check_circle_rounded, color: Colors.white),
-            const SizedBox(width: 8),
-            Text(
-              'Đã Điểm Danh Hôm Nay',
-              style: GoogleFonts.baloo2(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+          borderRadius: BorderRadius.circular(9999),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF00B460), Color(0xFF008A4A)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0xFF006D38),
+              offset: Offset(0, 3),
+              blurRadius: 0,
             ),
           ],
         ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(9999),
+            onTap: widget.onPlayGame,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 22),
+                const SizedBox(width: 8),
+                Text(
+                  '✨ Đã Điểm Danh Hôm Nay (Chơi Lại)',
+                  style: GoogleFonts.baloo2(
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
+
     return Container(
+      height: 56,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
+        borderRadius: BorderRadius.circular(9999),
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFE9D00), Color(0xFFE08A00)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        boxShadow: const [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.5),
-            offset: const Offset(0, 4),
+            color: Color(0xFFB26E00),
+            offset: Offset(0, 4),
+            blurRadius: 0,
           ),
         ],
       ),
-      child: ElevatedButton.icon(
-        onPressed: widget.onPlayGame,
-        icon: const Icon(Icons.sports_esports_rounded, color: Colors.white),
-        label: Text(
-          '🎮 Chơi Game Điểm Danh',
-          style: GoogleFonts.baloo2(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(9999),
+          onTap: widget.onPlayGame,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.sports_esports_rounded, color: Colors.white, size: 24),
+              const SizedBox(width: 8),
+              Text(
+                '🎮 Chơi Game Điểm Danh',
+                style: GoogleFonts.baloo2(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
           ),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
-          ),
-          elevation: 0,
         ),
       ),
     );

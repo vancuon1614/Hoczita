@@ -8,6 +8,7 @@ import 'core/services/supabase_service.dart';
 import 'core/services/api_service.dart';
 import 'features/onboarding/views/splash_screen.dart';
 import 'core/widgets/auth_sync_listener.dart';
+import 'core/widgets/global_chat_overlay.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -51,6 +52,11 @@ class MyApp extends StatelessWidget {
         title: 'App HocZiTa',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
+        builder: (context, child) {
+          return GlobalChatOverlay(
+            child: child ?? const SizedBox.shrink(),
+          );
+        },
         home: const SplashScreen(),
       ),
     );

@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 enum DayCellState {
   checkedIn,
   missed,
@@ -42,6 +40,20 @@ class CheckinLogic {
     int weekday = norm.weekday;
     DateTime monday = norm.subtract(Duration(days: weekday - 1));
     return List.generate(7, (index) => monday.add(Duration(days: index)));
+  }
+
+  static int calculateStreak(Set<DateTime> checkedDates, DateTime today) {
+    DateTime normToday = normalize(today);
+    bool todayChecked = checkedDates.any((d) => isSameDay(d, normToday));
+    
+    int streak = todayChecked ? 1 : 0;
+    DateTime checkDay = normToday.subtract(const Duration(days: 1));
+
+    while (checkedDates.any((d) => isSameDay(d, checkDay))) {
+      streak++;
+      checkDay = checkDay.subtract(const Duration(days: 1));
+    }
+    return streak;
   }
 
   static List<DateTime> getDaysInMonthGrid(DateTime month) {

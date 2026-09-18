@@ -12,7 +12,7 @@ import 'english_crossword_game_screen.dart';
 import 'word_scramble_game_screen.dart';
 import 'magic_words_game_screen.dart';
 import 'magic_number_path_game_screen.dart';
-import 'flashcard_study_screen.dart';
+import 'sudoku_lobby_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 
@@ -366,6 +366,20 @@ class _GameTabState extends ConsumerState<GameTab> {
             imagePath: 'ImageFolder/crossword.gif', // Placeholder image
             onTap: () => _playGame(
               const MagicNumberPathGameScreen(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildGameCard(
+            context: context,
+            title: 'Sudoku Trí Tuệ',
+            subtitle: 'Giải ma trận số 9x9 với 6 cấp độ khó, hỗ trợ đấu trường online và phòng riêng.',
+            icon: Icons.grid_4x4_rounded,
+            color: const Color(0xFF1D4ED8),
+            stars: _highestStars['sudoku_medium'] ?? 0,
+            animationType: GameAnimationType.swing,
+            imagePath: 'ImageFolder/crossword.gif',
+            onTap: () => _playGame(
+              const SudokuLobbyScreen(),
             ),
           ),
                 ],

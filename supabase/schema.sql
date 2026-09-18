@@ -166,3 +166,34 @@ $$ language plpgsql security definer;
 create or replace trigger on_booking_inserted
   after insert on public.bookings
   for each row execute procedure public.handle_new_booking();
+
+-- ==========================================
+-- BẢNG LƯU TRỮ LỊCH SỬ CHAT TRỢ LÝ AI (CHAT HISTORY)
+-- ==========================================
+create table if not exists public.chat_history (
+  id uuid default gen_random_uuid() primary key,
+  profile_id uuid references public.profiles(id) on delete cascade,
+  user_message text not null,
+  ai_reply text not null,
+  screen_context text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.chat_history enable row level security;
+
+create policy "Users can view their own chat history"
+  on public.chat_history for select
+  using (auth.uid() = profile_id);
+
+create policy "Users can insert their own chat history"
+  on public.chat_history for insert
+  with check (auth.uid() = profile_id);
+
+-- RPC kiểm tra quota chat (mặc định cho phép)
+create or replace function public.request_chat_quota(p_user_id uuid)
+returns jsonb as $$
+begin
+  -- Có thể mở rộng giới hạn số lượng tin nhắn mỗi ngày ở đây
+  return jsonb_build_object('allowed', true);
+end;
+$$ language plpgsql security definer;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/game_strings.dart';
 import '../../../core/providers/hint_quota_provider.dart';
+import '../../../core/providers/chat_context_provider.dart';
 
 import 'package:hoczita_app/features/game/views/magic_words_report_sheet.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -140,10 +141,19 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
     super.initState();
     _loadPuzzle();
     _startTimer();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(chatContextProvider.notifier).state = ChatContext(
+        screenName: 'magic_words_game',
+        data: {
+          'unsolved_word_lengths': _sortedWords.where((w) => !w.isSolved).map((w) => w.word.length).toList(),
+        },
+      );
+    });
   }
 
   @override
   void dispose() {
+    ref.read(chatContextProvider.notifier).state = null;
     _timer?.cancel();
     super.dispose();
   }
