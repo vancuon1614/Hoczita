@@ -227,17 +227,20 @@ class LearnTab extends ConsumerWidget {
           Row(
             children: [
               Container(
-                width: 46,
-                height: 46,
-                decoration: const BoxDecoration(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF00629D), Color(0xFF00A3FF)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                  border: Border.all(color: const Color(0xFF0047AB), width: 1.5),
+                ),
+                child: ClipOval(
+                  child: Image.asset(
+                    'ImageFolder/Designer.png',
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
                   ),
                 ),
-                child: const Icon(Icons.smart_toy_rounded, color: Colors.white, size: 26),
               ),
               const SizedBox(width: 14),
               Expanded(

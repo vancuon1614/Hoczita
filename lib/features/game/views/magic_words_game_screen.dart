@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/game_strings.dart';
 import '../../../core/providers/hint_quota_provider.dart';
 import '../../../core/providers/chat_context_provider.dart';
+import '../../../core/providers/game_interaction_provider.dart';
 
 import 'package:hoczita_app/features/game/views/magic_words_report_sheet.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -745,9 +746,18 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
           }
 
           return Listener(
-            onPointerDown: (_) => setState(() => _isGridDragging = true),
-            onPointerUp: (_) => setState(() => _isGridDragging = false),
-            onPointerCancel: (_) => setState(() => _isGridDragging = false),
+            onPointerDown: (_) {
+              setState(() => _isGridDragging = true);
+              ref.read(isGameDraggingProvider.notifier).state = true;
+            },
+            onPointerUp: (_) {
+              setState(() => _isGridDragging = false);
+              ref.read(isGameDraggingProvider.notifier).state = false;
+            },
+            onPointerCancel: (_) {
+              setState(() => _isGridDragging = false);
+              ref.read(isGameDraggingProvider.notifier).state = false;
+            },
             child: GestureDetector(
               onPanStart: (d) => _handlePanStart(d, BoxConstraints.tightFor(width: size, height: size)),
               onPanUpdate: (d) => _handlePanUpdate(d, BoxConstraints.tightFor(width: size, height: size)),

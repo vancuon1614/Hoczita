@@ -174,13 +174,18 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
                 Container(
                   width: 44,
                   height: 44,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF2563EB), Color(0xFF60A5FA)],
-                    ),
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFF0047AB), width: 1.5),
                   ),
-                  child: const Icon(Icons.smart_toy_rounded, color: Colors.white, size: 26),
+                  child: ClipOval(
+                    child: Image.asset(
+                      'ImageFolder/Designer.png',
+                      width: 44,
+                      height: 44,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -347,10 +352,16 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
               width: 32,
               height: 32,
               decoration: const BoxDecoration(
-                color: Color(0xFFDBEAFE),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.smart_toy_rounded, size: 18, color: Color(0xFF1D4ED8)),
+              child: ClipOval(
+                child: Image.asset(
+                  'ImageFolder/Designer.png',
+                  width: 32,
+                  height: 32,
+                  fit: BoxFit.cover,
+                ),
+              ),
             ),
             const SizedBox(width: 8),
           ],
