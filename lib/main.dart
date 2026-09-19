@@ -42,6 +42,8 @@ void main() async {
   );
 }
 
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -49,6 +51,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return AuthSyncListener(
       child: MaterialApp(
+        navigatorKey: rootNavigatorKey,
         title: 'App HocZiTa',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,

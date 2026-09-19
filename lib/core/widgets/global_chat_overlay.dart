@@ -5,6 +5,7 @@ import '../../features/auth/providers/auth_provider.dart';
 import '../../features/chat/views/chat_panel.dart';
 import '../providers/chat_context_provider.dart';
 import '../providers/game_interaction_provider.dart';
+import '../../main.dart';
 
 class GlobalChatOverlay extends ConsumerStatefulWidget {
   final Widget child;
@@ -84,18 +85,27 @@ class _GlobalChatOverlayState extends ConsumerState<GlobalChatOverlay>
   }
 
   void _openPanel() async {
+    final navContext = rootNavigatorKey.currentContext;
+    if (navContext == null) return;
+
     setState(() => _isPanelOpen = true);
     ref.read(hasChatHintProvider.notifier).state = false; // clear badge khi mở
-    await ChatPanel.show(context, ref);
-    if (mounted) {
-      setState(() => _isPanelOpen = false);
+    try {
+      await ChatPanel.show(navContext, ref);
+    } catch (e, st) {
+      debugPrint('Error opening ChatPanel: $e\n$st');
+    } finally {
+      if (mounted) {
+        setState(() => _isPanelOpen = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final isLoggedIn = authState.email != null;
+    // AI chatbot chỉ được xuất hiện khi người dùng đã đăng nhập thành công
+    final isLoggedIn = authState.status == AuthStatus.authenticated && authState.email != null;
     final isSuppressed = ref.watch(isGameDraggingProvider);
     final hasHint = ref.watch(hasChatHintProvider);
     final isPanelOpenGlobal = ref.watch(isChatPanelOpenProvider);

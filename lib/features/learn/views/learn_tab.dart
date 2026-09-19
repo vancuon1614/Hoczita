@@ -64,8 +64,10 @@ class LearnTab extends ConsumerWidget {
                   ],
 
                   // HOCDI AI COMPANION CARD
-                  _buildHocDiCard(context, ref),
-                  const SizedBox(height: 24),
+                  if (isLoggedIn) ...[
+                    _buildHocDiCard(context, ref),
+                    const SizedBox(height: 24),
+                  ],
 
                   // SUBJECTS HEADER
                   Row(
