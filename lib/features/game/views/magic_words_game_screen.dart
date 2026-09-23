@@ -13,6 +13,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../models/word_completion_entry.dart';
 import '../utils/wend_puzzle_generator.dart';
+import '../../../core/widgets/mini_game_timer.dart';
+import '../../../core/services/tts_service.dart';
 
 class CompletedGridSnapshot {
   final List<List<LetterCell?>> grid;
@@ -102,7 +104,11 @@ class LetterCell {
 }
 
 class MagicWordsGameScreen extends ConsumerStatefulWidget {
-  const MagicWordsGameScreen({super.key});
+  final MagicWordsDifficulty difficulty;
+  const MagicWordsGameScreen({
+    super.key,
+    this.difficulty = MagicWordsDifficulty.easy,
+  });
 
   @override
   ConsumerState<MagicWordsGameScreen> createState() => _MagicWordsGameScreenState();
@@ -136,16 +142,20 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
   int _undoCount = 0;
   int _hintCount = 0;
   int _errorCount = 0;
+  int _score = 0;
 
   @override
   void initState() {
     super.initState();
     _loadPuzzle();
     _startTimer();
+    // Ẩn chatbot khi người dùng bắt đầu thao tác mini-game
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(isGameActiveProvider.notifier).state = true;
       ref.read(chatContextProvider.notifier).state = ChatContext(
         screenName: 'magic_words_game',
         data: {
+          'difficulty': widget.difficulty.name,
           'unsolved_word_lengths': _sortedWords.where((w) => !w.isSolved).map((w) => w.word.length).toList(),
         },
       );
@@ -155,7 +165,10 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
   @override
   void dispose() {
     ref.read(chatContextProvider.notifier).state = null;
+    ref.read(isGameActiveProvider.notifier).state = false;
+    ref.read(isGameDraggingProvider.notifier).state = false;
     _timer?.cancel();
+    TtsService.instance.stopAll();
     super.dispose();
   }
 
@@ -178,7 +191,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
     _errorCount = 0;
     _groupFillCounter.clear();
 
-    _puzzle = WendPuzzleGenerator.generate();
+    _puzzle = WendPuzzleGenerator.generate(difficulty: widget.difficulty);
     _rows = _puzzle.rows;
     _cols = _puzzle.cols;
     
@@ -436,6 +449,10 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
         _checkWinCondition();
       }
     });
+
+    if (matchedWord != null) {
+      TtsService.instance.speakEnglish(matchedWord);
+    }
   }
 
   void _removeSolvedWord(String wordId) {
@@ -492,6 +509,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
         targetWords: _sortedWords.map((w) => w.word).toList(),
         secondsElapsed: _secondsElapsed,
         completionLog: _completionLog,
+        score: _score,
         onReplay: _loadPuzzle,
         onGoHome: () {
           Navigator.of(context).pop();
@@ -535,12 +553,8 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
   }
 
   Widget _buildAppBar() {
-    int mins = _secondsElapsed ~/ 60;
-    int secs = _secondsElapsed % 60;
-    String timeStr = '$mins:${secs.toString().padLeft(2, '0')}';
-
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 6.0),
       child: Row(
         children: [
           IconButton(
@@ -550,28 +564,18 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
             ),
             onPressed: () => Navigator.pop(context),
           ),
-          const Icon(
-            Icons.access_time_rounded,
-            size: 20,
-            color: AppColors.textPrimary,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            timeStr,
-            style: GoogleFonts.baloo2(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
+          GameCountUpTimer(elapsedSeconds: _secondsElapsed),
           Expanded(
             child: Center(
-              child: Text(
-                'Magic Words',
-                style: GoogleFonts.baloo2(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'Magic Words',
+                  style: GoogleFonts.baloo2(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ),
             ),
@@ -580,25 +584,28 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
             onPressed: _resetPuzzle,
             icon: const Icon(
               Icons.refresh_rounded,
-              size: 18,
+              size: 16,
               color: AppColors.textPrimary,
             ),
             label: Text(
               GameStrings.reset,
               style: GoogleFonts.baloo2(
-                fontSize: 15,
+                fontSize: 13,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
               ),
             ),
             style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               backgroundColor: Colors.grey.shade200,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
           ),
+          const SizedBox(width: 4),
         ],
       ),
     );
@@ -1040,14 +1047,15 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
     bool allSolved = _sortedWords.every((w) => w.isSolved);
     if (allSolved) {
       _timer?.cancel();
-      setState(() {
-        _isGameOver = true;
-      });
-
       int basePoints = _sortedWords.length * 50;
       int score = basePoints - (_errorCount * 5) - (_hintCount * 15) - (_undoCount * 2);
       if (_secondsElapsed < 30) score += 50;
       if (score < 10) score = 10;
+
+      setState(() {
+        _score = score;
+        _isGameOver = true;
+      });
 
       int stars = 3;
       if (_secondsElapsed > 30) stars = 2;
@@ -1189,6 +1197,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
          _currentlyHintingWordIndex = -1;
          _currentlyHintingCharIndex = 0;
          _checkWinCondition();
+         TtsService.instance.speakEnglish(wordStr);
       }
     });
   }

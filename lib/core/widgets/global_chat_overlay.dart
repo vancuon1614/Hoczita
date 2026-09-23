@@ -106,7 +106,9 @@ class _GlobalChatOverlayState extends ConsumerState<GlobalChatOverlay>
     final authState = ref.watch(authProvider);
     // AI chatbot chỉ được xuất hiện khi người dùng đã đăng nhập thành công
     final isLoggedIn = authState.status == AuthStatus.authenticated && authState.email != null;
-    final isSuppressed = ref.watch(isGameDraggingProvider);
+    final isDraggingInGame = ref.watch(isGameDraggingProvider);
+    final isGameActive = ref.watch(isGameActiveProvider);
+    final isSuppressed = isDraggingInGame || isGameActive;
     final hasHint = ref.watch(hasChatHintProvider);
     final isPanelOpenGlobal = ref.watch(isChatPanelOpenProvider);
     final isPanelOpen = _isPanelOpen || isPanelOpenGlobal;
@@ -125,9 +127,9 @@ class _GlobalChatOverlayState extends ConsumerState<GlobalChatOverlay>
             top: _position.dy,
             child: AnimatedOpacity(
               duration: const Duration(milliseconds: 200),
-              opacity: isSuppressed ? 0.15 : 1.0,
+              opacity: isSuppressed ? 0.0 : 1.0,
               child: IgnorePointer(
-                ignoring: isSuppressed, // không nhận chạm khi đang bận thao tác game
+                ignoring: isSuppressed, // ẩn hoàn toàn và không nhận chạm khi đang thao tác mini-game
                 child: GestureDetector(
                   onPanStart: (_) => setState(() => _isDragging = true),
                   onPanUpdate: (details) {

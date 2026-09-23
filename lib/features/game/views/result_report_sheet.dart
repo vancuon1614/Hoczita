@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hoczita_app/core/theme/app_theme.dart';
 import 'package:hoczita_app/features/game/utils/game_rating_logic.dart';
+import 'common/mini_game_rank_banner.dart';
 
 class ResultReportSheet extends StatelessWidget {
   final GameType gameType;
@@ -12,9 +13,12 @@ class ResultReportSheet extends StatelessWidget {
   final Widget? customMiddleWidget;
   final Color? accentColor;
   final bool showStars;
+  final String? gameName;
+  final String? gameTitle;
+  final int? score;
 
   const ResultReportSheet({
-    Key? key,
+    super.key,
     required this.gameType,
     required this.starCount,
     required this.elapsedTime,
@@ -23,7 +27,10 @@ class ResultReportSheet extends StatelessWidget {
     this.customMiddleWidget,
     this.accentColor,
     this.showStars = true,
-  }) : super(key: key);
+    this.gameName,
+    this.gameTitle,
+    this.score,
+  });
 
   String _formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
@@ -129,7 +136,43 @@ class ResultReportSheet extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
               ],
+
+              if (gameName != null) ...[
+                MiniGameRankBanner(
+                  gameName: gameName!,
+                  gameTitle: gameTitle ?? (gameType == GameType.zip ? 'Magic Number Path' : 'Magic Words'),
+                  currentScore: score,
+                ),
+                const SizedBox(height: 16),
+              ],
               
+              if (score != null && score! > 0) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFFDE68A)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.stars_rounded, color: Color(0xFFD97706), size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Điểm đạt được: +$score Điểm',
+                        style: GoogleFonts.baloo2(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF92400E),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+
               // Time
               Text(
                 "Thời gian hoàn thành: ${_formatDuration(elapsedTime)}",
@@ -139,7 +182,7 @@ class ResultReportSheet extends StatelessWidget {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               
               // Buttons
               SizedBox(

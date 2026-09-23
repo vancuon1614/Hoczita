@@ -5,8 +5,11 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/providers/chat_context_provider.dart';
+import '../../../core/widgets/mini_game_timer.dart';
+import '../../../core/providers/game_interaction_provider.dart';
 import '../utils/sudoku_generator.dart';
 import '../services/sudoku_multiplayer_service.dart';
+import 'common/mini_game_rank_banner.dart';
 
 class SudokuGameScreen extends ConsumerStatefulWidget {
   final SudokuDifficulty initialDifficulty;
@@ -82,6 +85,7 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
     widget.multiplayerService?.addListener(_onMultiplayerUpdate);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(isGameActiveProvider.notifier).state = true;
       ref.read(chatContextProvider.notifier).state = ChatContext(
         screenName: 'sudoku_game',
         data: {
@@ -95,6 +99,7 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
   @override
   void dispose() {
     ref.read(chatContextProvider.notifier).state = null;
+    ref.read(isGameActiveProvider.notifier).state = false;
     _gameTimer?.cancel();
     widget.multiplayerService?.removeListener(_onMultiplayerUpdate);
     super.dispose();
@@ -332,11 +337,7 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
     _showGameOverDialog(isWinner: true);
   }
 
-  Future<void> _saveScoreToSupabase() async {
-    int stars = 3;
-    if (_mistakesCount > 3 || _secondsElapsed > 300) stars = 2;
-    if (_mistakesCount > 6 || _secondsElapsed > 600) stars = 1;
-
+  int _calculateScore() {
     int baseScore = switch (_difficulty) {
       SudokuDifficulty.easy => 150,
       SudokuDifficulty.medium => 250,
@@ -346,7 +347,15 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
       SudokuDifficulty.extreme => 1200,
     };
 
-    int finalScore = (baseScore - (_secondsElapsed ~/ 2) - (_mistakesCount * 15)).clamp(50, 2000);
+    return (baseScore - (_secondsElapsed ~/ 2) - (_mistakesCount * 15)).clamp(50, 2000);
+  }
+
+  Future<void> _saveScoreToSupabase() async {
+    int stars = 3;
+    if (_mistakesCount > 3 || _secondsElapsed > 300) stars = 2;
+    if (_mistakesCount > 6 || _secondsElapsed > 600) stars = 1;
+
+    int finalScore = _calculateScore();
 
     try {
       await SupabaseService.instance.saveScore(
@@ -399,7 +408,13 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
                   _buildStatPill('Độ khó', _difficulty.label),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+              MiniGameRankBanner(
+                gameName: 'sudoku_${_difficulty.name}',
+                gameTitle: 'Sudoku ${_difficulty.label}',
+                currentScore: _calculateScore(),
+              ),
+              const SizedBox(height: 20),
               Row(
                 children: [
                   Expanded(
@@ -490,28 +505,7 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
           ),
         ),
         actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.timer_outlined, size: 18, color: Color(0xFF475569)),
-                const SizedBox(width: 4),
-                Text(
-                  _formatDuration(_secondsElapsed),
-                  style: GoogleFonts.baloo2(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1E293B),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          GameCountUpTimer(elapsedSeconds: _secondsElapsed),
         ],
       ),
       body: SafeArea(

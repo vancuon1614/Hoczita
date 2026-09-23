@@ -1,9 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/widgets/mini_game_timer.dart';
+import '../../../core/providers/game_interaction_provider.dart';
+import 'common/mini_game_lobby_screen.dart';
+import 'common/mini_game_how_to_play_sheet.dart';
+import 'common/mini_game_rank_banner.dart';
 import '../utils/math_crossword_generator.dart' as gen;
 
 enum CellType { empty, number, operator, equals }
@@ -65,13 +71,13 @@ class CrosswordEquation {
   }
 }
 
-class MathCrosswordGameScreen extends StatefulWidget {
+class MathCrosswordGameScreen extends ConsumerStatefulWidget {
   const MathCrosswordGameScreen({super.key});
   @override
-  State<MathCrosswordGameScreen> createState() => _MathCrosswordGameScreenState();
+  ConsumerState<MathCrosswordGameScreen> createState() => _MathCrosswordGameScreenState();
 }
 
-class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
+class _MathCrosswordGameScreenState extends ConsumerState<MathCrosswordGameScreen> {
   int? _selectedDifficulty;
   List<List<CrosswordCell>> _grid = [];
   final List<CrosswordEquation> _equations = [];
@@ -117,6 +123,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
 
   @override
   void dispose() {
+    ref.read(isGameActiveProvider.notifier).state = false;
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     if (_isPlaying) _timer.cancel();
     _stopwatch.stop();
@@ -124,6 +131,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
   }
 
   void _selectDifficulty(int difficulty) {
+    ref.read(isGameActiveProvider.notifier).state = true;
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -340,6 +348,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
     final multiplier = (diff == 5) ? 1 : (diff == 10 ? 2 : 3);
     final finalScore = baseScore * multiplier;
 
+    ref.read(isGameActiveProvider.notifier).state = false;
     setState(() {
       _stars = starRating;
       _score = finalScore;
@@ -383,6 +392,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
           ),
           TextButton(
             onPressed: () {
+              ref.read(isGameActiveProvider.notifier).state = false;
               Navigator.pop(context); // close dialog
               Navigator.pop(context); // quit game screen
             },
@@ -417,35 +427,7 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
           onPressed: _showQuitConfirmation,
         ),
         actions: [
-          Container(
-            width: 76,
-            margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(width: 4),
-                Icon(Icons.timer_outlined, size: 14, color: AppColors.primary),
-                Expanded(
-                  child: Text(
-                    _elapsedTimeString,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.baloo2(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                      fontFeatures: [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          GameCountUpTimer(timeString: _elapsedTimeString),
         ],
       ),
       body: GestureDetector(
@@ -633,188 +615,155 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
 }
 
   Widget _buildDifficultySelection() {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Light bluish-white background like the image
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.black87),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Math Crossword',
-              style: GoogleFonts.baloo2(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-                color: const Color(0xFF2C3E50),
-              ),
-            ),
-            SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.blueGrey.shade100,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Icon(Icons.grid_4x4_rounded, size: 20, color: Colors.blueGrey),
-            ),
-          ],
-        ),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // 3D Grid Icon
-              Center(
-                child: Image.asset(
-                  'ImageFolder/mathcount.gif', 
-                  height: 120,
-                  errorBuilder: (context, error, stackTrace) => Icon(
-                    Icons.grid_on_rounded,
-                    size: 80,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-              SizedBox(height: 24),
-              Text(
-                'Chọn Số Lượng Phép Tính',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.baloo2(
-                  fontSize: 22, 
-                  fontWeight: FontWeight.w600, 
-                  color: const Color(0xFF2C3E50),
-                ),
-              ),
-              SizedBox(height: 32),
-              _buildDifficultyButton(
-                title: 'Khởi động',
-                subtitle: 'Làm quen nhẹ nhàng với 5 bài tập.',
-                difficulty: 5,
-                backgroundColor: const Color(0xFFE4F3E4),
-                iconColor: const Color(0xFF4CAF50),
-                stars: _easyStars,
-              ),
-              SizedBox(height: 16),
-              _buildDifficultyButton(
-                title: 'Tập trung',
-                subtitle: 'Tăng cường thử thách với 10 bài tập.',
-                difficulty: 10,
-                backgroundColor: const Color(0xFFFDEBCE),
-                iconColor: const Color(0xFFF59E0B),
-                stars: _mediumStars,
-              ),
-              SizedBox(height: 16),
-              _buildDifficultyButton(
-                title: 'Thử thách',
-                subtitle: 'Dành cho người chơi nâng cao với 20 bài tập.',
-                difficulty: 20,
-                backgroundColor: const Color(0xFFFFE5E5),
-                iconColor: const Color(0xFFEF4444),
-                stars: _hardStars,
-              ),
-            ],
+    return MiniGameLobbyScreen(
+      gameTitle: 'Math Crossword',
+      categoryBadge: 'Toán Học 🔢',
+      welcomeTitle: 'Chào mừng bạn đến với Math Crossword!',
+      welcomeSubtitle: 'Thử tài tính toán và tư duy logic qua ma trận ô chữ phép tính',
+      starsCount: _easyStars + _mediumStars + _hardStars,
+      difficulties: [
+        GameDifficultyOption(
+          id: 'easy',
+          tabLabel: 'Khởi Động',
+          modeTitle: 'Chế độ Khởi Động (5 phép tính)',
+          modeSubtitle: 'Làm quen nhẹ nhàng với 5 phép tính cơ bản',
+          timerTag: '3 Phút',
+          wordLimitInfo: 'Lưới 5 phép tính cộng, trừ cơ bản',
+          timeInfo: '3 phút tính nhẩm thư thái',
+          hintInfo: 'Mở sẵn các ô dấu và một số số gợi ý ban đầu',
+          rewardInfo: '+10 Điểm ⭐️',
+          tipFromHocDi: 'Hãy tìm các phép tính chỉ còn thiếu đúng 1 số để tính ra kết quả trước nhé!',
+          themeColor: const Color(0xFF006D38),
+          interactivePreview: _buildMathCrosswordPreviewBox(
+            equation: '3 + 5 = 8',
+            color: const Color(0xFF00B460),
           ),
         ),
-      ),
+        GameDifficultyOption(
+          id: 'medium',
+          tabLabel: 'Tập Trung',
+          modeTitle: 'Chế độ Tập Trung (10 phép tính)',
+          modeSubtitle: 'Tăng cường thử thách với 10 phép tính đan xen',
+          timerTag: '5 Phút',
+          wordLimitInfo: '10 phép tính cộng, trừ, nhân đan xen liên hoàn',
+          timeInfo: '5 phút thi đấu tính nhanh',
+          hintInfo: 'Ít gợi ý hơn, cần tính nhẩm hai chiều ngang dọc',
+          rewardInfo: '+20 Điểm ⭐️',
+          tipFromHocDi: 'Quan sát các ô giao nhau giữa hàng ngang và cột dọc để suy luận số chính xác!',
+          themeColor: const Color(0xFF00629D),
+          interactivePreview: _buildMathCrosswordPreviewBox(
+            equation: '4 x 3 = 12',
+            color: const Color(0xFF0047AB),
+          ),
+        ),
+        GameDifficultyOption(
+          id: 'hard',
+          tabLabel: 'Thử Thách',
+          modeTitle: 'Chế độ Thử Thách (20 phép tính)',
+          modeSubtitle: 'Dành cho cao thủ toán học với ma trận 20 phép tính phức tạp',
+          timerTag: '8 Phút',
+          wordLimitInfo: '20 phép tính bao gồm cả nhân chia đa tầng',
+          timeInfo: '8 phút thử thách cân não',
+          hintInfo: 'Ma trận lớn đòi hỏi chiến thuật tính toán tuần tự',
+          rewardInfo: '+35 Điểm ⭐️',
+          tipFromHocDi: 'Giải quyết các phép nhân chia trước để thu hẹp phạm vi số có thể xuất hiện!',
+          themeColor: const Color(0xFF885200),
+          interactivePreview: _buildMathCrosswordPreviewBox(
+            equation: '15 - 7 = 8',
+            color: const Color(0xFF885200),
+          ),
+        ),
+      ],
+      tutorialSteps: [
+        const GameTutorialStep(
+          stepNumber: 1,
+          icon: Icons.touch_app_rounded,
+          themeColor: Color(0xFF00629D),
+          title: 'Chọn ô số còn thiếu',
+          description: 'Chạm vào các ô vuông trống trên ma trận phép tính để kích hoạt bàn phím số bên dưới.',
+        ),
+        const GameTutorialStep(
+          stepNumber: 2,
+          icon: Icons.calculate_rounded,
+          themeColor: Color(0xFF885200),
+          title: 'Tính nhẩm & điền số',
+          description: 'Tính toán giá trị còn thiếu của phép tính hàng ngang hoặc cột dọc rồi chọn con số chính xác.',
+        ),
+        const GameTutorialStep(
+          stepNumber: 3,
+          icon: Icons.military_tech_rounded,
+          themeColor: Color(0xFF006D38),
+          title: 'Hoàn thành ma trận phép tính',
+          description: 'Điền đúng tất cả các ô số để các phép tính ngang và dọc đều thỏa mãn, giành trọn 3 Sao!',
+        ),
+      ],
+      onPlay: (diff) {
+        if (diff.id == 'hard') {
+          _selectDifficulty(20);
+        } else if (diff.id == 'medium') {
+          _selectDifficulty(10);
+        } else {
+          _selectDifficulty(5);
+        }
+      },
     );
   }
 
-  Widget _buildDifficultyButton({
-    required String title,
-    required String subtitle,
-    required int difficulty,
-    required Color backgroundColor,
-    required Color iconColor,
-    required int stars,
+  Widget _buildMathCrosswordPreviewBox({
+    required String equation,
+    required Color color,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _selectDifficulty(difficulty),
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-            child: Row(
-              children: [
-                // Circular play icon
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: iconColor,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: iconColor.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
+    final parts = equation.split(' ');
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                'MINH HỌA: PHÉP TÍNH GIAO NHAU',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.baloo2(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF64748B),
+                  letterSpacing: 0.5,
                 ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: GoogleFonts.baloo2(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF1E293B), // Dark text
-                        ),
-                      ),
-                      Text(
-                        subtitle,
-                        style: GoogleFonts.baloo2(
-                          fontSize: 10,
-                          color: const Color(0xFF334155),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Stars
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: List.generate(
-                    3,
-                    (index) => Padding(
-                      padding: const EdgeInsets.only(left: 2),
-                      child: Icon(
-                        Icons.star_rounded,
-                        color: index < stars ? iconColor.withValues(alpha: 0.6) : Colors.transparent,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+            const SizedBox(width: 8),
+            const Icon(Icons.calculate_rounded, size: 16, color: AppColors.primary),
+          ],
         ),
-      ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: parts.map((token) {
+            final isOp = token == '+' || token == '-' || token == '*' || token == '/' || token == 'x' || token == '=';
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: isOp ? const Color(0xFFF1F5F9) : color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isOp ? const Color(0xFFCBD5E1) : color,
+                  width: 1.5,
+                ),
+              ),
+              child: Text(
+                token,
+                style: GoogleFonts.baloo2(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: isOp ? const Color(0xFF475569) : color,
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 
@@ -1093,7 +1042,12 @@ class _MathCrosswordGameScreenState extends State<MathCrosswordGameScreen> {
                   ),
                 ],
               ),
-
+              const SizedBox(height: 24),
+              MiniGameRankBanner(
+                gameName: 'math_crossword_${_selectedDifficulty == 5 ? 'easy' : (_selectedDifficulty == 10 ? 'medium' : 'hard')}',
+                gameTitle: 'Math Crossword',
+                currentScore: _score,
+              ),
               const Spacer(),
               
               // Action Button

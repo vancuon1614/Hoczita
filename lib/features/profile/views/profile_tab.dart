@@ -1,5 +1,3 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/utils/avatar_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -257,7 +255,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                 ),
                                 SizedBox(height: 8),
                                 Text(
-                                  'Đặt lịch hẹn trực tiếp để nhận lộ trình học tập tối ưu riêng biệt cho bé.',
+                                  'Đặt lịch hẹn trực tiếp để nhận lộ trình học tập tối ưu riêng biệt cho bạn.',
                                   style: GoogleFonts.baloo2(
                                     color: Colors.white70,
                                     fontSize: 12,
@@ -338,6 +336,26 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                             DropdownMenuItem<String?>(
                               value: 'math_crossword',
                               child: Text('Ô Chữ Toán Học'),
+                            ),
+                            DropdownMenuItem<String?>(
+                              value: 'english_crossword',
+                              child: Text('Ô Chữ Tiếng Anh'),
+                            ),
+                            DropdownMenuItem<String?>(
+                              value: 'word_scramble',
+                              child: Text('Word Scramble'),
+                            ),
+                            DropdownMenuItem<String?>(
+                              value: 'magic_words',
+                              child: Text('Magic Words'),
+                            ),
+                            DropdownMenuItem<String?>(
+                              value: 'magic_number_path',
+                              child: Text('Magic Number Path'),
+                            ),
+                            DropdownMenuItem<String?>(
+                              value: 'sudoku',
+                              child: Text('Sudoku'),
                             ),
                           ],
                           onChanged: (val) {

@@ -1,12 +1,16 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/widgets/mini_game_timer.dart';
+import '../../../core/providers/game_interaction_provider.dart';
 import '../models/game_question.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'common/mini_game_rank_banner.dart';
 
-class MultipleChoiceGameScreen extends StatefulWidget {
+class MultipleChoiceGameScreen extends ConsumerStatefulWidget {
   final String gameName;
   final String gameTitle;
   final List<GameQuestion> questions;
@@ -21,10 +25,10 @@ class MultipleChoiceGameScreen extends StatefulWidget {
   });
 
   @override
-  State<MultipleChoiceGameScreen> createState() => _MultipleChoiceGameScreenState();
+  ConsumerState<MultipleChoiceGameScreen> createState() => _MultipleChoiceGameScreenState();
 }
 
-class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> with SingleTickerProviderStateMixin {
+class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScreen> with SingleTickerProviderStateMixin {
   late AnimationController _timerController;
   final Stopwatch _gameStopwatch = Stopwatch();
   String _elapsedTimeString = '0.0';
@@ -66,10 +70,15 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
 
     _gameStopwatch.start();
     _startQuestion();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(isGameActiveProvider.notifier).state = true;
+    });
   }
 
   @override
   void dispose() {
+    ref.read(isGameActiveProvider.notifier).state = false;
     _timerController.dispose();
     super.dispose();
   }
@@ -222,25 +231,13 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                       color: AppColors.textSecondary,
                     ),
                   ),
-                  // Animated Circular Timer
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      CircularProgressIndicator(
-                        value: 1.0 - _timerController.value,
-                        backgroundColor: AppColors.border,
-                        color: timerColor,
-                        strokeWidth: 6,
-                      ),
-                      Text(
-                        (widget.timeLimitInSeconds - (_timerController.value * widget.timeLimitInSeconds).floor()).toString(),
-                        style: GoogleFonts.baloo2(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: timerColor,
-                        ),
-                      ),
-                    ],
+                  // Animated Circular Countdown Timer chuẩn hóa
+                  GameCountdownTimer(
+                    progress: 1.0 - _timerController.value,
+                    remainingSeconds: (widget.timeLimitInSeconds - (_timerController.value * widget.timeLimitInSeconds).floor()),
+                    totalSeconds: widget.timeLimitInSeconds,
+                    customColor: timerColor,
+                    size: 42,
                   ),
                 ],
               ),
@@ -729,8 +726,16 @@ class _MultipleChoiceGameScreenState extends State<MultipleChoiceGameScreen> wit
                 ],
               ),
 
+              const SizedBox(height: 16),
+
+              MiniGameRankBanner(
+                gameName: widget.gameName,
+                gameTitle: widget.gameTitle,
+                currentScore: _score,
+              ),
+
               // Detailed results table
-              SizedBox(height: 40),
+              const SizedBox(height: 24),
               Text(
                 'Chi Tiết Kết Quả 📊',
                 style: GoogleFonts.baloo2(

@@ -10,7 +10,7 @@ import 'memory_match_game_screen.dart';
 import 'math_crossword_game_screen.dart';
 import 'english_crossword_game_screen.dart';
 import 'word_scramble_game_screen.dart';
-import 'magic_words_game_screen.dart';
+import 'magic_words_lobby_screen.dart';
 import 'magic_number_path_game_screen.dart';
 import 'sudoku_lobby_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -35,6 +35,9 @@ class _GameTabState extends ConsumerState<GameTab> {
     'math_crossword': 0,
     'english_crossword': 0,
     'word_scramble': 0,
+    'magic_words': 0,
+    'magic_number_path': 0,
+    'sudoku_medium': 0,
   };
   bool _isLoading = true;
 
@@ -83,6 +86,9 @@ class _GameTabState extends ConsumerState<GameTab> {
         'math_crossword': getModeStars('math_crossword'),
         'english_crossword': getModeStars('english_crossword'),
         'word_scramble': getModeStars('word_scramble'),
+        'magic_words': tempStarsMap['magic_words'] ?? 0,
+        'magic_number_path': tempStarsMap['magic_number_path'] ?? 0,
+        'sudoku_medium': tempStarsMap['sudoku_medium'] ?? (tempStarsMap['sudoku_easy'] ?? 0),
       };
 
       if (mounted) {
@@ -262,7 +268,7 @@ class _GameTabState extends ConsumerState<GameTab> {
             animationType: GameAnimationType.pulse,
             imagePath: 'ImageFolder/wordscramble.webp',
             onTap: () => _playGame(
-              const MagicWordsGameScreen(),
+              const MagicWordsLobbyScreen(),
             ),
           ),
                 ],

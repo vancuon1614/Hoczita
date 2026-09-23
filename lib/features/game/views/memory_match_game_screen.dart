@@ -1,9 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/widgets/mini_game_timer.dart';
+import '../../../core/providers/game_interaction_provider.dart';
 import '../constants/game_content.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'common/mini_game_rank_banner.dart';
 
 class MemoryCard {
   final int id;
@@ -21,14 +25,14 @@ class MemoryCard {
   });
 }
 
-class MemoryMatchGameScreen extends StatefulWidget {
+class MemoryMatchGameScreen extends ConsumerStatefulWidget {
   const MemoryMatchGameScreen({super.key});
 
   @override
-  State<MemoryMatchGameScreen> createState() => _MemoryMatchGameScreenState();
+  ConsumerState<MemoryMatchGameScreen> createState() => _MemoryMatchGameScreenState();
 }
 
-class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
+class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
   late List<MemoryCard> _cards;
   int? _firstCardIndex;
   int? _secondCardIndex;
@@ -48,10 +52,14 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
     super.initState();
     _setupGame();
     _startTimer();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(isGameActiveProvider.notifier).state = true;
+    });
   }
 
   @override
   void dispose() {
+    ref.read(isGameActiveProvider.notifier).state = false;
     _timer.cancel();
     _stopwatch.stop();
     super.dispose();
@@ -233,36 +241,8 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
           icon: Icon(Icons.close_rounded),
           onPressed: () => _showQuitConfirmation(),
         ),
-         actions: [
-          Container(
-            width: 76,
-            margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(width: 4),
-                Icon(Icons.timer_outlined, size: 14, color: AppColors.primary),
-                Expanded(
-                  child: Text(
-                    _elapsedTimeString,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.baloo2(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                      fontFeatures: [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        actions: [
+          GameCountUpTimer(timeString: _elapsedTimeString),
         ],
       ),
       body: SafeArea(
@@ -396,13 +376,13 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Spacer(),
+              const SizedBox(height: 12),
               // Trophy Icon
               Center(
                 child: Container(
@@ -439,7 +419,7 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
                   color: AppColors.textSecondary,
                 ),
               ),
-              SizedBox(height: 32),
+              SizedBox(height: 24),
 
               // Stars Display
               Row(
@@ -461,7 +441,7 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
                   );
                 }),
               ),
-              SizedBox(height: 40),
+              SizedBox(height: 24),
 
               // Time & Score Cards
               Row(
@@ -514,7 +494,15 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
                 ],
               ),
 
-              const Spacer(),
+              const SizedBox(height: 16),
+
+              MiniGameRankBanner(
+                gameName: 'memory_match',
+                gameTitle: 'Memory Match',
+                currentScore: _score,
+              ),
+
+              const SizedBox(height: 28),
               
               // End game action button
               Center(
@@ -548,6 +536,7 @@ class _MemoryMatchGameScreenState extends State<MemoryMatchGameScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
             ],
           ),
         ),

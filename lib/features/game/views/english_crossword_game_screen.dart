@@ -2,9 +2,16 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/widgets/mini_game_timer.dart';
+import '../../../core/providers/game_interaction_provider.dart';
+import '../../../core/services/tts_service.dart';
+import 'common/mini_game_lobby_screen.dart';
+import 'common/mini_game_how_to_play_sheet.dart';
+import 'common/mini_game_rank_banner.dart';
 import '../models/english_crossword_level.dart';
 import '../utils/english_crossword_generator.dart';
 
@@ -26,14 +33,14 @@ class EnglishCrosswordCell {
   bool get isCorrect => isBlocked || userLetter.toUpperCase() == correctLetter.toUpperCase();
 }
 
-class EnglishCrosswordGameScreen extends StatefulWidget {
+class EnglishCrosswordGameScreen extends ConsumerStatefulWidget {
   const EnglishCrosswordGameScreen({super.key});
 
   @override
-  State<EnglishCrosswordGameScreen> createState() => _EnglishCrosswordGameScreenState();
+  ConsumerState<EnglishCrosswordGameScreen> createState() => _EnglishCrosswordGameScreenState();
 }
 
-class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen> {
+class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGameScreen> {
   final SupabaseService _db = SupabaseService.instance;
   final FocusNode _keyboardFocusNode = FocusNode();
 
@@ -90,6 +97,7 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
 
   @override
   void dispose() {
+    ref.read(isGameActiveProvider.notifier).state = false;
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
     ]);
@@ -98,10 +106,12 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
     }
     _stopwatch.stop();
     _keyboardFocusNode.dispose();
+    TtsService.instance.stopAll();
     super.dispose();
   }
 
   void _selectDifficulty(CrosswordDifficulty diff) {
+    ref.read(isGameActiveProvider.notifier).state = true;
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
     ]);
@@ -205,13 +215,20 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
     if (_selectedDifficulty == CrosswordDifficulty.hard) return;
     final level = _activeLevel;
     if (level == null) return;
-    setState(() {
-      for (final w in level.words) {
-        if (!_correctWords.contains(w) && _isWordCorrect(w)) {
-          _correctWords.add(w);
-        }
+    final newlySolved = <EnglishCrosswordWord>[];
+    for (final w in level.words) {
+      if (!_correctWords.contains(w) && _isWordCorrect(w)) {
+        newlySolved.add(w);
       }
-    });
+    }
+    if (newlySolved.isNotEmpty) {
+      setState(() {
+        _correctWords.addAll(newlySolved);
+      });
+      for (final w in newlySolved) {
+        TtsService.instance.speakEnglish(w.word);
+      }
+    }
   }
 
   void _selectCell(int r, int c) {
@@ -409,6 +426,7 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
           ),
           TextButton(
             onPressed: () {
+              ref.read(isGameActiveProvider.notifier).state = false;
               Navigator.pop(context); // close dialog
               Navigator.pop(context); // quit game screen
             },
@@ -482,35 +500,7 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
             onPressed: _showQuitConfirmation,
           ),
           actions: [
-            Container(
-              width: 76,
-              margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  SizedBox(width: 4),
-                  Icon(Icons.timer_outlined, size: 14, color: AppColors.primary),
-                  Expanded(
-                    child: Text(
-                      _elapsedTimeString,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.baloo2(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                        fontFeatures: [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            GameCountUpTimer(timeString: _elapsedTimeString),
           ],
         ),
         body: GestureDetector(
@@ -934,7 +924,13 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
                   ),
                 ],
               ),
-              SizedBox(height: 48),
+              const SizedBox(height: 24),
+              MiniGameRankBanner(
+                gameName: 'english_crossword_${_selectedDifficulty?.name ?? 'easy'}',
+                gameTitle: 'English Crossword',
+                currentScore: _score,
+              ),
+              const SizedBox(height: 32),
               Center(
                 child: SizedBox(
                   width: 220,
@@ -1129,182 +1125,233 @@ class _EnglishCrosswordGameScreenState extends State<EnglishCrosswordGameScreen>
   }
 
   Widget _buildDifficultySelection() {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Light bluish-white background like the image
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.black87),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'English Crossword',
-              style: GoogleFonts.baloo2(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-                color: const Color(0xFF2C3E50),
-              ),
-            ),
-            SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.blueGrey.shade100,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Icon(Icons.translate_rounded, size: 20, color: Colors.blueGrey),
-            ),
-          ],
-        ),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Center(
-                child: Image.asset(
-                  'ImageFolder/crossword.gif', 
-                  height: 120,
-                  errorBuilder: (context, error, stackTrace) => Icon(
-                    Icons.translate_rounded,
-                    size: 80,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-              SizedBox(height: 24),
-              Text(
-                'Please Select Mode',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.baloo2(
-                  fontSize: 22, 
-                  fontWeight: FontWeight.w600, 
-                  color: const Color(0xFF2C3E50),
-                ),
-              ),
-              SizedBox(height: 32),
-              _buildDifficultyButton(
-                title: 'Easy',
-                subtitle: 'Warm up gently with 5 words.',
-                difficulty: CrosswordDifficulty.easy,
-                backgroundColor: const Color(0xFFE4F3E4),
-                iconColor: const Color(0xFF4CAF50),
-                stars: _easyStars,
-              ),
-              const SizedBox(height: 16),
-              _buildDifficultyButton(
-                title: 'Medium',
-                subtitle: 'Challenge yourself with 9 words.',
-                difficulty: CrosswordDifficulty.medium,
-                backgroundColor: const Color(0xFFFDEBCE),
-                iconColor: const Color(0xFFF59E0B),
-                stars: _mediumStars,
-              ),
-              const SizedBox(height: 16),
-              _buildDifficultyButton(
-                title: 'Hard',
-                subtitle: 'For advanced players with 14 words.',
-                difficulty: CrosswordDifficulty.hard,
-                backgroundColor: const Color(0xFFFFE5E5),
-                iconColor: const Color(0xFFEF4444),
-                stars: _hardStars,
-              ),
-            ],
+    return MiniGameLobbyScreen(
+      gameTitle: 'English Crossword',
+      categoryBadge: 'Ngoại Ngữ 🇬🇧',
+      welcomeTitle: 'Chào mừng bạn đến với English Crossword!',
+      welcomeSubtitle: 'Giải ô chữ từ vựng tiếng Anh theo gợi ý tiếng Việt',
+      starsCount: _easyStars + _mediumStars + _hardStars,
+      difficulties: [
+        GameDifficultyOption(
+          id: 'easy',
+          tabLabel: 'Dễ (5 từ)',
+          modeTitle: 'Chế độ Dễ (Easy Mode)',
+          modeSubtitle: 'Khởi động nhẹ nhàng với 5 từ và chữ gợi ý mở sẵn',
+          timerTag: '3 Phút',
+          wordLimitInfo: '5 từ vựng, tự động mở sẵn chữ cái tại các giao điểm',
+          timeInfo: 'Thư giãn tự do hoặc 3 phút êm đềm',
+          hintInfo: 'Tặng sẵn chữ cái gợi ý ban đầu',
+          rewardInfo: '+10 Điểm ⭐️',
+          tipFromHocDi: 'Hãy đọc gợi ý của các từ ngắn trước để điền chữ cái giao nhau cho các từ dài!',
+          themeColor: const Color(0xFF006D38),
+          interactivePreview: _buildCrosswordPreviewBox(
+            words: ['CAT', 'BALL'],
+            color: const Color(0xFF00B460),
           ),
         ),
-      ),
+        GameDifficultyOption(
+          id: 'medium',
+          tabLabel: 'Trung Bình',
+          modeTitle: 'Chế độ Trung Bình (Medium Mode)',
+          modeSubtitle: 'Thử thách mở rộng với 9 từ vựng đan xen',
+          timerTag: '5 Phút',
+          wordLimitInfo: '9 từ vựng đan xen ngang dọc phong phú',
+          timeInfo: '5 phút làm bài tiêu chuẩn',
+          hintInfo: 'Gợi ý nghĩa tiếng Việt chi tiết',
+          rewardInfo: '+20 Điểm ⭐️',
+          tipFromHocDi: 'Bấm vào từng số trên ô chữ để chuyển nhanh giữa các câu hỏi hàng ngang và hàng dọc!',
+          themeColor: const Color(0xFF00629D),
+          interactivePreview: _buildCrosswordPreviewBox(
+            words: ['DOG', 'GOOD'],
+            color: const Color(0xFF0047AB),
+          ),
+        ),
+        GameDifficultyOption(
+          id: 'hard',
+          tabLabel: 'Cao Thủ',
+          modeTitle: 'Chế độ Cao Thủ (Hard Mode)',
+          modeSubtitle: 'Lưới ô chữ 14 từ phức tạp, không có chữ cái mở sẵn',
+          timerTag: '7 Phút',
+          wordLimitInfo: '14 từ vựng đan xen toàn diện',
+          timeInfo: '7 phút thi đấu kịch tính',
+          hintInfo: 'Chỉ dựa vào vốn từ và định nghĩa tiếng Việt',
+          rewardInfo: '+35 Điểm ⭐️',
+          tipFromHocDi: 'Khi gặp từ dài khó đoán, hãy giải các từ giao nhau trước để có các chữ cái manh mối!',
+          themeColor: const Color(0xFF885200),
+          interactivePreview: _buildCrosswordPreviewBox(
+            words: ['SCHOOL', 'BOOK'],
+            color: const Color(0xFF885200),
+          ),
+        ),
+      ],
+      tutorialSteps: [
+        const GameTutorialStep(
+          stepNumber: 1,
+          icon: Icons.visibility_rounded,
+          themeColor: Color(0xFF00629D),
+          title: 'Chọn ô chữ & đọc gợi ý',
+          description: 'Chạm vào bất kỳ ô chữ nào trên bảng để đọc gợi ý nghĩa tiếng Việt tương ứng.',
+        ),
+        const GameTutorialStep(
+          stepNumber: 2,
+          icon: Icons.keyboard_rounded,
+          themeColor: Color(0xFF885200),
+          title: 'Gõ chữ cái từ bàn phím',
+          description: 'Sử dụng bàn phím ảo bên dưới để điền các chữ cái tiếng Anh vào từng ô trống.',
+        ),
+        const GameTutorialStep(
+          stepNumber: 3,
+          icon: Icons.military_tech_rounded,
+          themeColor: Color(0xFF006D38),
+          title: 'Hoàn thành ô chữ giao nhau',
+          description: 'Điền đúng tất cả các từ hàng ngang và dọc để hoàn thành ván chơi và tích lũy Sao!',
+        ),
+      ],
+      onPlay: (diff) {
+        if (diff.id == 'hard') {
+          _selectDifficulty(CrosswordDifficulty.hard);
+        } else if (diff.id == 'medium') {
+          _selectDifficulty(CrosswordDifficulty.medium);
+        } else {
+          _selectDifficulty(CrosswordDifficulty.easy);
+        }
+      },
     );
   }
 
-  Widget _buildDifficultyButton({
-    required String title,
-    required String subtitle,
-    required CrosswordDifficulty difficulty,
-    required Color backgroundColor,
-    required Color iconColor,
-    required int stars,
+  Widget _buildCrosswordPreviewBox({
+    required List<String> words,
+    required Color color,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _selectDifficulty(difficulty),
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: iconColor,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: iconColor.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                'MINH HỌA: Ô CHỮ GIAO THOA',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.baloo2(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF64748B),
+                  letterSpacing: 0.5,
                 ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: GoogleFonts.baloo2(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF1E293B), // Dark text
-                        ),
-                      ),
-                      Text(
-                        subtitle,
-                        style: GoogleFonts.baloo2(
-                          fontSize: 10,
-                          color: const Color(0xFF334155),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: List.generate(
-                    3,
-                    (index) => Padding(
-                      padding: const EdgeInsets.only(left: 2),
-                      child: Icon(
-                        Icons.star_rounded,
-                        color: index < stars ? iconColor.withValues(alpha: 0.6) : Colors.transparent,
-                        size: 20,
+              ),
+            ),
+            const SizedBox(width: 8),
+            ValueListenableBuilder<bool>(
+              valueListenable: TtsService.instance.isSpeakingNotifier,
+              builder: (context, isSpeaking, _) {
+                return Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => TtsService.instance.speakEnglish('book'),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isSpeaking ? Icons.volume_up_rounded : Icons.volume_down_rounded,
+                            size: 18,
+                            color: isSpeaking ? const Color(0xFF00B460) : AppColors.primary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Phát âm',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: isSpeaking ? const Color(0xFF00B460) : AppColors.primary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ),
-              ],
+                );
+              },
             ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFCBD5E1)),
+              ),
+              child: Row(
+                children: [
+                  _buildMiniCrosswordCell('B', color),
+                  _buildMiniCrosswordCell('O', color),
+                  _buildMiniCrosswordCell('O', color),
+                  _buildMiniCrosswordCell('K', color),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => TtsService.instance.speakEnglish('book'),
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.volume_up_rounded, size: 16, color: Color(0xFF00B460)),
+                  const SizedBox(width: 6),
+                  Text(
+                    '1. Ngang: Quyển sách (BOOK)',
+                    style: GoogleFonts.baloo2(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1E293B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMiniCrosswordCell(String letter, Color color) {
+    return Container(
+      width: 32,
+      height: 32,
+      margin: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color, width: 1.5),
+      ),
+      child: Center(
+        child: Text(
+          letter,
+          style: GoogleFonts.baloo2(
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: color,
           ),
         ),
       ),

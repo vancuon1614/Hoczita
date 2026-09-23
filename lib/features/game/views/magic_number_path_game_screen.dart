@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hoczita_app/features/game/views/result_report_sheet.dart';
 import 'package:hoczita_app/features/game/utils/game_rating_logic.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,6 +8,8 @@ import 'dart:math';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/constants/game_strings.dart';
+import '../../../core/widgets/mini_game_timer.dart';
+import '../../../core/providers/game_interaction_provider.dart';
 
 class CellPosition {
   final int row;
@@ -64,11 +67,11 @@ class GridCell {
   int get hashCode => row.hashCode ^ col.hashCode;
 }
 
-class MagicNumberPathGameScreen extends StatefulWidget {
+class MagicNumberPathGameScreen extends ConsumerStatefulWidget {
   const MagicNumberPathGameScreen({super.key});
 
   @override
-  State<MagicNumberPathGameScreen> createState() => _MagicNumberPathGameScreenState();
+  ConsumerState<MagicNumberPathGameScreen> createState() => _MagicNumberPathGameScreenState();
 }
 
 class PathColorPalette {
@@ -138,11 +141,12 @@ const List<PathColorPalette> _kPathPalettes = [
   ),
 ];
 
-class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
+class _MagicNumberPathGameScreenState extends ConsumerState<MagicNumberPathGameScreen> {
   bool _showHowToPlay = true;
 
   late List<List<GridCell>> _grid;
   final List<GridCell> _currentPath = [];
+  List<CellPosition> _solutionPath = [];
   int _rows = 5;
   int _cols = 5;
   int _maxCheckpoint = 0;
@@ -154,6 +158,7 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
   bool _isGameOver = false;
   int _undoCount = 0;
   int _hintCount = 0;
+  int _score = 0;
   
   Offset? _lastLocalPosition;
 
@@ -162,10 +167,14 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
     super.initState();
     _generatePuzzle();
     _startTimer();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(isGameActiveProvider.notifier).state = true;
+    });
   }
 
   @override
   void dispose() {
+    ref.read(isGameActiveProvider.notifier).state = false;
     _timer?.cancel();
     super.dispose();
   }
@@ -241,6 +250,7 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
     List<CellPosition> walls = [];
     int targetLen = (_rows * _cols) - wallCount;
     List<CellPosition> path = _generateRandomPath(_rows, _cols, targetLen, _rand);
+    _solutionPath = List.from(path);
 
     // Mark walls
     for (int r = 0; r < _rows; r++) {
@@ -439,19 +449,28 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
     if (_currentPath.last.checkpointNumber != _maxCheckpoint) return;
     
     // WIN!
+    // Tính điểm cho Đường Số Diệu Kỳ theo quy mô ma trận
+    int baseScore = 100;
+    if (_rows == 6) baseScore = 150;
+    if (_rows == 7) baseScore = 200;
+    if (_rows >= 8) baseScore = 250;
+
+    int score = baseScore - (_secondsElapsed * 2) - (_hintCount * 15) - (_undoCount * 2);
+    if (score < 20) score = 20;
+
     _timer?.cancel();
     setState(() {
+      _score = score;
       _isGameOver = true;
-      });
+    });
 
-    // Score logic for Zip
-    int baseScore = 100;
-    int score = baseScore - (_secondsElapsed * 2) - (_hintCount * 10) - (_undoCount * 2);
-    if (score < 10) score = 10;
-    
-    int stars = 3;
-    if (_secondsElapsed > 30) stars = 2;
-    if (_secondsElapsed > 60) stars = 1;
+    int targetSeconds = _openCellsCount * 2;
+    int stars = 1;
+    if (_secondsElapsed <= targetSeconds) {
+      stars = 3;
+    } else if (_secondsElapsed <= (targetSeconds * 1.5).round()) {
+      stars = 2;
+    }
 
     try {
       await SupabaseService.instance.saveScore(
@@ -474,6 +493,41 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
     }
   }
 
+  void _useHint() {
+    if (_isGameOver || _solutionPath.isEmpty) return;
+
+    setState(() {
+      _hintCount++;
+      if (_currentPath.isEmpty) {
+        // Chưa nối: gợi ý ô số 1 đầu tiên
+        final firstPos = _solutionPath.first;
+        _currentPath.add(_grid[firstPos.row][firstPos.col]);
+      } else {
+        int nextIdx = _currentPath.length;
+        if (nextIdx < _solutionPath.length) {
+          final nextPos = _solutionPath[nextIdx];
+          final nextCell = _grid[nextPos.row][nextPos.col];
+          final last = _currentPath.last;
+          bool isAdjacent = (last.row == nextPos.row && (last.col - nextPos.col).abs() == 1) ||
+                            (last.col == nextPos.col && (last.row - nextPos.row).abs() == 1);
+
+          if (isAdjacent && !_currentPath.contains(nextCell)) {
+            _currentPath.add(nextCell);
+            _checkWinCondition();
+          } else {
+            // Nếu đường vẽ đã đi lệch, phục hồi theo đường đúng tới vị trí tiếp theo
+            _currentPath.clear();
+            for (int i = 0; i <= nextIdx && i < _solutionPath.length; i++) {
+              final p = _solutionPath[i];
+              _currentPath.add(_grid[p.row][p.col]);
+            }
+            _checkWinCondition();
+          }
+        }
+      }
+    });
+  }
+
   void _replay() {
     setState(() {
       _generatePuzzle();
@@ -492,12 +546,22 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isGameOver) {
-      int stars = resolveZipStarRating(Duration(seconds: _secondsElapsed), Duration(seconds: _openCellsCount * 2), 0);
+      int targetSeconds = _openCellsCount * 2;
+      int stars = 1;
+      if (_secondsElapsed <= targetSeconds) {
+        stars = 3;
+      } else if (_secondsElapsed <= (targetSeconds * 1.5).round()) {
+        stars = 2;
+      }
+
       return ResultReportSheet(
         gameType: GameType.zip,
         starCount: stars,
         elapsedTime: Duration(seconds: _secondsElapsed),
-        showStars: false,
+        showStars: true,
+        gameName: 'magic_number_path',
+        gameTitle: 'Magic Number Path',
+        score: _score,
         onReplay: _replay,
         onGoHome: () {
           Navigator.of(context).pop();
@@ -539,59 +603,56 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
   }
 
   Widget _buildAppBar() {
-    int mins = _secondsElapsed ~/ 60;
-    int secs = _secondsElapsed % 60;
-    String timeStr = '$mins:${secs.toString().padLeft(2, '0')}';
-
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
       child: Row(
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
             onPressed: () => Navigator.pop(context),
           ),
-          const Icon(Icons.access_time_rounded, size: 20, color: AppColors.textPrimary),
-          const SizedBox(width: 4),
-          Text(
-            timeStr,
-            style: GoogleFonts.baloo2(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
+          GameCountUpTimer(elapsedSeconds: _secondsElapsed),
           Expanded(
             child: Center(
-              child: Text(
-                'Đường Số Diệu Kỳ',
-                style: GoogleFonts.baloo2(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'Đường Số Diệu Kỳ',
+                  style: GoogleFonts.baloo2(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ),
             ),
           ),
-          TextButton(
-            onPressed: _reset,
+          TextButton.icon(
+            onPressed: _replay,
+            icon: const Icon(
+              Icons.refresh_rounded,
+              size: 16,
+              color: AppColors.textPrimary,
+            ),
+            label: Text(
+              'Chơi lại',
+              style: GoogleFonts.baloo2(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
             style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
                 side: BorderSide(color: Colors.grey.shade400),
               ),
             ),
-            child: Text(
-              GameStrings.reset,
-              style: GoogleFonts.baloo2(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
         ],
       ),
     );
@@ -728,44 +789,74 @@ class _MagicNumberPathGameScreenState extends State<MagicNumberPathGameScreen> {
   Widget _buildActionButtons() {
     return Row(
       children: [
+        // 1. Hoàn tác
         Expanded(
           child: ElevatedButton(
             onPressed: _currentPath.length > 1 && !_isGameOver ? _undo : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.grey.shade300,
-              disabledBackgroundColor: Colors.grey.shade200,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              backgroundColor: Colors.grey.shade200,
+              disabledBackgroundColor: Colors.grey.shade100,
+              padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(16),
               ),
+              elevation: 0,
             ),
             child: Text(
               GameStrings.undo,
               style: GoogleFonts.baloo2(
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: FontWeight.bold,
-                color: _currentPath.length > 1 && !_isGameOver ? AppColors.textPrimary : Colors.grey.shade500,
+                color: _currentPath.length > 1 && !_isGameOver ? AppColors.textPrimary : Colors.grey.shade400,
               ),
             ),
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 8),
+        // 2. Xóa nét vẽ để đi lại
         Expanded(
           child: OutlinedButton(
-            onPressed: () {},
+            onPressed: _currentPath.isNotEmpty && !_isGameOver ? _reset : null,
             style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              side: const BorderSide(color: AppColors.primary, width: 2),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              side: BorderSide(
+                color: _currentPath.isNotEmpty && !_isGameOver ? Colors.grey.shade400 : Colors.grey.shade300,
+                width: 1.5,
               ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: Text(
+              'Xóa nét',
+              style: GoogleFonts.baloo2(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: _currentPath.isNotEmpty && !_isGameOver ? AppColors.textPrimary : Colors.grey.shade400,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        // 3. Gợi ý
+        Expanded(
+          child: ElevatedButton(
+            onPressed: !_isGameOver ? _useHint : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              disabledBackgroundColor: Colors.grey.shade200,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 0,
             ),
             child: Text(
               GameStrings.hint,
               style: GoogleFonts.baloo2(
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: FontWeight.bold,
-                color: AppColors.primary,
               ),
             ),
           ),

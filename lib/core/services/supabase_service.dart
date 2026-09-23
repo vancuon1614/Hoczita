@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -507,22 +508,33 @@ class SupabaseService {
   Future<List<Map<String, dynamic>>> getFilteredLeaderboard({
     String? gameName,
     String timePeriod = 'all', // 'all', 'month', 'year'
+    int? userCurrentScore,
   }) async {
     if (isOfflineDemoMode) {
       final myUser = _mockUsername ?? 'Bạn';
-      final myScore = gameName == null 
-          ? _mockTotalScore 
-          : _mockScores
-              .where((s) => s['game_name'] == gameName)
-              .fold<int>(0, (sum, item) => sum + (item['score'] as int? ?? 0));
+      int myScore = 0;
+      if (gameName == null) {
+        myScore = _mockTotalScore;
+      } else {
+        final gameScores = _mockScores
+            .where((s) {
+              final g = s['game_name']?.toString() ?? '';
+              return g == gameName || g.startsWith('${gameName}_');
+            })
+            .map((s) => s['score'] as int? ?? 0)
+            .toList();
+        myScore = gameScores.isEmpty ? 0 : gameScores.reduce(max);
+      }
 
-      final List<Map<String, dynamic>> baseList = [
-        {'username': '$myUser (Bạn)', 'total_score': myScore},
-        {'username': 'Minh Anh', 'total_score': gameName == null ? 180 : 40},
-        {'username': 'Bảo Nam', 'total_score': gameName == null ? 150 : 30},
-        {'username': 'Lan Chi', 'total_score': gameName == null ? 90 : 20},
-        {'username': 'Gia Bách', 'total_score': gameName == null ? 80 : 10},
-      ];
+      if (userCurrentScore != null && userCurrentScore > myScore) {
+        myScore = userCurrentScore;
+      }
+
+      final List<Map<String, dynamic>> baseList = _getMockLeaderboardForGame(
+        gameName: gameName,
+        myUser: myUser,
+        myScore: myScore,
+      );
       
       baseList.sort((a, b) => (b['total_score'] as int).compareTo(a['total_score'] as int));
       return baseList;
@@ -543,7 +555,17 @@ class SupabaseService {
           .select('score, game_name, completed_at, profiles(username)');
 
       if (gameName != null) {
-        query = query.eq('game_name', gameName);
+        if (gameName.contains('_easy') || 
+            gameName.contains('_medium') || 
+            gameName.contains('_hard') ||
+            gameName.contains('_expert') ||
+            gameName.contains('_master') ||
+            gameName.contains('_extreme')) {
+          query = query.eq('game_name', gameName);
+        } else {
+          // Lấy chính xác hoặc các biến thể độ khó của game riêng lẻ đó
+          query = query.or('game_name.eq.$gameName,game_name.like.$gameName\\_%');
+        }
       }
 
       final DateTime now = DateTime.now();
@@ -566,7 +588,22 @@ class SupabaseService {
         final profile = row['profiles'] as Map<String, dynamic>?;
         final String username = profile?['username']?.toString() ?? 'Ẩn danh';
         final int score = row['score'] as int? ?? 0;
-        userScores[username] = (userScores[username] ?? 0) + score;
+        if (gameName != null) {
+          // Xếp hạng game riêng lẻ: lấy điểm cao nhất (high score) của mỗi người chơi trong game đó
+          userScores[username] = max(userScores[username] ?? 0, score);
+        } else {
+          // BXH tổng: cộng dồn điểm các game
+          userScores[username] = (userScores[username] ?? 0) + score;
+        }
+      }
+
+      if (userCurrentScore != null && userCurrentScore > 0) {
+        final currentName = currentUsername ?? 'Bạn';
+        if (gameName != null) {
+          userScores[currentName] = max(userScores[currentName] ?? 0, userCurrentScore);
+        } else {
+          userScores[currentName] = (userScores[currentName] ?? 0) + userCurrentScore;
+        }
       }
 
       final List<Map<String, dynamic>> leaderboard = userScores.entries.map((entry) {
@@ -581,6 +618,111 @@ class SupabaseService {
     } catch (e) {
       debugPrint('Get filtered leaderboard error: $e');
       return [];
+    }
+  }
+
+  List<Map<String, dynamic>> _getMockLeaderboardForGame({
+    required String? gameName,
+    required String myUser,
+    required int myScore,
+  }) {
+    if (gameName == null) {
+      // BXH tổng thể cho Profile
+      return [
+        {'username': '$myUser (Bạn)', 'total_score': myScore},
+        {'username': 'Minh Anh', 'total_score': 180},
+        {'username': 'Bảo Nam', 'total_score': 150},
+        {'username': 'Lan Chi', 'total_score': 90},
+        {'username': 'Gia Bách', 'total_score': 80},
+      ];
+    }
+
+    final g = gameName.toLowerCase();
+    int s1 = 95, s2 = 85, s3 = 75, s4 = 60;
+    if (g.contains('sudoku')) {
+      s1 = 420; s2 = 360; s3 = 280; s4 = 210;
+    } else if (g.contains('crossword')) {
+      s1 = 110; s2 = 95; s3 = 80; s4 = 65;
+    } else if (g.contains('word_scramble')) {
+      s1 = 90; s2 = 80; s3 = 70; s4 = 50;
+    } else if (g.contains('memory_match')) {
+      s1 = 85; s2 = 75; s3 = 60; s4 = 45;
+    } else if (g.contains('magic_number_path')) {
+      s1 = 90; s2 = 80; s3 = 70; s4 = 50;
+    } else if (g.contains('magic_words')) {
+      s1 = 95; s2 = 85; s3 = 75; s4 = 60;
+    }
+
+    return [
+      {'username': '$myUser (Bạn)', 'total_score': myScore},
+      {'username': 'Minh Anh', 'total_score': s1},
+      {'username': 'Bảo Nam', 'total_score': s2},
+      {'username': 'Lan Chi', 'total_score': s3},
+      {'username': 'Gia Bách', 'total_score': s4},
+    ];
+  }
+
+  /// Lấy thông tin thứ hạng hiện tại của người chơi trên BXH của một mini-game
+  Future<Map<String, dynamic>> getGameRankInfo({
+    required String gameName,
+    int? currentScore,
+  }) async {
+    try {
+      final leaderboard = await getFilteredLeaderboard(
+        gameName: gameName,
+        userCurrentScore: currentScore,
+      );
+      final myUser = currentUsername ?? 'Bạn';
+      int rank = -1;
+      int bestScore = currentScore ?? 0;
+
+      for (int i = 0; i < leaderboard.length; i++) {
+        final entry = leaderboard[i];
+        final name = (entry['username'] as String? ?? '').trim();
+        if (name == myUser ||
+            name.startsWith('$myUser ') ||
+            name.contains('(Bạn)') ||
+            name.toLowerCase().contains(myUser.toLowerCase())) {
+          rank = i + 1;
+          final s = entry['total_score'] as int? ?? 0;
+          if (s > bestScore) bestScore = s;
+          break;
+        }
+      }
+
+      if (rank == -1) {
+        if (currentScore != null && currentScore > 0) {
+          rank = 1;
+          for (final entry in leaderboard) {
+            final s = entry['total_score'] as int? ?? 0;
+            if (s > currentScore) {
+              rank++;
+            }
+          }
+        } else {
+          rank = leaderboard.isEmpty ? 1 : leaderboard.length + 1;
+        }
+      }
+
+      final totalPlayers = max(leaderboard.length, rank);
+      final topPercent = totalPlayers > 0 ? max(1, ((rank / totalPlayers) * 100).round()) : 100;
+
+      return {
+        'rank': rank,
+        'totalPlayers': totalPlayers,
+        'topPercent': topPercent,
+        'score': bestScore,
+        'leaderboard': leaderboard,
+      };
+    } catch (e) {
+      debugPrint('getGameRankInfo error: $e');
+      return {
+        'rank': 1,
+        'totalPlayers': 1,
+        'topPercent': 10,
+        'score': currentScore ?? 0,
+        'leaderboard': <Map<String, dynamic>>[],
+      };
     }
   }
 

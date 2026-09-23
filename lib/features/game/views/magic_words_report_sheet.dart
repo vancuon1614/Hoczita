@@ -2,11 +2,13 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/word_completion_entry.dart';
+import 'common/mini_game_rank_banner.dart';
 
 class MagicWordsReportSheet extends StatefulWidget {
   final List<String> targetWords;
   final int secondsElapsed;
   final List<WordCompletionEntry> completionLog; // MỚI - thay cho việc chỉ dùng targetWords
+  final int? score;
   final VoidCallback onReplay;
   final VoidCallback onGoHome;
 
@@ -15,6 +17,7 @@ class MagicWordsReportSheet extends StatefulWidget {
     required this.targetWords,
     required this.secondsElapsed,
     required this.completionLog, // MỚI
+    this.score,
     required this.onReplay,
     required this.onGoHome,
   });
@@ -24,7 +27,6 @@ class MagicWordsReportSheet extends StatefulWidget {
 }
 
 class _MagicWordsReportSheetState extends State<MagicWordsReportSheet> {
-  bool _isRewardOpened = false;
 
   String _formatDuration(int seconds) {
     int m = seconds ~/ 60;
@@ -157,7 +159,7 @@ class _MagicWordsReportSheetState extends State<MagicWordsReportSheet> {
                   ),
                 ),
                 Text(
-                  'Bé đã chinh phục thử thách với tốc độ đáng kinh ngạc!',
+                  'Bạn đã chinh phục thử thách với tốc độ đáng kinh ngạc!',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.baloo2(
                     fontSize: 14,
@@ -299,107 +301,11 @@ class _MagicWordsReportSheetState extends State<MagicWordsReportSheet> {
                       ),
                       const SizedBox(height: 18),
 
-                      // Reward Banner (Diamond + Gift)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFFBEB),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFFEF3C7), width: 1.5),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFEF08A),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              alignment: Alignment.center,
-                              child: const Text('🎁', style: TextStyle(fontSize: 24)),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '+100 Kim Cương 💎',
-                                    style: GoogleFonts.baloo2(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      color: const Color(0xFF92400E),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  RichText(
-                                    text: TextSpan(
-                                      style: GoogleFonts.baloo2(
-                                        fontSize: 12,
-                                        color: const Color(0xFFB45309),
-                                      ),
-                                      children: const [
-                                        TextSpan(text: 'Tiếp theo: '),
-                                        TextSpan(
-                                          text: 'Bậc Thầy Từ Vựng',
-                                          style: TextStyle(fontWeight: FontWeight.bold),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            ElevatedButton(
-                              onPressed: _isRewardOpened
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        _isRewardOpened = true;
-                                      });
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            '🎉 Chúc mừng! Bạn nhận được +100 Kim Cương!',
-                                            style: GoogleFonts.baloo2(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          backgroundColor: const Color(0xFFF59E0B),
-                                          duration: const Duration(seconds: 2),
-                                        ),
-                                      );
-                                    },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _isRewardOpened
-                                    ? Colors.grey.shade300
-                                    : const Color(0xFFF59E0B),
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                              child: Text(
-                                _isRewardOpened ? 'ĐÃ MỞ' : 'MỞ',
-                                style: GoogleFonts.baloo2(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: _isRewardOpened
-                                      ? Colors.grey.shade600
-                                      : Colors.white,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                      // Leaderboard Rank Banner
+                      MiniGameRankBanner(
+                        gameName: 'magic_words',
+                        gameTitle: 'Magic Words',
+                        currentScore: widget.score,
                       ),
                     ],
                   ),
