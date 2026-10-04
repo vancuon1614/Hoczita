@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:async';
 import 'dart:math';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
@@ -22,6 +23,7 @@ class DailyCheckinReportDialog extends StatefulWidget {
   final int foundPaths;
   final int pointsEarned;
   final int currentStreak;
+  final int? initialRank;
   final VoidCallback onPlayAgain;
   final VoidCallback onGoHome;
 
@@ -30,6 +32,7 @@ class DailyCheckinReportDialog extends StatefulWidget {
     required this.foundPaths,
     required this.pointsEarned,
     required this.currentStreak,
+    this.initialRank,
     required this.onPlayAgain,
     required this.onGoHome,
   });
@@ -42,27 +45,44 @@ class _DailyCheckinReportDialogState extends State<DailyCheckinReportDialog>
     with SingleTickerProviderStateMixin {
   late Future<TodayRankData> _rankFuture;
   late AnimationController _confettiController;
+  Timer? _autoCloseTimer;
+  int? _resolvedRank;
 
   @override
   void initState() {
     super.initState();
+    _resolvedRank = widget.initialRank;
     _confettiController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..forward();
     _fetchRank();
+
+    // Tự động đóng popup sau 5 giây theo yêu cầu
+    _autoCloseTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    });
   }
 
   @override
   void dispose() {
+    _autoCloseTimer?.cancel();
     _confettiController.dispose();
     super.dispose();
   }
 
   void _fetchRank() {
     _rankFuture = SupabaseService.instance.saveAndGetTodayRank(widget.foundPaths).then((data) {
+      final rank = data['rank'] as int;
+      if (mounted && _resolvedRank != rank) {
+        setState(() {
+          _resolvedRank = rank;
+        });
+      }
       return TodayRankData(
-        rank: data['rank'] as int,
+        rank: rank,
         totalPlayersToday: data['totalPlayersToday'] as int,
         yourScore: data['yourScore'] as int,
         averageScore: (data['averageScore'] as num).toDouble(),
@@ -70,8 +90,48 @@ class _DailyCheckinReportDialogState extends State<DailyCheckinReportDialog>
     });
   }
 
+  Map<String, String> _getHeaderInfo(int? rank) {
+    if (rank == 1) {
+      return {
+        'emoji': '👑',
+        'title': '🎉 XUẤT SẮC! BẠN ĐANG DẪN ĐẦU! 🎉',
+        'subtitle':
+            'Sự nỗ lực không ngừng nghỉ đã đưa bạn lên vị trí TOP 1. Đây là khoảnh khắc của bạn! Hãy tiếp tục giữ vững phong độ và thiết lập kỷ lục mới nhé!',
+      };
+    } else if (rank == 2 || rank == 3) {
+      return {
+        'emoji': '✨',
+        'title': '✨ TUYỆT VỜI! BẠN ĐÃ VÀO TOP 3! ✨',
+        'subtitle':
+            'Phong độ của bạn đang cực kỳ ấn tượng! Bạn đã tiến rất gần đến đỉnh cao nhất. Hãy bứt phá mạnh mẽ hơn nữa trong hôm nay để vươn lên vị trí TOP 1 nhé!',
+      };
+    } else if (rank != null && rank <= 10) {
+      return {
+        'emoji': '🚀',
+        'title': '🚀 CHÚC MỪNG BẠN LỌT TOP 10! 🚀',
+        'subtitle':
+            'Bạn đang nằm trong nhóm những người dùng xuất sắc nhất! Hãy giữ vững đà tiến này và chinh phục các cột mốc tiếp theo nhé!',
+      };
+    } else if (rank != null && rank > 10) {
+      return {
+        'emoji': '🔥',
+        'title': '🔥 CỐ LÊN! BẠN TIẾN RẤT GẦN TOP 10! 🔥',
+        'subtitle':
+            'Mọi sự cố gắng đều mang lại kết quả. Bạn chỉ còn cách Top 10 một khoảng ngắn nữa thôi! Tiếp tục luyện tập để ghi tên mình vào Bảng Xếp Hạng ngay hôm nay!',
+      };
+    }
+    return {
+      'emoji': '✨',
+      'title': '🎉 ĐIỂM DANH THÀNH CÔNG! 🎉',
+      'subtitle':
+          'Phong độ của bạn đang rất ấn tượng! Hãy tiếp tục duy trì và bứt phá mạnh mẽ hơn nữa nhé!',
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
+    final headerInfo = _getHeaderInfo(_resolvedRank);
+
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -123,7 +183,7 @@ class _DailyCheckinReportDialogState extends State<DailyCheckinReportDialog>
                   // Header Gradient
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
                         colors: [Color(0xFF6B48FF), AppColors.primary],
@@ -133,26 +193,28 @@ class _DailyCheckinReportDialogState extends State<DailyCheckinReportDialog>
                     ),
                     child: Column(
                       children: [
-                        const Text(
-                          "🎉",
-                          style: TextStyle(fontSize: 40),
+                        Text(
+                          headerInfo['emoji']!,
+                          style: const TextStyle(fontSize: 40),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          "Điểm Danh Thành Công!",
+                          headerInfo['title']!,
                           style: GoogleFonts.baloo2(
-                            fontSize: 22,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
+                            height: 1.25,
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         Text(
-                          "Thật tuyệt vời, bạn đã hoàn thành nhiệm vụ hôm nay!",
+                          headerInfo['subtitle']!,
                           style: GoogleFonts.baloo2(
-                            fontSize: 14,
-                            color: Colors.white.withValues(alpha: 0.9),
+                            fontSize: 13,
+                            color: Colors.white.withValues(alpha: 0.95),
+                            height: 1.35,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -199,11 +261,11 @@ class _DailyCheckinReportDialogState extends State<DailyCheckinReportDialog>
                             mainAxisSize: MainAxisSize.min, // only 3 rows, no empty space
                             children: [
                               _buildInfoRow(
-                                icon: Icons.link_rounded,
-                                iconColor: Colors.blue,
-                                title: "Số cách tìm được:",
+                                icon: Icons.stars_rounded,
+                                iconColor: Colors.amber,
+                                title: "Điểm hoàn thành:",
                                 valueWidget: Text(
-                                  "${widget.foundPaths}",
+                                  "${widget.foundPaths} điểm",
                                   style: GoogleFonts.baloo2(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
@@ -239,7 +301,10 @@ class _DailyCheckinReportDialogState extends State<DailyCheckinReportDialog>
                             Expanded(
                               flex: 1,
                               child: OutlinedButton(
-                                onPressed: widget.onPlayAgain,
+                                onPressed: () {
+                                  _autoCloseTimer?.cancel();
+                                  widget.onPlayAgain();
+                                },
                                 style: OutlinedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(vertical: 14),
                                   shape: RoundedRectangleBorder(
@@ -261,7 +326,10 @@ class _DailyCheckinReportDialogState extends State<DailyCheckinReportDialog>
                             Expanded(
                               flex: 2,
                               child: ElevatedButton(
-                                onPressed: widget.onGoHome,
+                                onPressed: () {
+                                  _autoCloseTimer?.cancel();
+                                  widget.onGoHome();
+                                },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.primary,
                                   padding: const EdgeInsets.symmetric(vertical: 14),
@@ -286,6 +354,34 @@ class _DailyCheckinReportDialogState extends State<DailyCheckinReportDialog>
                     ),
                   ),
                 ],
+              ),
+
+              // Button "X" phía bên trên bên trái của hộp thoại để tắt
+              Positioned(
+                top: 10,
+                left: 10,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () {
+                      _autoCloseTimer?.cancel();
+                      Navigator.of(context).pop();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.close_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -385,15 +481,18 @@ class _DailyCheckinReportDialogState extends State<DailyCheckinReportDialog>
     // Determine status text & color
     String statusMsg;
     Color statusColor;
-    if (widget.foundPaths > data.averageScore) {
-      statusMsg = "Bạn đang vượt trội!";
-      statusColor = AppColors.success;
-    } else if (widget.foundPaths == data.averageScore) {
-      statusMsg = "Bạn đạt mức trung bình!";
-      statusColor = AppColors.info;
-    } else {
-      statusMsg = "Hãy cố gắng hơn nhé!";
+    if (data.rank == 1) {
+      statusMsg = "👑 Đang đứng đầu bảng!";
       statusColor = AppColors.accent;
+    } else if (data.rank == 2 || data.rank == 3) {
+      statusMsg = "✨ Đang trong Top 3!";
+      statusColor = AppColors.primary;
+    } else if (data.rank <= 10) {
+      statusMsg = "🎯 Top 10 xuất sắc!";
+      statusColor = AppColors.success;
+    } else {
+      statusMsg = "🔥 Tiến rất gần Top 10!";
+      statusColor = const Color(0xFFEA580C);
     }
 
     // Progress bar math (max score assumed around average * 2 for visual scale)
@@ -428,12 +527,16 @@ class _DailyCheckinReportDialogState extends State<DailyCheckinReportDialog>
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              "Trung bình người chơi: ${data.averageScore.toStringAsFixed(1)} cách",
+              "Điểm trung bình:",
               style: GoogleFonts.baloo2(fontSize: 13, color: AppColors.textSecondary),
             ),
             Text(
-              statusMsg,
-              style: GoogleFonts.baloo2(fontSize: 12, fontWeight: FontWeight.bold, color: statusColor),
+              "${data.averageScore.toStringAsFixed(1)} điểm",
+              style: GoogleFonts.baloo2(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
             ),
           ],
         ),
@@ -483,6 +586,18 @@ class _DailyCheckinReportDialogState extends State<DailyCheckinReportDialog>
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 6),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Text(
+            statusMsg,
+            style: GoogleFonts.baloo2(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: statusColor,
+            ),
+          ),
         ),
       ],
     );

@@ -8,14 +8,27 @@ class GameCountUpTimer extends StatelessWidget {
   final int? elapsedSeconds;
   final EdgeInsetsGeometry? margin;
 
+  final Color? textColor;
+  final Color? bgColor;
+  final Color? borderColor;
+
   const GameCountUpTimer({
     super.key,
     this.timeString,
     this.elapsedSeconds,
     this.margin,
+    this.textColor,
+    this.bgColor,
+    this.borderColor,
   }) : assert(timeString != null || elapsedSeconds != null, 'Phải truyền timeString hoặc elapsedSeconds');
 
   static String formatSeconds(int seconds) {
+    if (seconds >= 3600) {
+      final hours = seconds ~/ 3600;
+      final mins = (seconds % 3600) ~/ 60;
+      final secs = seconds % 60;
+      return '${hours.toString().padLeft(2, '0')}:${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+    }
     final mins = seconds ~/ 60;
     final secs = seconds % 60;
     return '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
@@ -23,16 +36,33 @@ class GameCountUpTimer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayStr = timeString ?? formatSeconds(elapsedSeconds!);
+    String displayStr;
+    if (elapsedSeconds != null) {
+      displayStr = formatSeconds(elapsedSeconds!);
+    } else if (timeString != null) {
+      final clean = timeString!.replaceAll('s', '').trim();
+      final parsedDouble = double.tryParse(clean);
+      if (parsedDouble != null) {
+        displayStr = formatSeconds(parsedDouble.round());
+      } else {
+        displayStr = timeString!;
+      }
+    } else {
+      displayStr = '00:00';
+    }
+
+    final effectiveTextColor = textColor ?? AppColors.primary;
+    final effectiveBgColor = bgColor ?? AppColors.primaryLight;
+    final effectiveBorderColor = borderColor ?? AppColors.primary.withValues(alpha: 0.15);
 
     return Container(
       margin: margin ?? const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
       decoration: BoxDecoration(
-        color: AppColors.primaryLight,
+        color: effectiveBgColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.15),
+          color: effectiveBorderColor,
           width: 1,
         ),
       ),
@@ -41,10 +71,10 @@ class GameCountUpTimer extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Icon(
+          Icon(
             Icons.timer_outlined,
             size: 14,
-            color: AppColors.primary,
+            color: effectiveTextColor,
           ),
           const SizedBox(width: 4),
           Text(
@@ -53,7 +83,7 @@ class GameCountUpTimer extends StatelessWidget {
             style: GoogleFonts.baloo2(
               fontSize: 11,
               fontWeight: FontWeight.bold,
-              color: AppColors.primary,
+              color: effectiveTextColor,
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
@@ -82,18 +112,7 @@ class GameCountdownTimer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color timerColor;
-    if (customColor != null) {
-      timerColor = customColor!;
-    } else {
-      if (remainingSeconds <= 3) {
-        timerColor = AppColors.error;
-      } else if (remainingSeconds <= (totalSeconds / 2).ceil()) {
-        timerColor = AppColors.accent;
-      } else {
-        timerColor = AppColors.success;
-      }
-    }
+    final timerColor = customColor ?? const Color(0xFFDC2626);
 
     return SizedBox(
       width: size,
@@ -103,7 +122,7 @@ class GameCountdownTimer extends StatelessWidget {
         children: [
           CircularProgressIndicator(
             value: progress.clamp(0.0, 1.0),
-            backgroundColor: AppColors.border,
+            backgroundColor: const Color(0xFFFEE2E2),
             color: timerColor,
             strokeWidth: 4.5,
           ),

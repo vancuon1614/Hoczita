@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/tts_service.dart';
+import '../../../../core/widgets/game_sound_toggle_button.dart';
 import 'mini_game_how_to_play_sheet.dart';
 
 class GameDifficultyOption {
@@ -126,6 +127,7 @@ class _MiniGameLobbyScreenState extends State<MiniGameLobbyScreen> {
         ),
         centerTitle: true,
         actions: [
+          const GameSoundToggleButton(),
           Container(
             margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -336,7 +338,7 @@ class _MiniGameLobbyScreenState extends State<MiniGameLobbyScreen> {
                 ),
                 tooltip: 'Nghe lời chào',
                 onPressed: () {
-                  TtsService.instance.speakVietnamese(widget.welcomeTitle);
+                  TtsService.instance.speakVietnamese(widget.welcomeTitle, forced: true);
                 },
               );
             },

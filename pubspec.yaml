@@ -46,6 +46,7 @@ dependencies:
   google_mlkit_text_recognition: ^0.15.1
   flutter_tts: ^4.2.5
   flip_card: ^0.7.0
+  video_player: ^2.14.0
 
 dev_dependencies:
   flutter_test:

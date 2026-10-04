@@ -9,6 +9,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/constants/game_strings.dart';
 import '../../../core/widgets/mini_game_timer.dart';
+import '../../../core/widgets/game_sound_toggle_button.dart';
 import '../../../core/providers/game_interaction_provider.dart';
 
 class CellPosition {
@@ -611,22 +612,6 @@ class _MagicNumberPathGameScreenState extends ConsumerState<MagicNumberPathGameS
             icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
             onPressed: () => Navigator.pop(context),
           ),
-          GameCountUpTimer(elapsedSeconds: _secondsElapsed),
-          Expanded(
-            child: Center(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  'Đường Số Diệu Kỳ',
-                  style: GoogleFonts.baloo2(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-            ),
-          ),
           TextButton.icon(
             onPressed: _replay,
             icon: const Icon(
@@ -652,6 +637,23 @@ class _MagicNumberPathGameScreenState extends ConsumerState<MagicNumberPathGameS
               ),
             ),
           ),
+          Expanded(
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'Đường Số Diệu Kỳ',
+                  style: GoogleFonts.baloo2(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const GameSoundToggleButton(),
+          GameCountUpTimer(elapsedSeconds: _secondsElapsed),
           const SizedBox(width: 4),
         ],
       ),
@@ -877,6 +879,20 @@ class _MagicNumberPathGameScreenState extends ConsumerState<MagicNumberPathGameS
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           initiallyExpanded: _showHowToPlay,
+          leading: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              'ImageFolder/number.webp',
+              width: 32,
+              height: 32,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => const Icon(
+                Icons.timeline_rounded,
+                color: Colors.green,
+                size: 28,
+              ),
+            ),
+          ),
           onExpansionChanged: (val) {
             setState(() {
               _showHowToPlay = val;
@@ -912,7 +928,7 @@ class _MagicNumberPathGameScreenState extends ConsumerState<MagicNumberPathGameS
                         Text(
                           'Kết nối các số\ntheo thứ tự',
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.nunito(
+                          style: GoogleFonts.baloo2(
                             fontSize: 13,
                             color: AppColors.textSecondary,
                             fontWeight: FontWeight.w600,
@@ -929,7 +945,7 @@ class _MagicNumberPathGameScreenState extends ConsumerState<MagicNumberPathGameS
                         Text(
                           'Điền kín tất cả\ncác ô trống',
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.nunito(
+                          style: GoogleFonts.baloo2(
                             fontSize: 13,
                             color: AppColors.textSecondary,
                             fontWeight: FontWeight.w600,

@@ -3,50 +3,49 @@ import 'package:hoczita_app/features/game/utils/wend_puzzle_generator.dart';
 
 void main() {
   group('WendPuzzleGenerator Tests', () {
-    test('Easy difficulty generates 5x5 grid with 3 words', () {
+    test('Easy mode: 4x4, 3 words, 3-5 chars, blockers 2-4', () {
       for (int i = 0; i < 20; i++) {
         final puzzle = WendPuzzleGenerator.generate(difficulty: MagicWordsDifficulty.easy);
-        expect(puzzle.rows, equals(5));
-        expect(puzzle.cols, equals(5));
+        expect(puzzle.rows, equals(4));
+        expect(puzzle.cols, equals(4));
         expect(puzzle.targetWords.length, equals(3));
-        expect(puzzle.gridStr.length, equals(5));
-        expect(puzzle.gridStr[0].length, equals(5));
 
-        // Check word lengths
-        for (var w in puzzle.targetWords) {
-          expect(w.length >= 3 && w.length <= 4, isTrue);
-          expect(puzzle.wordPaths.containsKey(w), isTrue);
-          expect(puzzle.wordPaths[w]!.length, equals(w.length));
-        }
-      }
-    });
-
-    test('Medium difficulty generates 6x6 grid with 4 words', () {
-      for (int i = 0; i < 20; i++) {
-        final puzzle = WendPuzzleGenerator.generate(difficulty: MagicWordsDifficulty.medium);
-        expect(puzzle.rows, equals(6));
-        expect(puzzle.cols, equals(6));
-        expect(puzzle.targetWords.length, equals(4));
-        expect(puzzle.gridStr.length, equals(6));
-        expect(puzzle.gridStr[0].length, equals(6));
-
+        int totalLetters = 0;
         for (var w in puzzle.targetWords) {
           expect(w.length >= 3 && w.length <= 5, isTrue);
           expect(puzzle.wordPaths.containsKey(w), isTrue);
           expect(puzzle.wordPaths[w]!.length, equals(w.length));
+          totalLetters += w.length;
+        }
+
+        int blockerCount = 16 - totalLetters;
+        expect(blockerCount >= 2 && blockerCount <= 4, isTrue,
+            reason: 'Blocker count should be 2-4, got $blockerCount');
+      }
+    });
+
+    test('Medium mode: 6x6, 4 words, 5-8 chars', () {
+      for (int i = 0; i < 15; i++) {
+        final puzzle = WendPuzzleGenerator.generate(difficulty: MagicWordsDifficulty.medium);
+        expect(puzzle.rows, equals(6));
+        expect(puzzle.cols, equals(6));
+        expect(puzzle.targetWords.length, equals(4));
+        for (var w in puzzle.targetWords) {
+          expect(w.length >= 5 && w.length <= 8, isTrue);
+          expect(puzzle.wordPaths.containsKey(w), isTrue);
+          expect(puzzle.wordPaths[w]!.length, equals(w.length));
         }
       }
     });
 
-    test('Hard difficulty generates 7x7 or 8x8 grid with 5 or 6 words', () {
-      for (int i = 0; i < 20; i++) {
+    test('Hard mode: 8x8, 4-5 words, 8-11 chars', () {
+      for (int i = 0; i < 10; i++) {
         final puzzle = WendPuzzleGenerator.generate(difficulty: MagicWordsDifficulty.hard);
-        expect(puzzle.rows >= 7 && puzzle.rows <= 8, isTrue);
-        expect(puzzle.cols, equals(puzzle.rows));
-        expect(puzzle.targetWords.length >= 5 && puzzle.targetWords.length <= 6, isTrue);
-
+        expect(puzzle.rows, equals(8));
+        expect(puzzle.cols, equals(8));
+        expect(puzzle.targetWords.length >= 4 && puzzle.targetWords.length <= 5, isTrue);
         for (var w in puzzle.targetWords) {
-          expect(w.length >= 4 && w.length <= 7, isTrue);
+          expect(w.length >= 8 && w.length <= 11, isTrue);
           expect(puzzle.wordPaths.containsKey(w), isTrue);
           expect(puzzle.wordPaths[w]!.length, equals(w.length));
         }

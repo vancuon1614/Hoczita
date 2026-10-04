@@ -306,16 +306,29 @@ class GameContent {
       final String emoji = emojis[_random.nextInt(emojis.length)];
       final int leftCount = _random.nextInt(7) + 2; // 2 to 8
       
-      int rightCount = _random.nextInt(7) + 2;
-      while (rightCount == leftCount) {
-        rightCount = _random.nextInt(7) + 2; // Make sure they are not equal
+      // ~20% tỉ lệ xuất hiện câu hỏi 2 bên bằng nhau để nút "Bằng nhau" có ý nghĩa
+      final bool isEqual = _random.nextInt(5) == 0;
+      int rightCount;
+      if (isEqual) {
+        rightCount = leftCount;
+      } else {
+        rightCount = _random.nextInt(7) + 2;
+        while (rightCount == leftCount) {
+          rightCount = _random.nextInt(7) + 2;
+        }
       }
 
       final String leftAsset = emoji * leftCount;
       final String rightAsset = emoji * rightCount;
 
-      final String correct = leftCount > rightCount ? 'Bên trái' : 'Bên phải';
-      final List<String> choices = ['Bên trái', 'Bên phải', 'Bằng nhau']..shuffle();
+      final String correct;
+      if (leftCount == rightCount) {
+        correct = 'Bằng nhau';
+      } else {
+        correct = leftCount > rightCount ? 'Bên trái' : 'Bên phải';
+      }
+
+      final List<String> choices = ['Bên trái', 'Bên phải', 'Bằng nhau'];
 
       questions.add(
         GameQuestion(

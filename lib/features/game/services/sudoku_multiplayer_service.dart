@@ -187,11 +187,8 @@ class SudokuMultiplayerService extends ChangeNotifier {
     // Tốc độ bot điền số phụ thuộc độ khó (3.5s - 6.5s mỗi ô)
     final baseSeconds = switch (selectedDifficulty) {
       SudokuDifficulty.easy => 3.5,
-      SudokuDifficulty.medium => 4.2,
-      SudokuDifficulty.hard => 5.0,
-      SudokuDifficulty.expert => 5.8,
-      SudokuDifficulty.master => 6.5,
-      SudokuDifficulty.extreme => 7.2,
+      SudokuDifficulty.medium => 4.5,
+      SudokuDifficulty.hard => 6.0,
     };
 
     void scheduleNextFill() {

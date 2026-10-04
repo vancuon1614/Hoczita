@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/widgets/mini_game_timer.dart';
+import '../../../core/widgets/game_sound_toggle_button.dart';
 import '../../../core/providers/game_interaction_provider.dart';
 import '../models/game_question.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -113,8 +115,9 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
       }
     });
 
-    // Pause for 300ms to show selected state, then advance
-    Future.delayed(const Duration(milliseconds: 300), () {
+    // Pause for 700ms in comparison game to show touch feedback, 300ms for others
+    final delayMs = widget.gameName == 'comparison' ? 700 : 300;
+    Future.delayed(Duration(milliseconds: delayMs), () {
       if (!mounted) return;
       if (_currentQuestionIndex < widget.questions.length - 1) {
         setState(() {
@@ -128,20 +131,7 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
   }
 
   String _formatTime(double seconds) {
-    if (seconds < 60) {
-      return '${seconds.toStringAsFixed(1)}s';
-    }
-    final int totalSeconds = seconds.round();
-    if (totalSeconds < 3600) {
-      final int minutes = totalSeconds ~/ 60;
-      final int remainingSeconds = totalSeconds % 60;
-      return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
-    } else {
-      final int hours = totalSeconds ~/ 3600;
-      final int minutes = (totalSeconds % 3600) ~/ 60;
-      final int remainingSeconds = totalSeconds % 60;
-      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
-    }
+    return GameCountUpTimer.formatSeconds(seconds.round());
   }
 
   void _endGameAndSaveScore() async {
@@ -194,12 +184,17 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
     final currentQuestion = widget.questions[_currentQuestionIndex];
     final progress = (_currentQuestionIndex + 1) / widget.questions.length;
     
-    // Lerp timer color from green to red based on time spent
+    // Deep bold red timer for prominent visibility
     final timerColor = Color.lerp(
-      AppColors.success, 
-      AppColors.error, 
+      const Color(0xFFDC2626), 
+      const Color(0xFF991B1B), 
       _timerController.value
-    ) ?? AppColors.primary;
+    ) ?? const Color(0xFFDC2626);
+
+    // Cách 1: Chạm trực tiếp vào hộp cho game So Sánh Trái Phải
+    if (widget.gameName == 'comparison') {
+      return _buildComparisonGameLayout(currentQuestion, progress, timerColor);
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -212,6 +207,12 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
           icon: Icon(Icons.close_rounded),
           onPressed: () => _showQuitConfirmation(),
         ),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 8),
+            child: GameSoundToggleButton(),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Padding(
@@ -1028,5 +1029,611 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
         );
       },
     );
+  }
+
+  // ==========================================
+  // CÁCH 1: GIAO DIỆN CHẠM TRỰC TIẾP VÀO HỘP
+  // ==========================================
+
+  Widget _buildComparisonGameLayout(
+    GameQuestion question,
+    double progress,
+    Color timerColor,
+  ) {
+    final leftItems = question.comparisonLeft != null
+        ? question.comparisonLeft!.characters.toList()
+        : <String>[];
+    final rightItems = question.comparisonRight != null
+        ? question.comparisonRight!.characters.toList()
+        : <String>[];
+
+    final isSelectedLeft = _selectedChoiceIndex == 0;
+    final isSelectedRight = _selectedChoiceIndex == 1;
+    final isSelectedEqual = _selectedChoiceIndex == 2;
+
+    final isCorrectLeft = question.correctAnswer == 'Bên trái';
+    final isCorrectRight = question.correctAnswer == 'Bên phải';
+    final isCorrectEqual = question.correctAnswer == 'Bằng nhau';
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          widget.gameTitle,
+          style: GoogleFonts.baloo2(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded, color: AppColors.textPrimary),
+          onPressed: () => _showQuitConfirmation(),
+        ),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 8),
+            child: GameSoundToggleButton(),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 1. Header progress & Timer Row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Câu hỏi ${_currentQuestionIndex + 1}/${widget.questions.length}',
+                    style: GoogleFonts.baloo2(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  GameCountdownTimer(
+                    progress: 1.0 - _timerController.value,
+                    remainingSeconds: (widget.timeLimitInSeconds -
+                            (_timerController.value * widget.timeLimitInSeconds).floor())
+                        .clamp(0, widget.timeLimitInSeconds),
+                    totalSeconds: widget.timeLimitInSeconds,
+                    customColor: timerColor,
+                    size: 42,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // 2. Linear progress bar
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  backgroundColor: AppColors.border,
+                  color: AppColors.primary,
+                  minHeight: 7,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // 3. Question Prompt Title
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppColors.border),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.touch_app_rounded, color: AppColors.primary, size: 22),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        question.prompt,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // 4. Main Comparison Interactive Stage (Hai hộp so sánh chạm trực tiếp + Nút "=" ở giữa)
+              // Dùng IntrinsicHeight để khung của cái lớn nhất áp dụng luôn cho cả cái nhỏ nhất, 2 khung luôn ngang bằng nhau
+              Expanded(
+                child: Center(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // --- HỘP BÊN TRÁI ---
+                            Expanded(
+                              child: _buildComparisonTouchBox(
+                                index: 0,
+                                label: 'Bên trái',
+                                items: leftItems,
+                                isSelected: isSelectedLeft,
+                                isCorrectChoice: isCorrectLeft,
+                                defaultBgColor: const Color(0xFFF0F7FF),
+                                defaultBorderColor: const Color(0xFFBAE6FD),
+                                themeColor: const Color(0xFF0284C7),
+                              ),
+                            ),
+
+                            const SizedBox(width: 8),
+
+                            // --- NÚT BẰNG NHAU Ở GIỮA ---
+                            _buildEqualButton(
+                              isSelected: isSelectedEqual,
+                              isCorrectChoice: isCorrectEqual,
+                            ),
+
+                            const SizedBox(width: 8),
+
+                            // --- HỘP BÊN PHẢI ---
+                            Expanded(
+                              child: _buildComparisonTouchBox(
+                                index: 1,
+                                label: 'Bên phải',
+                                items: rightItems,
+                                isSelected: isSelectedRight,
+                                isCorrectChoice: isCorrectRight,
+                                defaultBgColor: const Color(0xFFFFF7ED),
+                                defaultBorderColor: const Color(0xFFFED7AA),
+                                themeColor: const Color(0xFFEA580C),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 14),
+
+              // 5. Gợi ý thao tác dưới chân
+              Center(
+                child: Text(
+                  '👉 Chạm trực tiếp vào hộp bạn chọn',
+                  style: GoogleFonts.baloo2(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildComparisonTouchBox({
+    required int index,
+    required String label,
+    required List<String> items,
+    required bool isSelected,
+    required bool isCorrectChoice,
+    required Color defaultBgColor,
+    required Color defaultBorderColor,
+    required Color themeColor,
+  }) {
+    Widget? statusBadge;
+
+    if (_hasAnswered) {
+      if (isSelected) {
+        if (isCorrectChoice) {
+          statusBadge = const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 24);
+        } else {
+          statusBadge = const Icon(Icons.cancel_rounded, color: AppColors.error, size: 24);
+        }
+      } else if (isCorrectChoice) {
+        // Gợi ý đáp án đúng nếu bé chọn sai
+        statusBadge = const Icon(Icons.check_circle_outline_rounded, color: AppColors.success, size: 22);
+      }
+    }
+
+    return _GlowingTouchBox(
+      isSelected: isSelected,
+      isCorrectChoice: isCorrectChoice,
+      hasAnswered: _hasAnswered,
+      defaultBgColor: defaultBgColor,
+      defaultBorderColor: defaultBorderColor,
+      themeColor: themeColor,
+      borderRadius: BorderRadius.circular(16),
+      onTap: _hasAnswered ? null : () => _handleAnswer(index, label),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min, // Tự động co giãn theo nội dung
+          children: [
+            // Top tag: label + status icon
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: defaultBorderColor.withValues(alpha: 0.8)),
+                  ),
+                  child: Text(
+                    label,
+                    style: GoogleFonts.baloo2(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.bold,
+                      color: themeColor,
+                    ),
+                  ),
+                ),
+                if (statusBadge != null)
+                  statusBadge
+                else
+                  const SizedBox(width: 22, height: 22),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Item grid: hiển thị trong Wrap gọn gàng
+            ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 110),
+              child: Center(
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: items.map((char) {
+                    return Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        char,
+                        style: const TextStyle(fontSize: 26),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            // Hiển thị số lượng đếm khi đã trả lời
+            AnimatedOpacity(
+              opacity: _hasAnswered ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 250),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: defaultBorderColor),
+                ),
+                child: Text(
+                  '${items.length} vật phẩm',
+                  style: GoogleFonts.baloo2(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: themeColor,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEqualButton({
+    required bool isSelected,
+    required bool isCorrectChoice,
+  }) {
+    Color btnColor = Colors.white;
+    Color borderColor = const Color(0xFFE2E8F0);
+    Color iconColor = const Color(0xFF475569);
+
+    if (_hasAnswered) {
+      if (isSelected) {
+        if (isCorrectChoice) {
+          btnColor = const Color(0xFFECFDF5);
+          borderColor = AppColors.success;
+          iconColor = AppColors.success;
+        } else {
+          btnColor = const Color(0xFFFFF1F2);
+          borderColor = AppColors.error;
+          iconColor = AppColors.error;
+        }
+      } else if (isCorrectChoice) {
+        borderColor = AppColors.success;
+        iconColor = AppColors.success;
+      }
+    }
+
+    return Center(
+      child: _GlowingTouchBox(
+        isSelected: isSelected,
+        isCorrectChoice: isCorrectChoice,
+        hasAnswered: _hasAnswered,
+        defaultBgColor: btnColor,
+        defaultBorderColor: borderColor,
+        themeColor: AppColors.primary,
+        borderRadius: BorderRadius.circular(16),
+        onTap: _hasAnswered ? null : () => _handleAnswer(2, 'Bằng nhau'),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '=',
+                style: GoogleFonts.baloo2(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                  color: iconColor,
+                  height: 1.0,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Bằng\nnhau',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.baloo2(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: iconColor,
+                  height: 1.1,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Widget hộp tương tác có hiệu ứng viền sáng chạy quanh khung (Glow Sweep Border)
+class _GlowingTouchBox extends StatefulWidget {
+  final Widget child;
+  final bool isSelected;
+  final bool isCorrectChoice;
+  final bool hasAnswered;
+  final Color defaultBgColor;
+  final Color defaultBorderColor;
+  final Color themeColor;
+  final BorderRadius borderRadius;
+  final VoidCallback? onTap;
+
+  const _GlowingTouchBox({
+    required this.child,
+    required this.isSelected,
+    required this.isCorrectChoice,
+    required this.hasAnswered,
+    required this.defaultBgColor,
+    required this.defaultBorderColor,
+    required this.themeColor,
+    required this.borderRadius,
+    this.onTap,
+  });
+
+  @override
+  State<_GlowingTouchBox> createState() => _GlowingTouchBoxState();
+}
+
+class _GlowingTouchBoxState extends State<_GlowingTouchBox>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _glowController;
+  bool _isHovered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _glowController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
+    );
+    if (widget.isSelected) {
+      _glowController.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _GlowingTouchBox oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final shouldAnimate = widget.isSelected || _isHovered;
+    if (shouldAnimate && !_glowController.isAnimating) {
+      _glowController.repeat();
+    } else if (!shouldAnimate && _glowController.isAnimating) {
+      _glowController.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _glowController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Color bgColor = widget.defaultBgColor;
+    Color activeGlowColor = widget.themeColor;
+    Color staticBorderColor = widget.defaultBorderColor;
+
+    if (widget.hasAnswered) {
+      if (widget.isSelected) {
+        if (widget.isCorrectChoice) {
+          bgColor = const Color(0xFFECFDF5);
+          activeGlowColor = AppColors.success;
+          staticBorderColor = AppColors.success;
+        } else {
+          bgColor = const Color(0xFFFFF1F2);
+          activeGlowColor = AppColors.error;
+          staticBorderColor = AppColors.error;
+        }
+      } else if (widget.isCorrectChoice) {
+        staticBorderColor = AppColors.success;
+        activeGlowColor = AppColors.success;
+      }
+    }
+
+    final isGlowActive = _isHovered || widget.isSelected;
+
+    return MouseRegion(
+      onEnter: (_) {
+        setState(() => _isHovered = true);
+        if (!_glowController.isAnimating) _glowController.repeat();
+      },
+      onExit: (_) {
+        setState(() => _isHovered = false);
+        if (!widget.isSelected && _glowController.isAnimating) {
+          _glowController.stop();
+        }
+      },
+      child: GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedBuilder(
+          animation: _glowController,
+          builder: (context, _) {
+            return CustomPaint(
+              painter: isGlowActive
+                  ? _GlowSweepBorderPainter(
+                      progress: _glowController.value,
+                      glowColor: activeGlowColor,
+                      borderRadius: widget.borderRadius,
+                      borderWidth: 3.5,
+                    )
+                  : null,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: widget.borderRadius,
+                  border: isGlowActive
+                      ? null // Vẽ bằng CustomPaint viền sáng chạy
+                      : Border.all(
+                          color: staticBorderColor,
+                          width: widget.hasAnswered && widget.isCorrectChoice ? 3.0 : 2.0,
+                        ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isGlowActive
+                          ? activeGlowColor.withValues(alpha: 0.25)
+                          : Colors.black.withValues(alpha: 0.03),
+                      blurRadius: isGlowActive ? 12 : 6,
+                      spreadRadius: isGlowActive ? 2 : 0,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: widget.child,
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// CustomPainter vẽ viền ánh sáng chạy quanh khung chữ nhật
+class _GlowSweepBorderPainter extends CustomPainter {
+  final double progress;
+  final Color glowColor;
+  final BorderRadius borderRadius;
+  final double borderWidth;
+
+  _GlowSweepBorderPainter({
+    required this.progress,
+    required this.glowColor,
+    required this.borderRadius,
+    required this.borderWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) return;
+    final rect = Offset.zero & size;
+    final rrect = borderRadius.toRRect(rect);
+
+    // 1. Viền mờ nền (Base border)
+    final basePaint = Paint()
+      ..color = glowColor.withValues(alpha: 0.25)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = borderWidth;
+    canvas.drawRRect(rrect, basePaint);
+
+    // 2. Viền ánh sáng quét xoay quanh khung (Rotating Sweep Gradient)
+    final sweepPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = borderWidth + 1.0
+      ..shader = SweepGradient(
+        center: Alignment.center,
+        startAngle: 0.0,
+        endAngle: 2 * pi,
+        transform: GradientRotation(progress * 2 * pi),
+        colors: [
+          Colors.transparent,
+          glowColor.withValues(alpha: 0.2),
+          glowColor,
+          Colors.white,
+          glowColor,
+          glowColor.withValues(alpha: 0.2),
+          Colors.transparent,
+        ],
+        stops: const [0.0, 0.2, 0.45, 0.5, 0.55, 0.8, 1.0],
+      ).createShader(rect);
+
+    canvas.drawRRect(rrect, sweepPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _GlowSweepBorderPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.glowColor != glowColor ||
+        oldDelegate.borderRadius != borderRadius;
   }
 }

@@ -5,10 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/widgets/mini_game_timer.dart';
+import '../../../core/widgets/game_sound_toggle_button.dart';
 import '../../../core/providers/game_interaction_provider.dart';
 import '../../../core/services/tts_service.dart';
-import 'common/mini_game_lobby_screen.dart';
-import 'common/mini_game_how_to_play_sheet.dart';
 import 'common/mini_game_rank_banner.dart';
 import '../services/eduword_service.dart';
 import '../models/eduword_model.dart';
@@ -423,235 +422,187 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
       );
     }
 
-    return MiniGameLobbyScreen(
-      gameTitle: 'Word Scramble',
-      categoryBadge: 'Ngoại Ngữ 🇬🇧',
-      welcomeTitle: 'Chào mừng bạn đến với Word Scramble!',
-      welcomeSubtitle: 'Sắp xếp các chữ cái bị xáo trộn thành từ hoàn chỉnh',
-      starsCount: _easyStars + _mediumStars + _hardStars,
-      difficulties: [
-        GameDifficultyOption(
-          id: 'easy',
-          tabLabel: 'Dễ (4 ký tự)',
-          modeTitle: 'Chế độ Dễ (Easy Mode)',
-          modeSubtitle: 'Lý tưởng cho người mới bắt đầu hoặc học viên nhí',
-          timerTag: '10 Giây/từ',
-          wordLimitInfo: 'Tối đa 3 - 4 chữ cái (Cat, Sun, Book, Star...)',
-          timeInfo: 'Thư giãn tự do hoặc 10 giây/từ',
-          hintInfo: 'Tặng sẵn gợi ý dịch nghĩa & phát âm IPA chuẩn',
-          rewardInfo: '+10 Điểm ⭐️',
-          tipFromHocDi: 'Hãy ưu tiên tìm và xếp các nguyên âm (A, E, I, O, U) vào trước. Hầu hết các từ tiếng Anh đều cần nguyên âm làm trục trung tâm để dễ đoán vần!',
-          themeColor: const Color(0xFF006D38),
-          interactivePreview: _buildScramblePreviewBox(
-            letters: ['B', 'O', 'O', 'K'],
-            meaning: 'Quyển sách',
-            ipa: '/bʊk/',
-            color: const Color(0xFF00B460),
-          ),
-        ),
-        GameDifficultyOption(
-          id: 'medium',
-          tabLabel: 'Trung Bình',
-          modeTitle: 'Chế độ Trung Bình (Medium Mode)',
-          modeSubtitle: 'Thử thách nâng cao với các từ vựng 5 đến 8 chữ cái',
-          timerTag: '10 Giây/từ',
-          wordLimitInfo: 'Từ 5 - 8 chữ cái (School, Planet, Friend...)',
-          timeInfo: '10 giây tốc độ cao cho mỗi từ',
-          hintInfo: 'Gợi ý mở chữ cái đầu và dịch nghĩa tiếng Việt',
-          rewardInfo: '+20 Điểm ⭐️',
-          tipFromHocDi: 'Chú ý các tiền tố (un-, re-) hoặc hậu tố (-ing, -ed, -ly) để nhận diện nhanh các nhóm chữ cái đi cùng nhau!',
-          themeColor: const Color(0xFF00629D),
-          interactivePreview: _buildScramblePreviewBox(
-            letters: ['S', 'C', 'H', 'O', 'O', 'L'],
-            meaning: 'Trường học',
-            ipa: '/skuːl/',
-            color: const Color(0xFF0047AB),
-          ),
-        ),
-        GameDifficultyOption(
-          id: 'hard',
-          tabLabel: 'Cao Thủ C1',
-          modeTitle: 'Chế độ Cao Thủ C1 (Advanced)',
-          modeSubtitle: 'Chinh phục các từ vựng học thuật C1 chuẩn quốc tế',
-          timerTag: '10 Giây/từ',
-          wordLimitInfo: 'Từ vựng học thuật cao cấp chuẩn CEFR C1',
-          timeInfo: '10 giây căng thẳng và kịch tính',
-          hintInfo: 'Giải nghĩa chuyên sâu bằng tiếng Anh',
-          rewardInfo: '+35 Điểm ⭐️',
-          tipFromHocDi: 'Đoán từ dựa trên gốc từ ngữ nghĩa (root words) và phân loại từ (danh từ, tính từ) để xếp chữ chính xác!',
-          themeColor: const Color(0xFF885200),
-          interactivePreview: _buildScramblePreviewBox(
-            letters: ['A', 'C', 'A', 'D', 'E', 'M', 'I', 'C'],
-            meaning: 'Thuộc học thuật',
-            ipa: '/ˌæk.əˈdem.ɪk/',
-            color: const Color(0xFF885200),
-          ),
-        ),
-      ],
-      tutorialSteps: [
-        const GameTutorialStep(
-          stepNumber: 1,
-          icon: Icons.visibility_rounded,
-          themeColor: Color(0xFF00629D),
-          title: 'Nhìn chữ bị xáo trộn',
-          description: 'Quan sát các chữ cái bị đảo lộn và đọc gợi ý nghĩa của từ bên dưới.',
-        ),
-        const GameTutorialStep(
-          stepNumber: 2,
-          icon: Icons.touch_app_rounded,
-          themeColor: Color(0xFF885200),
-          title: 'Chạm hoặc kéo vào ô',
-          description: 'Chạm lần lượt các chữ cái theo đúng thứ tự đánh vần để đưa vào ô đáp án.',
-        ),
-        const GameTutorialStep(
-          stepNumber: 3,
-          icon: Icons.military_tech_rounded,
-          themeColor: Color(0xFF006D38),
-          title: 'Nghe đọc & nhận thưởng',
-          description: 'Ghép đúng trong 10 giây để được nghe phát âm chuẩn và nhận thêm Điểm & Sao!',
-        ),
-      ],
-      onPlay: (diff) {
-        if (diff.id == 'hard') {
-          _selectDifficulty(ScrambleDifficulty.hard);
-        } else if (diff.id == 'medium') {
-          _selectDifficulty(ScrambleDifficulty.medium);
-        } else {
-          _selectDifficulty(ScrambleDifficulty.easy);
-        }
-      },
-    );
-  }
-
-  Widget _buildScramblePreviewBox({
-    required List<String> letters,
-    required String meaning,
-    required String ipa,
-    required Color color,
-  }) {
-    final sampleWord = letters.join('');
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FA),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.black87),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: Text(
-                'MINH HỌA: GHÉP TỪ ${letters.length} KÝ TỰ',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.baloo2(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF64748B),
-                  letterSpacing: 0.5,
-                ),
+            Text(
+              'Word Scramble',
+              style: GoogleFonts.baloo2(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: const Color(0xFF2C3E50),
               ),
             ),
             const SizedBox(width: 8),
-            ValueListenableBuilder<bool>(
-              valueListenable: TtsService.instance.isSpeakingNotifier,
-              builder: (context, isSpeaking, _) {
-                return Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => TtsService.instance.speakEnglish(sampleWord),
-                    borderRadius: BorderRadius.circular(16),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isSpeaking ? Icons.volume_up_rounded : Icons.volume_down_rounded,
-                            size: 18,
-                            color: isSpeaking ? const Color(0xFF00B460) : AppColors.primary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Phát âm',
-                            style: GoogleFonts.baloo2(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: isSpeaking ? const Color(0xFF00B460) : AppColors.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.blueGrey.shade100,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Icon(Icons.sort_by_alpha_rounded, size: 20, color: Colors.blueGrey),
             ),
           ],
         ),
-        const SizedBox(height: 10),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 8),
+            child: GameSoundToggleButton(),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisAlignment: MainAxisAlignment.center,
-            children: letters.map((char) {
-              return Container(
-                width: 38,
-                height: 44,
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.35),
-                      blurRadius: 6,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Text(
-                    char,
-                    style: GoogleFonts.baloo2(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+            children: [
+              Center(
+                child: Image.asset(
+                  'ImageFolder/wordscramble.webp', 
+                  height: 120,
+                  errorBuilder: (context, error, stackTrace) => const Icon(
+                    Icons.sort_by_alpha_rounded,
+                    size: 80,
+                    color: AppColors.primary,
                   ),
                 ),
-              );
-            }).toList(),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Please Select Mode',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.baloo2(
+                  fontSize: 22, 
+                  fontWeight: FontWeight.w600, 
+                  color: const Color(0xFF2C3E50),
+                ),
+              ),
+              const SizedBox(height: 32),
+              _buildDifficultyButton(
+                title: 'Easy',
+                subtitle: '3–5 letters, 10s / word',
+                difficulty: ScrambleDifficulty.easy,
+                backgroundColor: const Color(0xFFE4F3E4),
+                iconColor: const Color(0xFF4CAF50),
+                stars: _easyStars,
+              ),
+              const SizedBox(height: 16),
+              _buildDifficultyButton(
+                title: 'Medium',
+                subtitle: '6–10 letters, 10s / word',
+                difficulty: ScrambleDifficulty.medium,
+                backgroundColor: const Color(0xFFFDEBCE),
+                iconColor: const Color(0xFFF59E0B),
+                stars: _mediumStars,
+              ),
+              const SizedBox(height: 16),
+              _buildDifficultyButton(
+                title: 'Hard',
+                subtitle: '> 10 letters, 10s / word',
+                difficulty: ScrambleDifficulty.hard,
+                backgroundColor: const Color(0xFFFFE5E5),
+                iconColor: const Color(0xFFEF4444),
+                stars: _hardStars,
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 10),
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => TtsService.instance.speakEnglish(sampleWord),
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.volume_up_rounded, size: 16, color: Color(0xFF00B460)),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Nghĩa hiển thị sẵn: "$meaning" (Phát âm chuẩn $ipa)',
-                    style: GoogleFonts.baloo2(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1E293B),
+      ),
+    );
+  }
+
+  Widget _buildDifficultyButton({
+    required String title,
+    required String subtitle,
+    required ScrambleDifficulty difficulty,
+    required Color backgroundColor,
+    required Color iconColor,
+    required int stars,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _selectDifficulty(difficulty),
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: iconColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.sort_by_alpha_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        subtitle,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(
+                    3,
+                    (index) => Padding(
+                      padding: const EdgeInsets.only(left: 2),
+                      child: Icon(
+                        Icons.star_rounded,
+                        color: index < stars ? iconColor.withValues(alpha: 0.6) : Colors.transparent,
+                        size: 20,
+                      ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
-      ],
+      ),
     );
   }
 
@@ -664,13 +615,8 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
     final double maxTileWidth = (screenWidth - 64 - (wordLength * 8)) / wordLength;
     final double tileSize = maxTileWidth.clamp(24.0, 52.0);
 
-    // Color code the timer bar based on remaining time
-    Color timerColor = AppColors.success;
-    if (_secondsRemaining <= 3) {
-      timerColor = AppColors.error;
-    } else if (_secondsRemaining <= 6) {
-      timerColor = AppColors.accent;
-    }
+    // Deep bold red timer for prominent visibility
+    const Color timerColor = Color(0xFFDC2626);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -711,6 +657,7 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
           },
         ),
         actions: [
+          const GameSoundToggleButton(),
           // Countdown Timer chuẩn Flashcard Speedrun
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
@@ -722,6 +669,7 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
                   remainingSeconds: _secondsRemaining,
                   totalSeconds: 10,
                   size: 38,
+                  customColor: timerColor,
                 ),
               ),
             ),
@@ -736,8 +684,8 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
             builder: (context, child) {
               return LinearProgressIndicator(
                 value: 1.0 - _timerController.value,
-                backgroundColor: AppColors.border,
-                valueColor: AlwaysStoppedAnimation<Color>(timerColor),
+                backgroundColor: const Color(0xFFFEE2E2),
+                valueColor: const AlwaysStoppedAnimation<Color>(timerColor),
                 minHeight: 6,
               );
             },

@@ -1,12 +1,9 @@
 import 'dart:math';
 
 enum SudokuDifficulty {
-  easy('Dễ', 42),
-  medium('Trung bình', 34),
-  hard('Khó', 29),
-  expert('Chuyên gia', 25),
-  master('Bậc thầy', 22),
-  extreme('Cực khó', 19);
+  easy('Dễ', 40),
+  medium('Trung bình', 32),
+  hard('Khó', 26);
 
   final String label;
   final int targetClues;
@@ -47,7 +44,7 @@ class SudokuGenerator {
     final board = List.generate(9, (r) => List<int>.from(solution[r]));
 
     // 3. Đục lỗ có kiểm tra nghiệm duy nhất để đạt số clue mục tiêu
-    _removeNumbersToTarget(board, difficulty.targetClues);
+    _removeNumbersToTarget(board, difficulty);
 
     return SudokuPuzzle(
       initialBoard: board,
@@ -105,30 +102,71 @@ class SudokuGenerator {
   }
 
   /// Đục lỗ dần từ 81 ô xuống mục tiêu, đảm bảo luôn có duy nhất 1 nghiệm
-  static void _removeNumbersToTarget(List<List<int>> board, int targetClues) {
-    // Danh sách tất cả các tọa độ ô (0..80) xáo trộn ngẫu nhiên
-    final positions = List<int>.generate(81, (i) => i)..shuffle(_rand);
+  static void _removeNumbersToTarget(List<List<int>> board, SudokuDifficulty difficulty) {
+    final int minBoxClues = switch (difficulty) {
+      SudokuDifficulty.easy => 4,
+      SudokuDifficulty.medium => 3,
+      SudokuDifficulty.hard => 2,
+    };
 
     int currentClues = 81;
+    final targetClues = difficulty.targetClues;
 
-    for (final pos in positions) {
-      if (currentClues <= targetClues) break;
+    // Quét 2 lượt để đạt số ô gợi ý chuẩn xác, đảm bảo độ khó thực chất
+    for (int pass = 0; pass < 2; pass++) {
+      final positions = List<int>.generate(81, (i) => i)..shuffle(_rand);
 
-      final r = pos ~/ 9;
-      final c = pos % 9;
+      for (final pos in positions) {
+        if (currentClues <= targetClues) break;
 
-      final backup = board[r][c];
-      board[r][c] = 0;
+        final r = pos ~/ 9;
+        final c = pos % 9;
+        if (board[r][c] == 0) continue;
 
-      // Đếm số nghiệm: nếu nghiệm duy nhất == 1 thì giữ lại việc xóa ô này
-      final solutions = _countSolutions(board, limit: 2);
-      if (solutions == 1) {
-        currentClues--;
-      } else {
-        // Có nhiều hơn 1 nghiệm -> khôi phục lại ô
-        board[r][c] = backup;
+        // Giữ số ô tối thiểu cho từng khối 3x3, hàng và cột để ma trận không bị mất cân đối
+        if (_countBoxClues(board, r ~/ 3, c ~/ 3) <= minBoxClues) continue;
+        if (_countRowClues(board, r) <= 2) continue;
+        if (_countColClues(board, c) <= 2) continue;
+
+        final backup = board[r][c];
+        board[r][c] = 0;
+
+        // Đếm số nghiệm: CHẮC CHẮN LUÔN CÓ DUY NHẤT 1 NGHIỆM HỢP LỆ
+        final solutions = _countSolutions(board, limit: 2);
+        if (solutions == 1) {
+          currentClues--;
+        } else {
+          // Nếu có nhiều nghiệm hoặc không có nghiệm, khôi phục lại ô
+          board[r][c] = backup;
+        }
       }
     }
+  }
+
+  static int _countBoxClues(List<List<int>> board, int boxR, int boxC) {
+    int count = 0;
+    for (int r = 0; r < 3; r++) {
+      for (int c = 0; c < 3; c++) {
+        if (board[boxR * 3 + r][boxC * 3 + c] != 0) count++;
+      }
+    }
+    return count;
+  }
+
+  static int _countRowClues(List<List<int>> board, int r) {
+    int count = 0;
+    for (int c = 0; c < 9; c++) {
+      if (board[r][c] != 0) count++;
+    }
+    return count;
+  }
+
+  static int _countColClues(List<List<int>> board, int c) {
+    int count = 0;
+    for (int r = 0; r < 9; r++) {
+      if (board[r][c] != 0) count++;
+    }
+    return count;
   }
 
   /// Đếm số nghiệm của bảng hiện tại (dừng lại khi đếm tới `limit`)

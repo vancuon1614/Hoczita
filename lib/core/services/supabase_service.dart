@@ -860,4 +860,49 @@ class SupabaseService {
       throw Exception('Failed to get rank: $e');
     }
   }
+
+  Future<Map<String, dynamic>?> getTodayUserRank() async {
+    if (isOfflineDemoMode) {
+      return {
+        'rank': 1,
+        'totalPlayersToday': 1,
+      };
+    }
+    try {
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) return null;
+
+      final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+      final response = await client
+          .from(SupabaseConstants.tableDailyCheckins)
+          .select('profile_id, found_paths, updated_at')
+          .eq('checkin_date', todayStr);
+
+      List<Map<String, dynamic>> players = List<Map<String, dynamic>>.from(response);
+      if (players.isEmpty) return null;
+
+      players.sort((a, b) {
+        int pathsA = a['found_paths'] as int? ?? 0;
+        int pathsB = b['found_paths'] as int? ?? 0;
+        if (pathsA != pathsB) return pathsB.compareTo(pathsA);
+
+        String timeA = a['updated_at']?.toString() ?? '';
+        String timeB = b['updated_at']?.toString() ?? '';
+        return timeA.compareTo(timeB);
+      });
+
+      for (int i = 0; i < players.length; i++) {
+        if (players[i]['profile_id'] == userId) {
+          return {
+            'rank': i + 1,
+            'totalPlayersToday': players.length,
+          };
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('getTodayUserRank error: $e');
+      return null;
+    }
+  }
 }

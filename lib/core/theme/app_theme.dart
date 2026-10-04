@@ -45,7 +45,7 @@ class AppTheme {
         surface: AppColors.surface,
         error: AppColors.error,
       ),
-      textTheme: GoogleFonts.outfitTextTheme().copyWith(
+      textTheme: GoogleFonts.baloo2TextTheme().copyWith(
         titleLarge: GoogleFonts.baloo2(
           color: AppColors.textPrimary,
           fontWeight: FontWeight.bold,

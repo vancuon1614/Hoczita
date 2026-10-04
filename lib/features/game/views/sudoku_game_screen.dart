@@ -340,11 +340,8 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
   int _calculateScore() {
     int baseScore = switch (_difficulty) {
       SudokuDifficulty.easy => 150,
-      SudokuDifficulty.medium => 250,
-      SudokuDifficulty.hard => 400,
-      SudokuDifficulty.expert => 600,
-      SudokuDifficulty.master => 850,
-      SudokuDifficulty.extreme => 1200,
+      SudokuDifficulty.medium => 300,
+      SudokuDifficulty.hard => 500,
     };
 
     return (baseScore - (_secondsElapsed ~/ 2) - (_mistakesCount * 15)).clamp(50, 2000);
@@ -385,7 +382,7 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
                 style: GoogleFonts.baloo2(
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
-                  color: isWinner ? const Color(0xFF16A34A) : const Color(0xFFEA580C),
+                  color: isWinner ? AppColors.success : AppColors.accent,
                 ),
               ),
               const SizedBox(height: 12),
@@ -396,7 +393,7 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
                 textAlign: TextAlign.center,
                 style: GoogleFonts.baloo2(
                   fontSize: 16,
-                  color: const Color(0xFF475569),
+                  color: AppColors.textSecondary,
                 ),
               ),
               const SizedBox(height: 20),
@@ -438,7 +435,7 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
                         _changeDifficulty(_difficulty);
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1D4ED8),
+                        backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -458,9 +455,9 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
   Widget _buildStatPill(String title, String val) {
     return Column(
       children: [
-        Text(title, style: GoogleFonts.baloo2(fontSize: 13, color: Colors.grey.shade600)),
+        Text(title, style: GoogleFonts.baloo2(fontSize: 13, color: AppColors.textSecondary)),
         const SizedBox(height: 2),
-        Text(val, style: GoogleFonts.baloo2(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+        Text(val, style: GoogleFonts.baloo2(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
       ],
     );
   }
@@ -482,106 +479,162 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
     return count;
   }
 
+  void _showQuitConfirmation() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Tạm dừng ván Sudoku?', style: GoogleFonts.baloo2(fontWeight: FontWeight.bold)),
+        content: Text(
+          'Tiến trình ván chơi hiện tại sẽ không được lưu.',
+          style: GoogleFonts.baloo2(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Giải tiếp', style: GoogleFonts.baloo2(fontWeight: FontWeight.bold)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pop(context);
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: Text('Thoát', style: GoogleFonts.baloo2(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _resetGame() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Làm lại ván mới?', style: GoogleFonts.baloo2(fontWeight: FontWeight.bold)),
+        content: Text(
+          'Tiến trình hiện tại sẽ bị xóa và tạo đề bài mới.',
+          style: GoogleFonts.baloo2(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Hủy', style: GoogleFonts.baloo2(fontWeight: FontWeight.bold)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _changeDifficulty(_difficulty);
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+            child: Text('Làm lại', style: GoogleFonts.baloo2(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isMultiplayer = widget.multiplayerService != null && widget.multiplayerService!.mode != MultiplayerMode.solo;
     final selectedNum = (_selectedRow != null && _selectedCol != null) ? _board[_selectedRow!][_selectedCol!].value : 0;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          isMultiplayer ? 'Đấu Trường Sudoku' : 'Sudoku Trí Tuệ',
-          style: GoogleFonts.baloo2(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        actions: [
-          GameCountUpTimer(elapsedSeconds: _secondsElapsed),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // 1. THANH CHỌN ĐỘ KHÓ (CHÍNH XÁC THEO ẢNH MẪU)
-            if (!isMultiplayer) _buildDifficultyBar() else _buildMultiplayerVsBar(),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _showQuitConfirmation();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: Column(
+            children: [
+              // 1. TOP BAR chuẩn đồng bộ với các game khác
+              _buildTopBar(isMultiplayer),
 
-            const SizedBox(height: 8),
+              // Thanh đối kháng (chỉ hiển thị khi multiplayer)
+              if (isMultiplayer) ...[
+                const SizedBox(height: 4),
+                _buildMultiplayerVsBar(),
+              ],
 
-            // 2. MA TRẬN BÀN CỜ 9x9 (THEO CHUẨN THIẾT KẾ ẢNH MẪU)
-            Expanded(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: AspectRatio(
-                    aspectRatio: 1.0,
-                    child: _buildSudokuGrid(selectedNum),
+              const SizedBox(height: 8),
+
+              // 2. MA TRẬN BÀN CỜ 9x9
+              Expanded(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: AspectRatio(
+                      aspectRatio: 1.0,
+                      child: _buildSudokuGrid(selectedNum),
+                    ),
                   ),
                 ),
               ),
-            ),
 
-            const SizedBox(height: 12),
+              const SizedBox(height: 12),
 
-            // 3. THANH ĐIỀU KHIỂN (Undo, Erase, Notes, Hint)
-            _buildControlBar(),
+              // 3. THANH ĐIỀU KHIỂN (Undo, Erase, Notes, Hint)
+              _buildControlBar(),
 
-            const SizedBox(height: 10),
+              const SizedBox(height: 10),
 
-            // 4. BÀN PHÍM SỐ 1 - 9
-            _buildNumberKeypad(),
+              // 4. BÀN PHÍM SỐ 1 - 9
+              _buildNumberKeypad(),
 
-            const SizedBox(height: 16),
-          ],
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  /// 1. Thanh chọn độ khó chuẩn như ảnh mẫu:
-  /// Độ khó: Dễ  Trung bình  Khó  Chuyên gia  Bậc thầy  Cực khó
-  Widget _buildDifficultyBar() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      physics: const BouncingScrollPhysics(),
-      child: Row(
+  Widget _buildTopBar(bool isMultiplayer) {
+    return SizedBox(
+      height: 52,
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          Text(
-            'Độ khó:',
-            style: GoogleFonts.baloo2(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF64748B),
+          // 1. Tiêu đề căn chính giữa màn hình
+          Center(
+            child: Text(
+              isMultiplayer ? 'Đấu Trường Sudoku' : 'Sudoku Trí Tuệ',
+              style: GoogleFonts.baloo2(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
-          const SizedBox(width: 12),
-          ...SudokuDifficulty.values.map((diff) {
-            final isSelected = diff == _difficulty;
-            return GestureDetector(
-              onTap: () => _changeDifficulty(diff),
-              child: Container(
-                margin: const EdgeInsets.only(right: 16),
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Text(
-                  diff.label,
-                  style: GoogleFonts.baloo2(
-                    fontSize: 14.5,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: isSelected ? const Color(0xFF1D4ED8) : const Color(0xFF64748B),
+
+          // 2. Nút quay lại góc trái
+          Positioned(
+            left: 4,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+              onPressed: _showQuitConfirmation,
+            ),
+          ),
+
+          // 3. Reset ván + Đồng hồ đếm thời gian (góc phải)
+          Positioned(
+            right: 8,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!isMultiplayer)
+                  IconButton(
+                    icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary, size: 24),
+                    tooltip: 'Làm lại',
+                    onPressed: _resetGame,
                   ),
-                ),
-              ),
-            );
-          }),
+                const SizedBox(width: 4),
+                GameCountUpTimer(elapsedSeconds: _secondsElapsed),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -604,9 +657,9 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [
@@ -614,9 +667,9 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Bạn: ${(myProgress * 100).toInt()}%',
-                  style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, color: const Color(0xFF1D4ED8))),
+                  style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, color: AppColors.primary)),
               Text('${opponent?.name ?? "Đối thủ"}: ${(opProgress * 100).toInt()}%',
-                  style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, color: const Color(0xFFEA580C))),
+                  style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, color: AppColors.accent)),
             ],
           ),
           const SizedBox(height: 4),
@@ -624,13 +677,13 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
             children: [
               Container(
                 height: 8,
-                decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(4)),
+                decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(4)),
               ),
               FractionallySizedBox(
                 widthFactor: myProgress,
                 child: Container(
                   height: 8,
-                  decoration: BoxDecoration(color: const Color(0xFF1D4ED8), borderRadius: BorderRadius.circular(4)),
+                  decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(4)),
                 ),
               ),
             ],
@@ -648,7 +701,7 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFF1E293B), width: 2.5),
+        border: Border.all(color: AppColors.textPrimary, width: 2.5),
       ),
       child: Column(
         children: List.generate(9, (r) {
@@ -658,7 +711,7 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
               decoration: BoxDecoration(
                 border: Border(
                   bottom: BorderSide(
-                    color: isThickBottom ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1),
+                    color: isThickBottom ? AppColors.textPrimary : AppColors.border,
                     width: isThickBottom ? 2.5 : 1.0,
                   ),
                 ),
@@ -671,7 +724,7 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
                       decoration: BoxDecoration(
                         border: Border(
                           right: BorderSide(
-                            color: isThickRight ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1),
+                            color: isThickRight ? AppColors.textPrimary : AppColors.border,
                             width: isThickRight ? 2.5 : 1.0,
                           ),
                         ),
@@ -698,20 +751,20 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
 
     Color bgColor = Colors.white;
     if (hasConflict) {
-      bgColor = const Color(0xFFFEE2E2); // Đỏ nhạt khi lỗi trùng
+      bgColor = AppColors.error.withValues(alpha: 0.12); // Đỏ nhạt khi lỗi trùng
     } else if (isSelected) {
-      bgColor = const Color(0xFFDCEAFB); // Xanh lam nhạt khi đang chọn
+      bgColor = AppColors.primaryLight; // Xanh lam nhạt khi đang chọn
     } else if (isSameNumber) {
-      bgColor = const Color(0xFFCFE2F9); // Xanh highlight chuẩn như ảnh mẫu
+      bgColor = AppColors.primary.withValues(alpha: 0.12); // Xanh highlight cùng số
     } else if (isRelated) {
-      bgColor = const Color(0xFFF8FAFC); // Rất nhạt cho hàng/cột/khối
+      bgColor = AppColors.background; // Rất nhạt cho hàng/cột/khối
     }
 
-    Color textColor = const Color(0xFF0F172A); // Đen navy sâu cho đề bài
+    Color textColor = AppColors.textPrimary; // Đen navy sâu cho đề bài
     if (hasConflict) {
-      textColor = const Color(0xFFDC2626);
+      textColor = AppColors.error;
     } else if (!cell.isClue && cell.value != 0) {
-      textColor = const Color(0xFF2563EB); // Xanh dương rực rỡ cho người chơi điền
+      textColor = AppColors.secondary; // Xanh dương cho người chơi điền
     }
 
     return InkWell(
@@ -749,7 +802,7 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
                 style: GoogleFonts.baloo2(
                   fontSize: 9,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF64748B),
+                  color: AppColors.textSecondary,
                 ),
               );
             }),
@@ -806,8 +859,8 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
   }) {
     final enabled = onTap != null;
     final color = isActive
-        ? const Color(0xFF1D4ED8)
-        : (enabled ? const Color(0xFF334155) : Colors.grey.shade400);
+        ? AppColors.primary
+        : (enabled ? AppColors.textPrimary : Colors.grey.shade400);
 
     return InkWell(
       onTap: onTap,
@@ -824,7 +877,7 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: isActive ? const Color(0xFFEFF6FF) : Colors.grey.shade100,
+                    color: isActive ? AppColors.primaryLight : Colors.grey.shade100,
                     shape: BoxShape.circle,
                   ),
                   child: Icon(icon, color: color, size: 24),
@@ -835,13 +888,13 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
                     right: -4,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFEF4444),
+                      decoration: BoxDecoration(
+                        color: AppColors.error,
                         shape: BoxShape.circle,
                       ),
                       child: Text(
                         badge,
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                        style: GoogleFonts.baloo2(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -880,14 +933,23 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
                 onTap: isCompleted ? null : () => _onNumberInput(num),
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
-                  height: 54,
+                  height: 52,
                   decoration: BoxDecoration(
-                    color: isCompleted ? Colors.grey.shade100 : const Color(0xFFF1F5F9),
+                    color: isCompleted ? Colors.black.withValues(alpha: 0.04) : Colors.white,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isCompleted ? Colors.transparent : Colors.grey.shade300,
-                      width: 1,
+                      color: isCompleted ? Colors.transparent : AppColors.border,
+                      width: 1.2,
                     ),
+                    boxShadow: isCompleted
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                   ),
                   alignment: Alignment.center,
                   child: Text(
@@ -895,7 +957,9 @@ class _SudokuGameScreenState extends ConsumerState<SudokuGameScreen> {
                     style: GoogleFonts.baloo2(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: isCompleted ? Colors.grey.shade400 : const Color(0xFF1E293B),
+                      color: isCompleted
+                          ? AppColors.textSecondary.withValues(alpha: 0.4)
+                          : AppColors.textPrimary,
                     ),
                   ),
                 ),

@@ -10,9 +10,11 @@ import 'memory_match_game_screen.dart';
 import 'math_crossword_game_screen.dart';
 import 'english_crossword_game_screen.dart';
 import 'word_scramble_game_screen.dart';
-import 'magic_words_lobby_screen.dart';
+import 'magic_words_game_screen.dart';
 import 'magic_number_path_game_screen.dart';
 import 'sudoku_lobby_screen.dart';
+import 'multiplication_table_game_screen.dart';
+import '../../../core/widgets/game_sound_toggle_button.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 
@@ -38,6 +40,7 @@ class _GameTabState extends ConsumerState<GameTab> {
     'magic_words': 0,
     'magic_number_path': 0,
     'sudoku_medium': 0,
+    'multiplication_table': 0,
   };
   bool _isLoading = true;
 
@@ -86,9 +89,21 @@ class _GameTabState extends ConsumerState<GameTab> {
         'math_crossword': getModeStars('math_crossword'),
         'english_crossword': getModeStars('english_crossword'),
         'word_scramble': getModeStars('word_scramble'),
-        'magic_words': tempStarsMap['magic_words'] ?? 0,
+        'magic_words': getModeStars('magic_words') > 0
+            ? getModeStars('magic_words')
+            : (tempStarsMap['magic_words'] ?? 0),
         'magic_number_path': tempStarsMap['magic_number_path'] ?? 0,
         'sudoku_medium': tempStarsMap['sudoku_medium'] ?? (tempStarsMap['sudoku_easy'] ?? 0),
+        'multiplication_table': () {
+          int maxS = 0;
+          for (final k in tempStarsMap.keys) {
+            if (k.startsWith('multiplication_table')) {
+              final s = tempStarsMap[k] ?? 0;
+              if (s > maxS) maxS = s;
+            }
+          }
+          return maxS;
+        }(),
       };
 
       if (mounted) {
@@ -123,10 +138,29 @@ class _GameTabState extends ConsumerState<GameTab> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(
-            'Hệ thống Mini-Game 🎮',
-            style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Hệ thống Mini-Game',
+                style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              ),
+              const SizedBox(width: 8),
+              Image.asset(
+                'ImageFolder/store_mini_games.gif',
+                width: 30,
+                height: 30,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => const Text('🎮'),
+              ),
+            ],
           ),
+          actions: const [
+            Padding(
+              padding: EdgeInsets.only(right: 12),
+              child: GameSoundToggleButton(),
+            ),
+          ],
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(60),
             child: Container(
@@ -261,14 +295,14 @@ class _GameTabState extends ConsumerState<GameTab> {
           _buildGameCard(
             context: context,
             title: 'Magic Words',
-            subtitle: 'Tìm 4 từ ẩn. Dùng mỗi ô chữ đúng một lần nhé!',
+            subtitle: 'Tìm các từ ẩn trên ma trận chữ với 3 cấp độ Easy, Medium và Hard.',
             icon: Icons.font_download_rounded,
             color: Colors.indigo,
             stars: _highestStars['magic_words'] ?? 0,
             animationType: GameAnimationType.pulse,
-            imagePath: 'ImageFolder/wordscramble.webp',
+            imagePath: 'ImageFolder/magic_word.gif',
             onTap: () => _playGame(
-              const MagicWordsLobbyScreen(),
+              const MagicWordsGameScreen(),
             ),
           ),
                 ],
@@ -369,7 +403,7 @@ class _GameTabState extends ConsumerState<GameTab> {
             color: Colors.green,
             stars: _highestStars['magic_number_path'] ?? 0,
             animationType: GameAnimationType.pulse,
-            imagePath: 'ImageFolder/crossword.gif', // Placeholder image
+            imagePath: 'ImageFolder/number.webp',
             onTap: () => _playGame(
               const MagicNumberPathGameScreen(),
             ),
@@ -378,14 +412,28 @@ class _GameTabState extends ConsumerState<GameTab> {
           _buildGameCard(
             context: context,
             title: 'Sudoku Trí Tuệ',
-            subtitle: 'Giải ma trận số 9x9 với 6 cấp độ khó, hỗ trợ đấu trường online và phòng riêng.',
+            subtitle: 'Giải ma trận số 9x9 với 6 cấp độ và chế độ đấu trường trực tuyến.',
             icon: Icons.grid_4x4_rounded,
             color: const Color(0xFF1D4ED8),
             stars: _highestStars['sudoku_medium'] ?? 0,
             animationType: GameAnimationType.swing,
-            imagePath: 'ImageFolder/crossword.gif',
+            imagePath: 'ImageFolder/sudoku.webp',
             onTap: () => _playGame(
               const SudokuLobbyScreen(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildGameCard(
+            context: context,
+            title: 'Bảng Cửu Chương',
+            subtitle: 'Thử thách chạm bóng tính nhanh bảng nhân từ 2 đến 9 kèm giọng đọc sinh động.',
+            icon: Icons.calculate_rounded,
+            color: const Color(0xFF00629D),
+            stars: _highestStars['multiplication_table'] ?? 0,
+            animationType: GameAnimationType.pulse,
+            imagePath: 'ImageFolder/Multiplication.webp',
+            onTap: () => _playGame(
+              const MultiplicationTableGameScreen(),
             ),
           ),
                 ],

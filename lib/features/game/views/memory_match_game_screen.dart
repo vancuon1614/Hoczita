@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/widgets/mini_game_timer.dart';
+import '../../../core/widgets/game_sound_toggle_button.dart';
 import '../../../core/providers/game_interaction_provider.dart';
 import '../constants/game_content.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -39,8 +40,9 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
   bool _isBusy = false;
 
   final Stopwatch _stopwatch = Stopwatch();
-  late Timer _timer;
-  String _elapsedTimeString = '0.0';
+  Timer? _timer;
+  int _secondsElapsed = 0;
+  String _elapsedTimeString = '00:00';
 
   int _matchedPairsCount = 0;
   int _score = 0;
@@ -60,7 +62,7 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
   @override
   void dispose() {
     ref.read(isGameActiveProvider.notifier).state = false;
-    _timer.cancel();
+    _timer?.cancel();
     _stopwatch.stop();
     super.dispose();
   }
@@ -98,32 +100,20 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
     cardList.shuffle();
     _cards = cardList;
 
+    _secondsElapsed = 0;
+    _elapsedTimeString = '00:00';
     _stopwatch.reset();
     _stopwatch.start();
   }
 
-  String _formatTime(double seconds) {
-    if (seconds < 60) {
-      return '${seconds.toStringAsFixed(1)}s';
-    }
-    final int totalSeconds = seconds.round();
-    if (totalSeconds < 3600) {
-      final int minutes = totalSeconds ~/ 60;
-      final int remainingSeconds = totalSeconds % 60;
-      return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
-    } else {
-      final int hours = totalSeconds ~/ 3600;
-      final int minutes = (totalSeconds % 3600) ~/ 60;
-      final int remainingSeconds = totalSeconds % 60;
-      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
-    }
-  }
-
   void _startTimer() {
-    _timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
       if (_stopwatch.isRunning) {
         setState(() {
-          _elapsedTimeString = _formatTime(_stopwatch.elapsedMilliseconds / 1000);
+          _secondsElapsed = _stopwatch.elapsed.inSeconds;
+          _elapsedTimeString = GameCountUpTimer.formatSeconds(_secondsElapsed);
         });
       }
     });
@@ -182,8 +172,11 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
 
   void _endGameAndSaveScore() async {
     _stopwatch.stop();
+    _timer?.cancel();
+    _secondsElapsed = _stopwatch.elapsed.inSeconds;
+    _elapsedTimeString = GameCountUpTimer.formatSeconds(_secondsElapsed);
 
-    final elapsedSeconds = _stopwatch.elapsedMilliseconds / 1000;
+    final elapsedSeconds = _secondsElapsed;
     int stars = 0;
     if (elapsedSeconds < 25) {
       stars = 3;
@@ -242,7 +235,9 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
           onPressed: () => _showQuitConfirmation(),
         ),
         actions: [
-          GameCountUpTimer(timeString: _elapsedTimeString),
+          const GameSoundToggleButton(),
+          GameCountUpTimer(elapsedSeconds: _secondsElapsed),
+          const SizedBox(width: 8),
         ],
       ),
       body: SafeArea(

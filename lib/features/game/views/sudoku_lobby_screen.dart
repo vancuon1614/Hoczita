@@ -319,9 +319,9 @@ class _SudokuLobbyScreenState extends State<SudokuLobbyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
@@ -331,6 +331,7 @@ class _SudokuLobbyScreenState extends State<SudokuLobbyScreen> {
           'Sudoku Trí Tuệ',
           style: GoogleFonts.baloo2(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
         ),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
@@ -343,14 +344,14 @@ class _SudokuLobbyScreenState extends State<SudokuLobbyScreen> {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF1D4ED8), Color(0xFF3B82F6)],
+                  colors: [AppColors.primary, AppColors.secondary],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF1D4ED8).withValues(alpha: 0.25),
+                    color: AppColors.primary.withValues(alpha: 0.25),
                     blurRadius: 18,
                     offset: const Offset(0, 8),
                   ),
@@ -376,14 +377,29 @@ class _SudokuLobbyScreenState extends State<SudokuLobbyScreen> {
                   ),
                   const SizedBox(width: 12),
                   Container(
-                    width: 60,
-                    height: 60,
+                    width: 64,
+                    height: 64,
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
                     ),
-                    alignment: Alignment.center,
-                    child: const Text('🔢', style: TextStyle(fontSize: 32)),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.asset(
+                        'ImageFolder/sudoku.webp',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => const Center(
+                          child: Text('🔢', style: TextStyle(fontSize: 32)),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -551,12 +567,9 @@ class _SudokuLobbyScreenState extends State<SudokuLobbyScreen> {
 
   Widget _buildDifficultyRow(SudokuDifficulty diff) {
     final color = switch (diff) {
-      SudokuDifficulty.easy => const Color(0xFF16A34A),
-      SudokuDifficulty.medium => const Color(0xFF0284C7),
-      SudokuDifficulty.hard => const Color(0xFFEA580C),
-      SudokuDifficulty.expert => const Color(0xFFDC2626),
-      SudokuDifficulty.master => const Color(0xFF9333EA),
-      SudokuDifficulty.extreme => const Color(0xFFBE123C),
+      SudokuDifficulty.easy => AppColors.success,
+      SudokuDifficulty.medium => AppColors.secondary,
+      SudokuDifficulty.hard => AppColors.error,
     };
 
     return Container(

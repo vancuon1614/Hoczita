@@ -14,6 +14,7 @@ import '../../../core/services/supabase_service.dart';
 import '../models/word_completion_entry.dart';
 import '../utils/wend_puzzle_generator.dart';
 import '../../../core/widgets/mini_game_timer.dart';
+import '../../../core/widgets/game_sound_toggle_button.dart';
 import '../../../core/services/tts_service.dart';
 
 class CompletedGridSnapshot {
@@ -104,11 +105,7 @@ class LetterCell {
 }
 
 class MagicWordsGameScreen extends ConsumerStatefulWidget {
-  final MagicWordsDifficulty difficulty;
-  const MagicWordsGameScreen({
-    super.key,
-    this.difficulty = MagicWordsDifficulty.easy,
-  });
+  const MagicWordsGameScreen({super.key});
 
   @override
   ConsumerState<MagicWordsGameScreen> createState() => _MagicWordsGameScreenState();
@@ -116,6 +113,12 @@ class MagicWordsGameScreen extends ConsumerStatefulWidget {
 
 class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
   bool _showHowToPlay = true;
+
+  MagicWordsDifficulty? _selectedDifficulty;
+  int _easyStars = 0;
+  int _mediumStars = 0;
+  int _hardStars = 0;
+  int _easyHintsRemaining = 3;
 
   late List<List<LetterCell?>> _grid; // null means empty space (wall)
   late PuzzleAnswer _puzzle;
@@ -139,6 +142,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
 
   Timer? _timer;
   int _secondsElapsed = 0;
+  int _secondsRemaining = 0;
   int _undoCount = 0;
   int _hintCount = 0;
   int _errorCount = 0;
@@ -147,19 +151,36 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
   @override
   void initState() {
     super.initState();
-    _loadPuzzle();
-    _startTimer();
-    // Ẩn chatbot khi người dùng bắt đầu thao tác mini-game
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(isGameActiveProvider.notifier).state = true;
-      ref.read(chatContextProvider.notifier).state = ChatContext(
-        screenName: 'magic_words_game',
-        data: {
-          'difficulty': widget.difficulty.name,
-          'unsolved_word_lengths': _sortedWords.where((w) => !w.isSolved).map((w) => w.word.length).toList(),
-        },
-      );
+    _loadHighestStars();
+  }
+
+  Future<void> _loadHighestStars() async {
+    final easy = await SupabaseService.instance.getHighestStarsForGame('magic_words_easy');
+    final medium = await SupabaseService.instance.getHighestStarsForGame('magic_words_medium');
+    final hard = await SupabaseService.instance.getHighestStarsForGame('magic_words_hard');
+    if (mounted) {
+      setState(() {
+        _easyStars = easy;
+        _mediumStars = medium;
+        _hardStars = hard;
+      });
+    }
+  }
+
+  void _selectDifficulty(MagicWordsDifficulty diff) {
+    setState(() {
+      _selectedDifficulty = diff;
     });
+    _loadPuzzle(diff);
+
+    ref.read(isGameActiveProvider.notifier).state = true;
+    ref.read(chatContextProvider.notifier).state = ChatContext(
+      screenName: 'magic_words_game',
+      data: {
+        'difficulty': diff.name,
+        'unsolved_word_lengths': _sortedWords.where((w) => !w.isSolved).map((w) => w.word.length).toList(),
+      },
+    );
   }
 
   @override
@@ -175,23 +196,133 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!_isGameOver) {
-        setState(() {
-          _secondsElapsed++;
-        });
-      }
+      if (_isGameOver || _selectedDifficulty == null) return;
+      setState(() {
+        _secondsElapsed++;
+        if (_selectedDifficulty == MagicWordsDifficulty.medium ||
+            _selectedDifficulty == MagicWordsDifficulty.hard) {
+          if (_secondsRemaining > 0) {
+            _secondsRemaining--;
+            if (_secondsRemaining == 0) {
+              _onTimeOut();
+            }
+          }
+        }
+      });
     });
   }
 
-  void _loadPuzzle() {
+  void _onTimeOut() {
+    _timer?.cancel();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.timer_off_rounded, color: AppColors.error, size: 28),
+            const SizedBox(width: 8),
+            Text(
+              'Hết thời gian!',
+              style: GoogleFonts.baloo2(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Text(
+          'Đã hết thời gian cho thử thách ${_selectedDifficulty?.label ?? ''}. Bạn có muốn thử lại không?',
+          style: GoogleFonts.baloo2(fontSize: 15),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              setState(() {
+                _selectedDifficulty = null;
+              });
+              _loadHighestStars();
+            },
+            child: Text(
+              'Chọn cấp độ',
+              style: GoogleFonts.baloo2(fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _loadPuzzle(_selectedDifficulty);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text(
+              'Chơi lại',
+              style: GoogleFonts.baloo2(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showQuitConfirmation() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Thoát trò chơi?',
+          style: GoogleFonts.baloo2(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'Bạn có chắc muốn quay lại màn hình chọn cấp độ không? Tiến trình hiện tại sẽ không được lưu.',
+          style: GoogleFonts.baloo2(fontSize: 15),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Chơi tiếp',
+              style: GoogleFonts.baloo2(fontWeight: FontWeight.w600),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              _timer?.cancel();
+              ref.read(isGameActiveProvider.notifier).state = false;
+              Navigator.pop(context); // close dialog
+              setState(() {
+                _selectedDifficulty = null;
+              });
+              _loadHighestStars();
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: Text(
+              'Thoát',
+              style: GoogleFonts.baloo2(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _loadPuzzle([MagicWordsDifficulty? diff]) {
+    final difficulty = diff ?? _selectedDifficulty ?? MagicWordsDifficulty.easy;
     _isGameOver = false;
     _secondsElapsed = 0;
+    _secondsRemaining = difficulty.countdownSeconds;
     _undoCount = 0;
     _hintCount = 0;
     _errorCount = 0;
+    _easyHintsRemaining = 3;
+    _currentlyHintingWordIndex = -1;
+    _currentlyHintingCharIndex = 0;
     _groupFillCounter.clear();
 
-    _puzzle = WendPuzzleGenerator.generate(difficulty: widget.difficulty);
+    _puzzle = WendPuzzleGenerator.generate(difficulty: difficulty);
     _rows = _puzzle.rows;
     _cols = _puzzle.cols;
     
@@ -210,6 +341,8 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
 
     _foundWords.clear();
     _currentSelection.clear();
+    _updateLiveFill();
+    _startTimer();
   }
 
   void _handlePanStart(DragStartDetails details, BoxConstraints constraints) {
@@ -504,49 +637,255 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_selectedDifficulty == null) {
+      return _buildDifficultySelection();
+    }
+
     if (_isGameOver) {
+      final duration = _selectedDifficulty == MagicWordsDifficulty.easy
+          ? _secondsElapsed
+          : max(1, _selectedDifficulty!.countdownSeconds - _secondsRemaining);
       return MagicWordsReportSheet(
         targetWords: _sortedWords.map((w) => w.word).toList(),
-        secondsElapsed: _secondsElapsed,
+        secondsElapsed: duration,
         completionLog: _completionLog,
         score: _score,
-        onReplay: _loadPuzzle,
+        onReplay: () => _loadPuzzle(_selectedDifficulty),
         onGoHome: () {
-          Navigator.of(context).pop();
+          setState(() {
+            _selectedDifficulty = null;
+          });
+          _loadHighestStars();
         },
       );
     }
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildAppBar(),
-            Expanded(
-              child: SingleChildScrollView(
-                physics: _isGridDragging
-                    ? const NeverScrollableScrollPhysics()
-                    : const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16.0,
-                  vertical: 8.0,
-                ),
-                child: Column(
-                  children: [
-                    _buildGridWidget(),
-                    _buildSelectionPreview(), // Thanh preview nằm ngay dưới lưới chữ
-                    const SizedBox(height: 8),
-                    _buildWordHints(),
-                    const SizedBox(height: 24),
-                    _buildActionButtons(),
-                    const SizedBox(height: 24),
-                    _buildHowToPlayCard(),
-                  ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _showQuitConfirmation();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildAppBar(),
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: _isGridDragging
+                      ? const NeverScrollableScrollPhysics()
+                      : const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8.0,
+                  ),
+                  child: Column(
+                    children: [
+                      _buildGridWidget(),
+                      _buildSelectionPreview(), // Thanh preview nằm ngay dưới lưới chữ
+                      const SizedBox(height: 8),
+                      _buildWordHints(),
+                      const SizedBox(height: 24),
+                      _buildActionButtons(),
+                      const SizedBox(height: 24),
+                      _buildHowToPlayCard(),
+                    ],
+                  ),
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDifficultySelection() {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
+        centerTitle: true,
+        title: Text(
+          'Magic Words',
+          style: GoogleFonts.baloo2(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            color: const Color(0xFF2C3E50),
+          ),
+        ),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 8),
+            child: GameSoundToggleButton(),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Center(
+                  child: Image.asset(
+                    'ImageFolder/magic_word.gif',
+                    height: 110,
+                    errorBuilder: (context, error, stackTrace) => const Icon(
+                      Icons.auto_stories_rounded,
+                      size: 80,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Select Difficulty',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.baloo2(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF2C3E50),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                _buildDifficultyButton(
+                  title: 'Easy',
+                  subtitle: '4x4, Untimed',
+                  difficulty: MagicWordsDifficulty.easy,
+                  backgroundColor: const Color(0xFFE4F3E4),
+                  iconColor: const Color(0xFF4CAF50),
+                  stars: _easyStars,
+                ),
+                _buildDifficultyButton(
+                  title: 'Medium',
+                  subtitle: '6x6, 5 minutes',
+                  difficulty: MagicWordsDifficulty.medium,
+                  backgroundColor: const Color(0xFFFDEBCE),
+                  iconColor: const Color(0xFFF59E0B),
+                  stars: _mediumStars,
+                ),
+                _buildDifficultyButton(
+                  title: 'Hard',
+                  subtitle: '8x8, 10 minutes',
+                  difficulty: MagicWordsDifficulty.hard,
+                  backgroundColor: const Color(0xFFFFE5E5),
+                  iconColor: const Color(0xFFEF4444),
+                  stars: _hardStars,
+                ),
+              ],
             ),
-          ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDifficultyButton({
+    required String title,
+    required String subtitle,
+    String? bonusInfo,
+    required MagicWordsDifficulty difficulty,
+    required Color backgroundColor,
+    required Color iconColor,
+    required int stars,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _selectDifficulty(difficulty),
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: iconColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.auto_stories_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      if (bonusInfo != null && bonusInfo.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          bonusInfo,
+                          style: GoogleFonts.baloo2(
+                            fontSize: 12,
+                            color: iconColor,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(
+                    3,
+                    (index) => Padding(
+                      padding: const EdgeInsets.only(left: 2),
+                      child: Icon(
+                        Icons.star_rounded,
+                        color: index < stars ? iconColor.withValues(alpha: 0.8) : Colors.black12,
+                        size: 22,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -562,23 +901,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
               Icons.arrow_back_rounded,
               color: AppColors.textPrimary,
             ),
-            onPressed: () => Navigator.pop(context),
-          ),
-          GameCountUpTimer(elapsedSeconds: _secondsElapsed),
-          Expanded(
-            child: Center(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  'Magic Words',
-                  style: GoogleFonts.baloo2(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-            ),
+            onPressed: _showQuitConfirmation,
           ),
           TextButton.icon(
             onPressed: _resetPuzzle,
@@ -605,7 +928,72 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
               ),
             ),
           ),
+          Expanded(
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'Magic Words',
+                  style: GoogleFonts.baloo2(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const GameSoundToggleButton(),
+          _buildTimerWidget(),
           const SizedBox(width: 4),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimerWidget() {
+    if (_selectedDifficulty == MagicWordsDifficulty.easy) {
+      return GameCountUpTimer(elapsedSeconds: _secondsElapsed);
+    }
+
+    const Color bgColor = Color(0xFFFEE2E2);
+    const Color textColor = Color(0xFFDC2626);
+    const Color borderColor = Color(0xFFFCA5A5);
+
+    final displayStr = GameCountUpTimer.formatSeconds(_secondsRemaining);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: borderColor,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.timer_outlined,
+            size: 14,
+            color: textColor,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            displayStr,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.baloo2(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
         ],
       ),
     );
@@ -618,11 +1006,10 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
     final selectionData = readOnlyMode ? <LetterCell>[] : _currentSelection;
 
     Widget contentWidget = Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade300, width: 2),
+        color: const Color(0xFFE8EDF2),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -656,36 +1043,59 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
                     LetterCell? cell = gridData[r][c];
 
                     if (cell == null) {
+                      // Blocker: ô xám đặc bo góc — giống ảnh tham chiếu
                       return Container(
+                        margin: const EdgeInsets.all(3),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(12),
+                          color: const Color(0xFFB4BDC8),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       );
                     }
 
-                    bool isSelected = selectionData.contains(cell);
+                    final bool isSelected = selectionData.contains(cell);
+                    final bool isLocked = cell.lockedColor != null;
+
                     Color bgColor = Colors.white;
-                    if (cell.lockedColor != null) {
-                      bgColor = cell.lockedColor!.withValues(alpha: 0.3);
+                    if (isLocked) {
+                      bgColor = cell.lockedColor!.withValues(alpha: 0.2);
                     } else if (isSelected) {
-                      bgColor = activeColor.withValues(alpha: 0.3);
+                      bgColor = activeColor.withValues(alpha: 0.18);
                     }
 
                     return AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
+                      duration: const Duration(milliseconds: 150),
+                      margin: const EdgeInsets.all(3),
                       decoration: BoxDecoration(
                         color: bgColor,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade200),
+                        borderRadius: BorderRadius.circular(10),
+                        border: isSelected
+                            ? Border.all(color: activeColor, width: 2.5)
+                            : isLocked
+                                ? Border.all(
+                                    color: cell.lockedColor!.withValues(alpha: 0.6),
+                                    width: 1.5,
+                                  )
+                                : null,
+                        boxShadow: [
+                          BoxShadow(
+                            color: isSelected
+                                ? activeColor.withValues(alpha: 0.28)
+                                : Colors.black.withValues(alpha: 0.09),
+                            blurRadius: isSelected ? 8 : 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       alignment: Alignment.center,
                       child: Text(
                         cell.letter,
                         style: GoogleFonts.baloo2(
-                          fontSize: cellWidth * 0.4,
+                          fontSize: (cellWidth * 0.44).clamp(12.0, 24.0),
                           fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
+                          color: isLocked
+                              ? (cell.lockedColor ?? AppColors.textPrimary)
+                              : AppColors.textPrimary,
                         ),
                       ),
                     );
@@ -792,7 +1202,11 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
             _puzzle.wordColors[_sortedWords.indexOf(target) % _puzzle.wordColors.length])
         : AppColors.primary;
 
-    final int count = _currentSelection.length;
+    final int maxLettersInGame = _sortedWords.fold<int>(
+      0,
+      (prev, row) => max(prev, row.word.length + row.overflowDisplay.length),
+    );
+    final int count = max(_currentSelection.length, maxLettersInGame);
     double boxSize;
     double fontSize;
     double radius;
@@ -856,6 +1270,38 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
   }
 
   Widget _buildWordHints() {
+    // Find the longest sequence across all rows in the puzzle to ensure UNIFORM box size across every row
+    final int maxLettersInGame = _renderOrderWords.fold<int>(
+      0,
+      (prev, row) => max(prev, row.word.length + row.overflowDisplay.length),
+    );
+
+    final double boxSize;
+    final double fontSize;
+    final double radius;
+    final double spacing;
+    final double runSpacing;
+
+    if (maxLettersInGame > 14) {
+      boxSize = 18.0;
+      fontSize = 10.5;
+      radius = 4.0;
+      spacing = 2.5;
+      runSpacing = 3.0;
+    } else if (maxLettersInGame > 8) {
+      boxSize = 24.0;
+      fontSize = 12.5;
+      radius = 5.0;
+      spacing = 4.0;
+      runSpacing = 4.0;
+    } else {
+      boxSize = 32.0;
+      fontSize = 16.0;
+      radius = 8.0;
+      spacing = 6.0;
+      runSpacing = 6.0;
+    }
+
     return Align(
       alignment: Alignment.centerLeft,
       child: Column(
@@ -866,34 +1312,6 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
 
           Color rowColor = targetRow.assignedColor ??
               _puzzle.wordColors[_sortedWords.indexOf(targetRow) % _puzzle.wordColors.length];
-
-          // Dynamic sizing for this row: scales down if the row has a very long sequence
-          final int totalLetters = targetRow.word.length + targetRow.overflowDisplay.length;
-          double boxSize;
-          double fontSize;
-          double radius;
-          double spacing;
-          double runSpacing;
-
-          if (totalLetters > 14) {
-            boxSize = 18.0;
-            fontSize = 10.5;
-            radius = 4.0;
-            spacing = 2.5;
-            runSpacing = 3.0;
-          } else if (totalLetters > 8) {
-            boxSize = 24.0;
-            fontSize = 12.5;
-            radius = 5.0;
-            spacing = 4.0;
-            runSpacing = 4.0;
-          } else {
-            boxSize = 32.0;
-            fontSize = 16.0;
-            radius = 8.0;
-            spacing = 6.0;
-            runSpacing = 6.0;
-          }
 
           return GestureDetector(
             onTap: isFilled ? () => _removeSolvedWord(targetRow.id) : null,
@@ -919,7 +1337,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
                           borderRadius: BorderRadius.circular(radius),
                           border: Border.all(
                             color: hasChar ? rowColor : Colors.grey.shade300,
-                            width: totalLetters > 14 ? 1.0 : 1.5,
+                            width: maxLettersInGame > 14 ? 1.0 : 1.5,
                           ),
                         ),
                         alignment: Alignment.center,
@@ -944,7 +1362,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
                           borderRadius: BorderRadius.circular(radius),
                           border: Border.all(
                             color: rowColor,
-                            width: totalLetters > 14 ? 1.0 : 1.5,
+                            width: maxLettersInGame > 14 ? 1.0 : 1.5,
                           ),
                         ),
                         child: Stack(
@@ -988,6 +1406,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
   }
 
   Widget _buildActionButtons() {
+    final isEasy = _selectedDifficulty == MagicWordsDifficulty.easy;
     return Row(
       children: [
         Expanded(
@@ -1004,7 +1423,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
             ),
             child: Text(
               GameStrings.undo,
-              style: GoogleFonts.nunito(
+              style: GoogleFonts.baloo2(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -1013,62 +1432,120 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
         ),
         const SizedBox(width: 16),
         Expanded(
-          child: Consumer(
-            builder: (context, ref, _) {
-              final quotaState = ref.watch(hintQuotaProvider);
-              final canHint = !quotaState.isLoading && quotaState.remaining > 0;
-              return ElevatedButton(
-                onPressed: canHint ? () => _requestHint(ref) : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryLight,
-                  foregroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+          child: isEasy
+              ? ElevatedButton(
+                  onPressed: _easyHintsRemaining > 0 ? _requestHintEasy : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryLight,
+                    foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
                   ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  "${GameStrings.hint} (${quotaState.isLoading ? '-' : quotaState.remaining})",
-                  style: GoogleFonts.nunito(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                  child: Text(
+                    "${GameStrings.hint} ($_easyHintsRemaining)",
+                    style: GoogleFonts.baloo2(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
+                )
+              : Consumer(
+                  builder: (context, ref, _) {
+                    final quotaState = ref.watch(hintQuotaProvider);
+                    final canHint = !quotaState.isLoading && quotaState.remaining > 0;
+                    return ElevatedButton(
+                      onPressed: canHint
+                          ? () {
+                              if (_selectedDifficulty == MagicWordsDifficulty.hard) {
+                                _requestHintHard(ref);
+                              } else {
+                                _requestHint(ref);
+                              }
+                            }
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryLight,
+                        foregroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        "${GameStrings.hint} (${quotaState.isLoading ? '-' : quotaState.remaining})",
+                        style: GoogleFonts.baloo2(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
         ),
       ],
     );
   }
 
   Future<void> _checkWinCondition() async {
-    bool allSolved = _sortedWords.every((w) => w.isSolved);
-    if (allSolved) {
+    bool allSolved = _sortedWords.isNotEmpty && _sortedWords.every((w) => w.isSolved);
+    if (allSolved && !_isGameOver) {
       _timer?.cancel();
-      int basePoints = _sortedWords.length * 50;
-      int score = basePoints - (_errorCount * 5) - (_hintCount * 15) - (_undoCount * 2);
-      if (_secondsElapsed < 30) score += 50;
-      if (score < 10) score = 10;
+      final diff = _selectedDifficulty ?? MagicWordsDifficulty.easy;
+      int duration = diff == MagicWordsDifficulty.easy
+          ? _secondsElapsed
+          : max(1, diff.countdownSeconds - _secondsRemaining);
+
+      int basePoints = diff.basePoints;
+      int penalty = (_errorCount * 2) + (_hintCount * 3) + (_undoCount * 1);
+      int score = max(5, basePoints - penalty);
 
       setState(() {
         _score = score;
         _isGameOver = true;
       });
 
-      int stars = 3;
-      if (_secondsElapsed > 30) stars = 2;
-      if (_secondsElapsed > 60) stars = 1;
+      int stars = 1;
+      if (diff == MagicWordsDifficulty.easy) {
+        if (duration <= 45 && _hintCount == 0) {
+          stars = 3;
+        } else if (duration <= 90) {
+          stars = 2;
+        }
+      } else if (diff == MagicWordsDifficulty.medium) {
+        if (duration <= 120 && _hintCount <= 1) {
+          stars = 3;
+        } else if (duration <= 220) {
+          stars = 2;
+        }
+      } else {
+        // hard
+        if (duration <= 240 && _hintCount <= 1) {
+          stars = 3;
+        } else if (duration <= 380) {
+          stars = 2;
+        }
+      }
 
       try {
+        await SupabaseService.instance.saveScore(
+          gameName: diff.storageKey,
+          stars: stars,
+          score: score,
+          durationSeconds: duration,
+          completionLog: _completionLog.map((e) => e.toJson()).toList(),
+        );
         await SupabaseService.instance.saveScore(
           gameName: 'magic_words',
           stars: stars,
           score: score,
-          durationSeconds: _secondsElapsed,
+          durationSeconds: duration,
           completionLog: _completionLog.map((e) => e.toJson()).toList(),
         );
+        _loadHighestStars();
       } catch (e) {
         debugPrint('Error saving magic_words score: $e');
       }
@@ -1094,12 +1571,147 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
       _currentlyHintingWordIndex = -1;
       _currentlyHintingCharIndex = 0;
       _secondsElapsed = 0;
+      if (_selectedDifficulty != null && _selectedDifficulty != MagicWordsDifficulty.easy) {
+        _secondsRemaining = _selectedDifficulty!.countdownSeconds;
+      }
+      if (_selectedDifficulty == MagicWordsDifficulty.easy) {
+        _easyHintsRemaining = 3;
+      }
       _updateLiveFill();
     });
   }
 
   int _currentlyHintingWordIndex = -1;
   int _currentlyHintingCharIndex = 0;
+
+  void _requestHintEasy() {
+    if (_easyHintsRemaining <= 0) return;
+
+    TargetWord? targetRow;
+    try {
+      if (_currentlyHintingWordIndex != -1) {
+        targetRow = _sortedWords.firstWhere(
+          (w) => w.id == _sortedWords[_currentlyHintingWordIndex].id && !w.isSolved,
+          orElse: () => _sortedWords.firstWhere((w) => !w.isSolved),
+        );
+      } else {
+        targetRow = _sortedWords.firstWhere((w) => !w.isSolved);
+      }
+    } catch (e) {
+      return;
+    }
+
+    bool isNewWord = _currentlyHintingWordIndex == -1 || targetRow.id != _sortedWords[_currentlyHintingWordIndex].id;
+
+    if (isNewWord) {
+      _currentlyHintingWordIndex = _sortedWords.indexOf(targetRow);
+      _currentlyHintingCharIndex = 0;
+    }
+
+    setState(() {
+      _easyHintsRemaining--;
+      _hintCount++;
+
+      TargetWord w = _sortedWords[_currentlyHintingWordIndex];
+      String wordStr = w.word;
+
+      Color wordColor = _puzzle.wordColors[_puzzle.targetWords.indexOf(wordStr)];
+      var path = _puzzle.wordPaths[wordStr]!;
+
+      var cell = path[_currentlyHintingCharIndex];
+      _grid[cell.row][cell.col]!.lockedWordId = wordStr;
+      _grid[cell.row][cell.col]!.lockedColor = wordColor.withValues(alpha: 0.5);
+
+      w.displayCells[_currentlyHintingCharIndex] = wordStr[_currentlyHintingCharIndex];
+      _currentlyHintingCharIndex++;
+
+      if (_currentlyHintingCharIndex >= wordStr.length) {
+        w.isFilled = true;
+        w.isSolved = true;
+        w.assignedColor = wordColor;
+        final len = w.word.length;
+        if (w.slotOrder == null) {
+          w.slotOrder = _groupFillCounter.putIfAbsent(len, () => 0);
+          _groupFillCounter[len] = w.slotOrder! + 1;
+        }
+        _completionLog.add(WordCompletionEntry(
+          word: wordStr,
+          elapsedSeconds: _secondsElapsed,
+          viaHint: true,
+        ));
+        for (var c in path) {
+          _grid[c.row][c.col]!.lockedWordId = wordStr;
+          _grid[c.row][c.col]!.lockedColor = wordColor;
+        }
+        _currentlyHintingWordIndex = -1;
+        _currentlyHintingCharIndex = 0;
+        _checkWinCondition();
+        TtsService.instance.speakEnglish(wordStr);
+      }
+    });
+  }
+
+  Future<void> _requestHintHard(WidgetRef ref) async {
+    TargetWord? targetRow;
+    try {
+      targetRow = _sortedWords.firstWhereOrNull((w) => !w.isSolved && (w.displayCells.isEmpty || w.displayCells[0] == null));
+      targetRow ??= _sortedWords.firstWhereOrNull((w) => !w.isSolved);
+    } catch (e) {
+      return;
+    }
+    if (targetRow == null) return;
+
+    try {
+      final res = await SupabaseService.instance.client.rpc('request_hint_start');
+      if (!mounted) return;
+      if (res['allowed'] == false) {
+        return;
+      }
+      if (res['allowed'] == 'needs_confirmation') {
+        bool? confirm = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text(GameStrings.hintWarningTitle),
+            content: Text(GameStrings.hintWarningMessage.replaceAll('{remainingAfterUse}', '1')),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(GameStrings.cancel),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(GameStrings.confirm),
+              ),
+            ],
+          ),
+        );
+        if (confirm != true) return;
+
+        final confirmRes = await SupabaseService.instance.client.rpc('confirm_hint_after_warning');
+        if (confirmRes['allowed'] != true) return;
+        ref.read(hintQuotaProvider.notifier).updateRemaining(confirmRes['remaining'] as int);
+      } else {
+        ref.read(hintQuotaProvider.notifier).updateRemaining(res['remaining'] as int);
+      }
+    } catch (e) {
+      return;
+    }
+
+    setState(() {
+      _hintCount++;
+      String wordStr = targetRow!.word;
+      targetRow.displayCells[0] = wordStr[0];
+
+      Color wordColor = _puzzle.wordColors[_puzzle.targetWords.indexOf(wordStr)];
+      var path = _puzzle.wordPaths[wordStr]!;
+      var firstCell = path[0];
+
+      _grid[firstCell.row][firstCell.col]!.lockedColor = wordColor.withValues(alpha: 0.35);
+
+      _currentlyHintingWordIndex = -1;
+      _currentlyHintingCharIndex = 0;
+    });
+  }
 
   Future<void> _requestHint(WidgetRef ref) async {
     // 1. Determine target
@@ -1239,7 +1851,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'Tìm tất cả các từ ẩn. Dùng mỗi ô chữ đúng một lần để phủ kín toàn bộ bảng!',
-                  style: GoogleFonts.nunito(
+                  style: GoogleFonts.baloo2(
                     fontSize: 15,
                     color: AppColors.textSecondary,
                   ),
