@@ -78,6 +78,11 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(isGameActiveProvider.notifier).state = true;
+      }
+    });
     _loadHighestStars();
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,

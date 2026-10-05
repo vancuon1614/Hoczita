@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'register_screen.dart';
+import '../../../core/providers/game_interaction_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -31,6 +32,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(isGameActiveProvider.notifier).state = true;
+      }
+    });
     _loadSavedEmails();
   }
 
@@ -43,6 +49,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
+    ref.read(isGameActiveProvider.notifier).state = false;
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();

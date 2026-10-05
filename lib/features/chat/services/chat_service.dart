@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/providers/chat_context_provider.dart';
 
@@ -16,6 +17,38 @@ class ChatMessage {
     required this.timestamp,
   });
 }
+
+class ChatHistoryNotifier extends Notifier<List<ChatMessage>> {
+  @override
+  List<ChatMessage> build() {
+    return [
+      ChatMessage(
+        id: 'welcome',
+        text: 'Chào bạn! Mình là HocDi 🤖 - trợ lý học tập thông minh và là người bạn đồng hành của bạn. Bạn có thắc mắc về từ vựng, toán học hay bài tập, cứ hỏi HocDi nhé! 🌟',
+        isUser: false,
+        timestamp: DateTime.now(),
+      ),
+    ];
+  }
+
+  void addMessage(ChatMessage message) {
+    state = [...state, message];
+  }
+
+  void clearHistory() {
+    state = [
+      ChatMessage(
+        id: 'welcome',
+        text: 'Chào bạn! Mình là HocDi 🤖 - trợ lý học tập thông minh và là người bạn đồng hành của bạn. Bạn có thắc mắc về từ vựng, toán học hay bài tập, cứ hỏi HocDi nhé! 🌟',
+        isUser: false,
+        timestamp: DateTime.now(),
+      ),
+    ];
+  }
+}
+
+final chatHistoryProvider =
+    NotifierProvider<ChatHistoryNotifier, List<ChatMessage>>(ChatHistoryNotifier.new);
 
 class ChatService {
   static final ChatService instance = ChatService._internal();

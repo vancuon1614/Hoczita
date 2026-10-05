@@ -7,6 +7,7 @@ import 'dart:math';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/widgets/mini_game_timer.dart';
+import '../../../core/providers/game_interaction_provider.dart';
 import '../../learn/providers/checkin_provider.dart';
 import '../../learn/views/widgets/checkin_logic.dart';
 import '../models/queens_puzzle.dart';
@@ -49,6 +50,11 @@ class _DailyCheckinGameScreenState extends ConsumerState<DailyCheckinGameScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(isGameActiveProvider.notifier).state = true;
+      }
+    });
     _today = DateTime.now();
     final isWeekend = _today.weekday == DateTime.saturday || _today.weekday == DateTime.sunday;
     // Thứ 2 -> Thứ 6: 7x7; Thứ 7 & CN: 9x9 (chuẩn mobile)
@@ -59,6 +65,7 @@ class _DailyCheckinGameScreenState extends ConsumerState<DailyCheckinGameScreen>
 
   @override
   void dispose() {
+    ref.read(isGameActiveProvider.notifier).state = false;
     _timer?.cancel();
     super.dispose();
   }
@@ -267,7 +274,7 @@ class _DailyCheckinGameScreenState extends ConsumerState<DailyCheckinGameScreen>
       _today,
     );
 
-    showDialog(
+    final result = await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => DailyCheckinReportDialog(
@@ -276,7 +283,7 @@ class _DailyCheckinGameScreenState extends ConsumerState<DailyCheckinGameScreen>
         currentStreak: streak > 0 ? streak : 1,
         initialRank: userRank,
         onPlayAgain: () {
-          Navigator.pop(context);
+          Navigator.pop(context, 'play_again');
           setState(() {
             _initPuzzle();
             _secondsElapsed = 0;
@@ -284,11 +291,16 @@ class _DailyCheckinGameScreenState extends ConsumerState<DailyCheckinGameScreen>
           _startTimer();
         },
         onGoHome: () {
-          Navigator.pop(context); // Đóng dialog
-          Navigator.pop(context); // Quay về Home
+          Navigator.pop(context, 'go_home');
         },
       ),
     );
+
+    // Khi hoàn thành điểm danh và đóng popup (hết 5s, bấm X, hoặc bấm Về trang chủ):
+    // Tự động out khỏi màn hình điểm danh quay về màn hình trước đó
+    if (result != 'play_again' && mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   void _showQuitConfirmation() {

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flip_card/flip_card.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/providers/game_interaction_provider.dart';
 import '../models/game_question.dart';
 import 'multiple_choice_game_screen.dart';
 
-class FlashcardStudyScreen extends StatefulWidget {
+class FlashcardStudyScreen extends ConsumerStatefulWidget {
   final String gameName;
   final String gameTitle;
   final List<GameQuestion> questions;
@@ -19,10 +21,10 @@ class FlashcardStudyScreen extends StatefulWidget {
   });
 
   @override
-  State<FlashcardStudyScreen> createState() => _FlashcardStudyScreenState();
+  ConsumerState<FlashcardStudyScreen> createState() => _FlashcardStudyScreenState();
 }
 
-class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
+class _FlashcardStudyScreenState extends ConsumerState<FlashcardStudyScreen> {
   late PageController _pageController;
   int _currentIndex = 0;
   final FlutterTts _flutterTts = FlutterTts();
@@ -30,6 +32,11 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(isGameActiveProvider.notifier).state = true;
+      }
+    });
     _pageController = PageController(viewportFraction: 0.85);
     _initTts();
   }
@@ -47,6 +54,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
 
   @override
   void dispose() {
+    ref.read(isGameActiveProvider.notifier).state = false;
     _pageController.dispose();
     _flutterTts.stop();
     super.dispose();

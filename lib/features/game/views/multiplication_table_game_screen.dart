@@ -87,6 +87,7 @@ class _MultiplicationTableGameScreenState
 
   @override
   void dispose() {
+    ref.read(isGameActiveProvider.notifier).state = false;
     _timer?.cancel();
     _animController.dispose();
     TtsService.instance.stopAll();

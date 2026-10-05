@@ -1,39 +1,24 @@
-import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
 import 'dart:math';
-import '../../../core/theme/app_theme.dart';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/services/supabase_service.dart';
-
-class TodayRankData {
-  final int rank;
-  final int totalPlayersToday;
-  final int yourScore;
-  final double averageScore;
-
-  TodayRankData({
-    required this.rank,
-    required this.totalPlayersToday,
-    required this.yourScore,
-    required this.averageScore,
-  });
-}
 
 class DailyCheckinReportDialog extends StatefulWidget {
   final int foundPaths;
   final int pointsEarned;
   final int currentStreak;
   final int? initialRank;
-  final VoidCallback onPlayAgain;
+  final VoidCallback? onPlayAgain;
   final VoidCallback onGoHome;
 
   const DailyCheckinReportDialog({
     super.key,
     required this.foundPaths,
-    required this.pointsEarned,
-    required this.currentStreak,
+    this.pointsEarned = 0,
+    this.currentStreak = 0,
     this.initialRank,
-    required this.onPlayAgain,
+    this.onPlayAgain,
     required this.onGoHome,
   });
 
@@ -43,8 +28,7 @@ class DailyCheckinReportDialog extends StatefulWidget {
 
 class _DailyCheckinReportDialogState extends State<DailyCheckinReportDialog>
     with SingleTickerProviderStateMixin {
-  late Future<TodayRankData> _rankFuture;
-  late AnimationController _confettiController;
+  late AnimationController _glowController;
   Timer? _autoCloseTimer;
   int? _resolvedRank;
 
@@ -52,16 +36,16 @@ class _DailyCheckinReportDialogState extends State<DailyCheckinReportDialog>
   void initState() {
     super.initState();
     _resolvedRank = widget.initialRank;
-    _confettiController = AnimationController(
+    _glowController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..forward();
+      duration: const Duration(milliseconds: 3800),
+    )..repeat();
     _fetchRank();
 
     // Tự động đóng popup sau 5 giây theo yêu cầu
     _autoCloseTimer = Timer(const Duration(seconds: 5), () {
       if (mounted) {
-        Navigator.of(context).pop();
+        widget.onGoHome();
       }
     });
   }
@@ -69,589 +53,567 @@ class _DailyCheckinReportDialogState extends State<DailyCheckinReportDialog>
   @override
   void dispose() {
     _autoCloseTimer?.cancel();
-    _confettiController.dispose();
+    _glowController.dispose();
     super.dispose();
   }
 
   void _fetchRank() {
-    _rankFuture = SupabaseService.instance.saveAndGetTodayRank(widget.foundPaths).then((data) {
+    SupabaseService.instance.saveAndGetTodayRank(widget.foundPaths).then((data) {
       final rank = data['rank'] as int;
       if (mounted && _resolvedRank != rank) {
         setState(() {
           _resolvedRank = rank;
         });
       }
-      return TodayRankData(
-        rank: rank,
-        totalPlayersToday: data['totalPlayersToday'] as int,
-        yourScore: data['yourScore'] as int,
-        averageScore: (data['averageScore'] as num).toDouble(),
-      );
+    }).catchError((e) {
+      debugPrint('Error fetching rank: $e');
     });
   }
 
-  Map<String, String> _getHeaderInfo(int? rank) {
+  _ReportTheme _getTheme(int? rank) {
     if (rank == 1) {
-      return {
-        'emoji': '👑',
-        'title': '🎉 XUẤT SẮC! BẠN ĐANG DẪN ĐẦU! 🎉',
-        'subtitle':
-            'Sự nỗ lực không ngừng nghỉ đã đưa bạn lên vị trí TOP 1. Đây là khoảnh khắc của bạn! Hãy tiếp tục giữ vững phong độ và thiết lập kỷ lục mới nhé!',
-      };
-    } else if (rank == 2 || rank == 3) {
-      return {
-        'emoji': '✨',
-        'title': '✨ TUYỆT VỜI! BẠN ĐÃ VÀO TOP 3! ✨',
-        'subtitle':
-            'Phong độ của bạn đang cực kỳ ấn tượng! Bạn đã tiến rất gần đến đỉnh cao nhất. Hãy bứt phá mạnh mẽ hơn nữa trong hôm nay để vươn lên vị trí TOP 1 nhé!',
-      };
+      return _ReportTheme(
+        badgeIcon: const Text('👑', style: TextStyle(fontSize: 32)),
+        badgeLabel: 'TOP 1',
+        badgeOuterGradient: const [
+          Color(0xFFFBBF24),
+          Color(0xFFFDE047),
+          Color(0xFFF59E0B),
+        ],
+        badgeInnerGradient: const [
+          Color(0xFFFBBF24),
+          Color(0xFFD97706),
+        ],
+        badgeBorderColor: const Color(0xFFFEF08A),
+        badgeTextColor: const Color(0xFF451A03),
+        badgeShadowColor: const Color(0xFFEAB308),
+        tagText: '✨ BẢNG VÀNG THÀNH TÍCH',
+        tagTextColor: const Color(0xFFFDE047),
+        tagBorderColor: const Color(0xFFFDE047).withValues(alpha: 0.4),
+        tagBgColor: const Color(0xFFFDE047).withValues(alpha: 0.16),
+        title: '🎉 XUẤT SẮC! BẠN ĐANG DẪN ĐẦU! 🎉',
+        titleColor: const Color(0xFFFDE047),
+        subtitlePrefix: 'Sự nỗ lực không ngừng nghỉ đã đưa bạn lên vị trí ',
+        rankHighlight: 'TOP 1',
+        subtitleSuffix:
+            '! Đây là khoảnh khắc của bạn! Hãy tiếp tục giữ vững phong độ và thiết lập kỷ lục mới nhé!',
+        highlightColor: const Color(0xFFFDE047),
+        glowColor: const Color(0xFFFDE047),
+      );
+    } else if (rank == 2) {
+      return _ReportTheme(
+        badgeIcon: const Text('🥈', style: TextStyle(fontSize: 32)),
+        badgeLabel: 'TOP 2',
+        badgeOuterGradient: const [
+          Color(0xFFF8FAFC),
+          Color(0xFFE2E8F0),
+          Color(0xFF94A3B8),
+        ],
+        badgeInnerGradient: const [
+          Color(0xFFF1F5F9),
+          Color(0xFF64748B),
+        ],
+        badgeBorderColor: Colors.white,
+        badgeTextColor: const Color(0xFF0F172A),
+        badgeShadowColor: const Color(0xFF94A3B8),
+        tagText: '🥈 BẢNG BẠC VINH DANH',
+        tagTextColor: const Color(0xFFFDE047), // Chữ vàng nổi bật theo yêu cầu
+        tagBorderColor: const Color(0xFFFDE047).withValues(alpha: 0.4),
+        tagBgColor: const Color(0xFFFDE047).withValues(alpha: 0.16),
+        title: '✨ TUYỆT VỜI! BẠN LÀ Á QUÂN! ✨',
+        titleColor: const Color(0xFFFDE047), // Chữ vàng nổi bật theo yêu cầu
+        subtitlePrefix:
+            'Phong độ của bạn đang cực kỳ ấn tượng! Bạn đã xuất sắc giành vị trí ',
+        rankHighlight: 'TOP 2',
+        subtitleSuffix:
+            '. Hãy bứt phá mạnh mẽ hơn nữa trong hôm nay để vươn lên vị trí TOP 1 nhé!',
+        highlightColor: const Color(0xFFFDE047), // Chữ vàng in đậm
+        glowColor: const Color(0xFFFDE047),
+      );
+    } else if (rank == 3) {
+      return _ReportTheme(
+        badgeIcon: const Text('🥉', style: TextStyle(fontSize: 32)),
+        badgeLabel: 'TOP 3',
+        badgeOuterGradient: const [
+          Color(0xFFFED7AA),
+          Color(0xFFFB923C),
+          Color(0xFFEA580C),
+        ],
+        badgeInnerGradient: const [
+          Color(0xFFFDBA74),
+          Color(0xFFC2410C),
+        ],
+        badgeBorderColor: const Color(0xFFFFEDD5),
+        badgeTextColor: const Color(0xFF431407),
+        badgeShadowColor: const Color(0xFFEA580C),
+        tagText: '🥉 BẢNG ĐỒNG BỨT PHÁ',
+        tagTextColor: const Color(0xFFFDE047), // Chữ vàng nổi bật theo yêu cầu
+        tagBorderColor: const Color(0xFFFDE047).withValues(alpha: 0.4),
+        tagBgColor: const Color(0xFFFDE047).withValues(alpha: 0.16),
+        title: '✨ TUYỆT VỜI! BẠN ĐÃ VÀO TOP 3! ✨',
+        titleColor: const Color(0xFFFDE047), // Chữ vàng nổi bật theo yêu cầu
+        subtitlePrefix:
+            'Phong độ của bạn đang cực kỳ ấn tượng! Bạn đã tiến rất gần đến đỉnh cao nhất với vị trí ',
+        rankHighlight: 'TOP 3',
+        subtitleSuffix:
+            '. Hãy bứt phá mạnh mẽ hơn nữa trong hôm nay để vươn lên vị trí TOP 1 nhé!',
+        highlightColor: const Color(0xFFFDE047), // Chữ vàng in đậm
+        glowColor: const Color(0xFFFDE047),
+      );
     } else if (rank != null && rank <= 10) {
-      return {
-        'emoji': '🚀',
-        'title': '🚀 CHÚC MỪNG BẠN LỌT TOP 10! 🚀',
-        'subtitle':
-            'Bạn đang nằm trong nhóm những người dùng xuất sắc nhất! Hãy giữ vững đà tiến này và chinh phục các cột mốc tiếp theo nhé!',
-      };
-    } else if (rank != null && rank > 10) {
-      return {
-        'emoji': '🔥',
-        'title': '🔥 CỐ LÊN! BẠN TIẾN RẤT GẦN TOP 10! 🔥',
-        'subtitle':
-            'Mọi sự cố gắng đều mang lại kết quả. Bạn chỉ còn cách Top 10 một khoảng ngắn nữa thôi! Tiếp tục luyện tập để ghi tên mình vào Bảng Xếp Hạng ngay hôm nay!',
-      };
+      // Top 10: Ngọn lửa ngọc lam kèm tag "NGÔI SAO ĐANG LÊN"
+      return _ReportTheme(
+        badgeIcon: ShaderMask(
+          shaderCallback: (bounds) => const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFE0F2FE), Color(0xFF38BDF8), Color(0xFF0284C7)],
+          ).createShader(bounds),
+          child: const Icon(
+            Icons.local_fire_department_rounded,
+            size: 36,
+            color: Colors.white,
+          ),
+        ),
+        badgeLabel: 'TOP $rank',
+        badgeOuterGradient: const [
+          Color(0xFFA5F3FC),
+          Color(0xFF22D3EE),
+          Color(0xFF0891B2),
+        ],
+        badgeInnerGradient: const [
+          Color(0xFF06B6D4),
+          Color(0xFF0E7490),
+        ],
+        badgeBorderColor: const Color(0xFFE0F2FE),
+        badgeTextColor: const Color(0xFF083344),
+        badgeShadowColor: const Color(0xFF06B6D4),
+        tagText: '🔥 NGÔI SAO ĐANG LÊN',
+        tagTextColor: const Color(0xFF67E8F9),
+        tagBorderColor: const Color(0xFF22D3EE).withValues(alpha: 0.5),
+        tagBgColor: const Color(0xFF06B6D4).withValues(alpha: 0.22),
+        title: '🚀 CHÚC MỪNG BẠN LỌT TOP 10! 🚀',
+        titleColor: Colors.white,
+        subtitlePrefix:
+            'Bạn đang nằm trong nhóm những người dùng xuất sắc nhất với vị trí ',
+        rankHighlight: 'HẠNG $rank',
+        subtitleSuffix:
+            '! Hãy giữ vững đà tiến này và chinh phục các cột mốc tiếp theo nhé!',
+        highlightColor: const Color(0xFF67E8F9),
+        glowColor: const Color(0xFF38BDF8),
+      );
     }
-    return {
-      'emoji': '✨',
-      'title': '🎉 ĐIỂM DANH THÀNH CÔNG! 🎉',
-      'subtitle':
-          'Phong độ của bạn đang rất ấn tượng! Hãy tiếp tục duy trì và bứt phá mạnh mẽ hơn nữa nhé!',
-    };
+
+    // Ngoài Top 10 hoặc Chưa có hạng: Ngọn lửa ngọc lam kèm tag "NGÔI SAO ĐANG LÊN"
+    return _ReportTheme(
+      badgeIcon: ShaderMask(
+        shaderCallback: (bounds) => const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFE0F2FE), Color(0xFF38BDF8), Color(0xFF0284C7)],
+        ).createShader(bounds),
+        child: const Icon(
+          Icons.local_fire_department_rounded,
+          size: 36,
+          color: Colors.white,
+        ),
+      ),
+      badgeLabel: 'BỨT PHÁ',
+      badgeOuterGradient: const [
+        Color(0xFFA5F3FC),
+        Color(0xFF22D3EE),
+        Color(0xFF0891B2),
+      ],
+      badgeInnerGradient: const [
+        Color(0xFF06B6D4),
+        Color(0xFF0E7490),
+      ],
+      badgeBorderColor: const Color(0xFFE0F2FE),
+      badgeTextColor: const Color(0xFF083344),
+      badgeShadowColor: const Color(0xFF06B6D4),
+      tagText: '🔥 NGÔI SAO ĐANG LÊN',
+      tagTextColor: const Color(0xFF67E8F9),
+      tagBorderColor: const Color(0xFF22D3EE).withValues(alpha: 0.5),
+      tagBgColor: const Color(0xFF06B6D4).withValues(alpha: 0.22),
+      title: '🔥 CỐ LÊN! TIẾN RẤT GẦN TOP 10! 🔥',
+      titleColor: Colors.white,
+      subtitlePrefix:
+          'Mọi sự cố gắng đều mang lại kết quả! Bạn chỉ còn cách Top 10 một khoảng ngắn nữa để bước vào ',
+      rankHighlight: 'BẢNG XẾP HẠNG',
+      subtitleSuffix:
+          '. Tiếp tục luyện tập và bứt phá ngay trong hôm nay nhé!',
+      highlightColor: const Color(0xFF67E8F9),
+      glowColor: const Color(0xFF38BDF8),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final headerInfo = _getHeaderInfo(_resolvedRank);
+    final theme = _getTheme(_resolvedRank);
 
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
-      insetPadding: const EdgeInsets.all(16),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.primary, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.2),
-              blurRadius: 20,
-              spreadRadius: 4,
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(22),
-          child: Stack(
-            children: [
-              // Confetti background effect (simple scale/fade for celebration)
-              Positioned.fill(
-                child: ScaleTransition(
-                  scale: Tween<double>(begin: 0.8, end: 1.1).animate(
-                    CurvedAnimation(parent: _confettiController, curve: Curves.easeOut),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.topCenter,
+        children: [
+          // Khung thẻ chính kèm viền phát sáng tự động chạy quanh khung
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(top: 38), // Chừa khoảng trống cho huy hiệu nổi trên đỉnh
+            child: AnimatedBuilder(
+              animation: _glowController,
+              builder: (context, child) {
+                return CustomPaint(
+                  foregroundPainter: _AutoGlowSweepBorderPainter(
+                    progress: _glowController.value,
+                    glowColor: theme.glowColor,
+                    borderRadius: BorderRadius.circular(28),
+                    borderWidth: 2.2,
                   ),
-                  child: FadeTransition(
-                    opacity: Tween<double>(begin: 1.0, end: 0.0).animate(
-                      CurvedAnimation(parent: _confettiController, curve: const Interval(0.5, 1.0)),
-                    ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: RadialGradient(
-                          colors: [
-                            AppColors.primaryLight.withValues(alpha: 0.5),
-                            Colors.transparent,
-                          ],
-                          radius: 0.8,
-                        ),
-                      ),
-                    ),
+                  child: child,
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(22, 50, 22, 24),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0xFF2563EB),
+                      Color(0xFF1D4ED8),
+                      Color(0xFF1E40AF),
+                    ],
                   ),
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF002878).withValues(alpha: 0.35),
+                      blurRadius: 30,
+                      offset: const Offset(0, 15),
+                    ),
+                    BoxShadow(
+                      color: theme.glowColor.withValues(alpha: 0.15),
+                      blurRadius: 20,
+                      spreadRadius: 1,
+                    ),
+                  ],
                 ),
-              ),
-              Column(
-                mainAxisSize: MainAxisSize.min, // shrink to fit, no extra empty spaces
-                children: [
-                  // Header Gradient
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF6B48FF), AppColors.primary],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Tag danh hiệu viên thuốc
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: theme.tagBgColor,
+                        borderRadius: BorderRadius.circular(20),
+                        border:
+                            Border.all(color: theme.tagBorderColor, width: 1.2),
+                      ),
+                      child: Text(
+                        theme.tagText,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                          color: theme.tagTextColor,
+                        ),
                       ),
                     ),
-                    child: Column(
-                      children: [
-                        Text(
-                          headerInfo['emoji']!,
-                          style: const TextStyle(fontSize: 40),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          headerInfo['title']!,
-                          style: GoogleFonts.baloo2(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            height: 1.25,
+                    const SizedBox(height: 12),
+
+                    // Tiêu đề nổi bật
+                    Text(
+                      theme.title,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.baloo2(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: theme.titleColor,
+                        height: 1.25,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withValues(alpha: 0.25),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          headerInfo['subtitle']!,
-                          style: GoogleFonts.baloo2(
-                            fontSize: 13,
-                            color: Colors.white.withValues(alpha: 0.95),
-                            height: 1.35,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  
-                  Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Badges Row
-                        Row(
+                    const SizedBox(height: 10),
+
+                    // Nội dung mô tả kèm rank highlight màu vàng & in đậm
+                    Text.rich(
+                      TextSpan(
+                        style: GoogleFonts.baloo2(
+                          fontSize: 13.5,
+                          color: const Color(0xFFF0F5FF),
+                          height: 1.45,
+                        ),
+                        children: [
+                          TextSpan(text: theme.subtitlePrefix),
+                          TextSpan(
+                            text: theme.rankHighlight,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              color: theme.highlightColor,
+                            ),
+                          ),
+                          TextSpan(text: theme.subtitleSuffix),
+                        ],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Nút duy nhất: "Về Trang Chủ ->" (Nổi bật màu trắng chữ xanh)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          _autoCloseTimer?.cancel();
+                          widget.onGoHome();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF1D4ED8),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          elevation: 4,
+                          shadowColor: Colors.black.withValues(alpha: 0.25),
+                        ),
+                        child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            _buildBadge(
-                              icon: Icons.star_rounded,
-                              text: "+${widget.pointsEarned} điểm",
-                              bgColor: Colors.orange.withValues(alpha: 0.15),
-                              textColor: Colors.orange.shade700,
+                            Text(
+                              'Về Trang Chủ',
+                              style: GoogleFonts.baloo2(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: const Color(0xFF1D4ED8),
+                              ),
                             ),
-                            const SizedBox(width: 12),
-                            _buildBadge(
-                              icon: Icons.local_fire_department_rounded,
-                              text: "${widget.currentStreak} ngày liên tiếp",
-                              bgColor: AppColors.error.withValues(alpha: 0.1),
-                              textColor: AppColors.error,
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 18,
+                              color: Color(0xFF1D4ED8),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
-                        
-                        // Info Card
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppColors.background,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.border),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Huy hiệu nổi (Floating Badge phá cách trên đỉnh)
+          Positioned(
+            top: 0,
+            child: Transform.rotate(
+              angle: 0.05,
+              child: Container(
+                width: 76,
+                height: 76,
+                padding: const EdgeInsets.all(2.5),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: theme.badgeOuterGradient,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.badgeShadowColor.withValues(alpha: 0.5),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(17),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: theme.badgeInnerGradient,
+                    ),
+                    border: Border.all(
+                      color: theme.badgeBorderColor,
+                      width: 2,
+                    ),
+                  ),
+                  child: Transform.rotate(
+                    angle: -0.05,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        theme.badgeIcon,
+                        const SizedBox(height: 2),
+                        Text(
+                          theme.badgeLabel,
+                          style: GoogleFonts.baloo2(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.1,
+                            color: theme.badgeTextColor,
+                            height: 1.0,
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min, // only 3 rows, no empty space
-                            children: [
-                              _buildInfoRow(
-                                icon: Icons.stars_rounded,
-                                iconColor: Colors.amber,
-                                title: "Điểm hoàn thành:",
-                                valueWidget: Text(
-                                  "${widget.foundPaths} điểm",
-                                  style: GoogleFonts.baloo2(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                              ),
-                              const Divider(height: 24),
-                              
-                              // FutureBuilder for Rank & Average
-                              FutureBuilder<TodayRankData>(
-                                future: _rankFuture,
-                                builder: (context, snapshot) {
-                                  if (snapshot.connectionState == ConnectionState.waiting) {
-                                    return _buildLoadingRank();
-                                  } else if (snapshot.hasError) {
-                                    return _buildErrorRank();
-                                  } else if (snapshot.hasData) {
-                                    return _buildSuccessRank(snapshot.data!);
-                                  }
-                                  return const SizedBox.shrink();
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        
-                        const SizedBox(height: 32),
-                        
-                        // Action Buttons
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 1,
-                              child: OutlinedButton(
-                                onPressed: () {
-                                  _autoCloseTimer?.cancel();
-                                  widget.onPlayAgain();
-                                },
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(30),
-                                  ),
-                                  side: const BorderSide(color: AppColors.primaryLight, width: 2),
-                                ),
-                                child: Text(
-                                  'Chơi Lại',
-                                  style: GoogleFonts.baloo2(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              flex: 2,
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  _autoCloseTimer?.cancel();
-                                  widget.onGoHome();
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(30),
-                                  ),
-                                  elevation: 0,
-                                ),
-                                child: Text(
-                                  'Về Trang Chủ',
-                                  style: GoogleFonts.baloo2(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-
-              // Button "X" phía bên trên bên trái của hộp thoại để tắt
-              Positioned(
-                top: 10,
-                left: 10,
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(20),
-                    onTap: () {
-                      _autoCloseTimer?.cancel();
-                      Navigator.of(context).pop();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.25),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.close_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBadge({required IconData icon, required String text, required Color bgColor, required Color textColor}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: textColor, size: 16),
-          const SizedBox(width: 4),
-          Text(
-            text,
-            style: GoogleFonts.baloo2(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: textColor,
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildInfoRow({required IconData icon, required Color iconColor, required String title, required Widget valueWidget}) {
-    return Row(
-      children: [
-        Icon(icon, color: iconColor, size: 20),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: GoogleFonts.baloo2(
-            fontSize: 15,
-            color: AppColors.textSecondary,
-          ),
-        ),
-        const Spacer(),
-        valueWidget,
-      ],
+class _AutoGlowSweepBorderPainter extends CustomPainter {
+  final double progress;
+  final Color glowColor;
+  final BorderRadius borderRadius;
+  final double borderWidth;
+
+  _AutoGlowSweepBorderPainter({
+    required this.progress,
+    required this.glowColor,
+    required this.borderRadius,
+    required this.borderWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) return;
+
+    final halfWidth = borderWidth / 2;
+    final rect = Rect.fromLTWH(
+      halfWidth,
+      halfWidth,
+      size.width - borderWidth,
+      size.height - borderWidth,
     );
+    final rrect = borderRadius.toRRect(rect);
+
+    // 1. Viền mờ nền nhẹ
+    final basePaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.16)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    canvas.drawRRect(rrect, basePaint);
+
+    // 2. Viền vệt sáng rộng mờ (Soft outer glow aura)
+    final auraPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = borderWidth * 2.2
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0)
+      ..shader = SweepGradient(
+        center: Alignment.center,
+        startAngle: 0.0,
+        endAngle: 2 * pi,
+        transform: GradientRotation(progress * 2 * pi),
+        colors: [
+          Colors.transparent,
+          glowColor.withValues(alpha: 0.0),
+          glowColor.withValues(alpha: 0.25),
+          glowColor.withValues(alpha: 0.6),
+          Colors.white.withValues(alpha: 0.7),
+          glowColor.withValues(alpha: 0.6),
+          glowColor.withValues(alpha: 0.25),
+          glowColor.withValues(alpha: 0.0),
+          Colors.transparent,
+        ],
+        stops: const [0.0, 0.3, 0.44, 0.48, 0.5, 0.52, 0.56, 0.7, 1.0],
+      ).createShader(rect);
+    canvas.drawRRect(rrect, auraPaint);
+
+    // 3. Vệt sáng sắc nét trung tâm (Sharp bright core beam)
+    final sweepPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = borderWidth
+      ..strokeCap = StrokeCap.round
+      ..shader = SweepGradient(
+        center: Alignment.center,
+        startAngle: 0.0,
+        endAngle: 2 * pi,
+        transform: GradientRotation(progress * 2 * pi),
+        colors: [
+          Colors.transparent,
+          glowColor.withValues(alpha: 0.0),
+          glowColor.withValues(alpha: 0.4),
+          glowColor,
+          Colors.white,
+          glowColor,
+          glowColor.withValues(alpha: 0.4),
+          glowColor.withValues(alpha: 0.0),
+          Colors.transparent,
+        ],
+        stops: const [0.0, 0.3, 0.44, 0.48, 0.5, 0.52, 0.56, 0.7, 1.0],
+      ).createShader(rect);
+    canvas.drawRRect(rrect, sweepPaint);
   }
 
-  // --- Network States for Rank ---
-
-  Widget _buildLoadingRank() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildInfoRow(
-          icon: Icons.emoji_events_rounded,
-          iconColor: Colors.amber,
-          title: "Vị trí hôm nay:",
-          valueWidget: _buildPulsePlaceholder(width: 80, height: 20),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          "Trung bình người chơi:",
-          style: GoogleFonts.baloo2(fontSize: 14, color: AppColors.textSecondary),
-        ),
-        const SizedBox(height: 8),
-        _buildPulsePlaceholder(width: double.infinity, height: 8),
-      ],
-    );
-  }
-
-  Widget _buildErrorRank() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildInfoRow(
-          icon: Icons.emoji_events_rounded,
-          iconColor: Colors.amber,
-          title: "Vị trí hôm nay:",
-          valueWidget: Text(
-            "Đang cập nhật...",
-            style: GoogleFonts.baloo2(
-              fontSize: 14,
-              fontStyle: FontStyle.italic,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSuccessRank(TodayRankData data) {
-    // Determine status text & color
-    String statusMsg;
-    Color statusColor;
-    if (data.rank == 1) {
-      statusMsg = "👑 Đang đứng đầu bảng!";
-      statusColor = AppColors.accent;
-    } else if (data.rank == 2 || data.rank == 3) {
-      statusMsg = "✨ Đang trong Top 3!";
-      statusColor = AppColors.primary;
-    } else if (data.rank <= 10) {
-      statusMsg = "🎯 Top 10 xuất sắc!";
-      statusColor = AppColors.success;
-    } else {
-      statusMsg = "🔥 Tiến rất gần Top 10!";
-      statusColor = const Color(0xFFEA580C);
-    }
-
-    // Progress bar math (max score assumed around average * 2 for visual scale)
-    double maxScale = max(widget.foundPaths.toDouble(), data.averageScore * 2);
-    if (maxScale == 0) maxScale = 1; // prevent div by zero
-    double userRatio = widget.foundPaths / maxScale;
-    double avgRatio = data.averageScore / maxScale;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildInfoRow(
-          icon: Icons.emoji_events_rounded,
-          iconColor: Colors.amber,
-          title: "Vị trí hôm nay:",
-          valueWidget: RichText(
-            text: TextSpan(
-              style: GoogleFonts.baloo2(fontSize: 16, color: AppColors.textPrimary),
-              children: [
-                const TextSpan(text: "Hạng "),
-                TextSpan(
-                  text: "${data.rank}",
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
-                ),
-                TextSpan(text: " / ${data.totalPlayersToday} bạn"),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              "Điểm trung bình:",
-              style: GoogleFonts.baloo2(fontSize: 13, color: AppColors.textSecondary),
-            ),
-            Text(
-              "${data.averageScore.toStringAsFixed(1)} điểm",
-              style: GoogleFonts.baloo2(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        // Custom progress bar comparison
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // Background
-            Container(
-              height: 8,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-            // User Progress
-            FractionallySizedBox(
-              widthFactor: min(1.0, userRatio),
-              child: Container(
-                height: 8,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-            ),
-            // Average marker
-            Positioned(
-              left: 0,
-              right: 0,
-              child: FractionallySizedBox(
-                alignment: Alignment.centerLeft,
-                widthFactor: min(1.0, avgRatio),
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: Container(
-                    width: 4,
-                    height: 12,
-                    transform: Matrix4.translationValues(0, -2, 0),
-                    decoration: BoxDecoration(
-                      color: AppColors.accent,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Align(
-          alignment: Alignment.centerRight,
-          child: Text(
-            statusMsg,
-            style: GoogleFonts.baloo2(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: statusColor,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Simple pulsing placeholder for loading state
-  Widget _buildPulsePlaceholder({required double width, required double height}) {
-    return _PulsePlaceholder(width: width, height: height);
+  @override
+  bool shouldRepaint(covariant _AutoGlowSweepBorderPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.glowColor != glowColor ||
+        oldDelegate.borderRadius != borderRadius;
   }
 }
 
-class _PulsePlaceholder extends StatefulWidget {
-  final double width;
-  final double height;
-  const _PulsePlaceholder({required this.width, required this.height});
+class _ReportTheme {
+  final Widget badgeIcon;
+  final String badgeLabel;
+  final List<Color> badgeOuterGradient;
+  final List<Color> badgeInnerGradient;
+  final Color badgeBorderColor;
+  final Color badgeTextColor;
+  final Color badgeShadowColor;
+  final String tagText;
+  final Color tagTextColor;
+  final Color tagBorderColor;
+  final Color tagBgColor;
+  final String title;
+  final Color titleColor;
+  final String subtitlePrefix;
+  final String rankHighlight;
+  final String subtitleSuffix;
+  final Color highlightColor;
+  final Color glowColor;
 
-  @override
-  State<_PulsePlaceholder> createState() => _PulsePlaceholderState();
-}
-
-class _PulsePlaceholderState extends State<_PulsePlaceholder> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    )..repeat(reverse: true);
-    _animation = Tween<double>(begin: 0.3, end: 0.8).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _animation,
-      child: Container(
-        width: widget.width,
-        height: widget.height,
-        decoration: BoxDecoration(
-          color: AppColors.border,
-          borderRadius: BorderRadius.circular(widget.height / 2),
-        ),
-      ),
-    );
-  }
+  const _ReportTheme({
+    required this.badgeIcon,
+    required this.badgeLabel,
+    required this.badgeOuterGradient,
+    required this.badgeInnerGradient,
+    required this.badgeBorderColor,
+    required this.badgeTextColor,
+    required this.badgeShadowColor,
+    required this.tagText,
+    required this.tagTextColor,
+    required this.tagBorderColor,
+    required this.tagBgColor,
+    required this.title,
+    required this.titleColor,
+    required this.subtitlePrefix,
+    required this.rankHighlight,
+    required this.subtitleSuffix,
+    required this.highlightColor,
+    required this.glowColor,
+  });
 }

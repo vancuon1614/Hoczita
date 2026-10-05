@@ -28,21 +28,14 @@ class ChatPanel extends ConsumerStatefulWidget {
 class _ChatPanelState extends ConsumerState<ChatPanel> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final List<ChatMessage> _messages = [];
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    // Tin nhắn chào mừng ban đầu
-    _messages.add(
-      ChatMessage(
-        id: 'welcome',
-        text: 'Chào bạn! Mình là HocDi 🤖 - trợ lý học tập thông minh và là người bạn đồng hành của bạn. Bạn có thắc mắc về từ vựng, toán học hay bài tập, cứ hỏi HocDi nhé! 🌟',
-        isUser: false,
-        timestamp: DateTime.now(),
-      ),
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToBottom();
+    });
   }
 
   @override
@@ -79,8 +72,8 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
       timestamp: DateTime.now(),
     );
 
+    ref.read(chatHistoryProvider.notifier).addMessage(userMsg);
     setState(() {
-      _messages.add(userMsg);
       _isLoading = true;
     });
     _scrollToBottom();
@@ -94,30 +87,30 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
       );
 
       if (mounted) {
+        ref.read(chatHistoryProvider.notifier).addMessage(
+          ChatMessage(
+            id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
+            text: replyText,
+            isUser: false,
+            timestamp: DateTime.now(),
+          ),
+        );
         setState(() {
-          _messages.add(
-            ChatMessage(
-              id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
-              text: replyText,
-              isUser: false,
-              timestamp: DateTime.now(),
-            ),
-          );
           _isLoading = false;
         });
         _scrollToBottom();
       }
     } catch (e) {
       if (mounted) {
+        ref.read(chatHistoryProvider.notifier).addMessage(
+          ChatMessage(
+            id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
+            text: 'Xin lỗi bạn, mạng đang hơi chập chờn. Bạn thử hỏi lại lần nữa nhé! 🔄',
+            isUser: false,
+            timestamp: DateTime.now(),
+          ),
+        );
         setState(() {
-          _messages.add(
-            ChatMessage(
-              id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
-              text: 'Xin lỗi bạn, mạng đang hơi chập chờn. Bạn thử hỏi lại lần nữa nhé! 🔄',
-              isUser: false,
-              timestamp: DateTime.now(),
-            ),
-          );
           _isLoading = false;
         });
         _scrollToBottom();
@@ -149,6 +142,7 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
   @override
   Widget build(BuildContext context) {
     final currentContext = ref.watch(chatContextProvider);
+    final messages = ref.watch(chatHistoryProvider);
     final suggestions = _getQuickSuggestions(currentContext);
 
     return Container(
@@ -212,6 +206,13 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
                   ),
                 ),
                 IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFF64748B)),
+                  tooltip: 'Xóa lịch sử chat',
+                  onPressed: () {
+                    ref.read(chatHistoryProvider.notifier).clearHistory();
+                  },
+                ),
+                IconButton(
                   icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
                   onPressed: () => Navigator.pop(context),
                 ),
@@ -224,9 +225,9 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              itemCount: _messages.length,
+              itemCount: messages.length,
               itemBuilder: (context, index) {
-                final msg = _messages[index];
+                final msg = messages[index];
                 return _buildMessageBubble(msg);
               },
             ),

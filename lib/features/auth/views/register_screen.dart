@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/providers/game_interaction_provider.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -23,7 +24,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _obscurePassword = true;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(isGameActiveProvider.notifier).state = true;
+      }
+    });
+  }
+
+  @override
   void dispose() {
+    ref.read(isGameActiveProvider.notifier).state = false;
     _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();

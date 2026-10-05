@@ -1121,115 +1121,122 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                   minHeight: 7,
                 ),
               ),
-              const SizedBox(height: 16),
 
-              // 3. Question Prompt Title
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppColors.border),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.touch_app_rounded, color: AppColors.primary, size: 22),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        question.prompt,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.baloo2(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // 4. Main Comparison Interactive Stage (Hai hộp so sánh chạm trực tiếp + Nút "=" ở giữa)
-              // Dùng IntrinsicHeight để khung của cái lớn nhất áp dụng luôn cho cả cái nhỏ nhất, 2 khung luôn ngang bằng nhau
+              // 3. Main Centered Interactive Area (Prompt + Comparison Boxes + Bottom Hint)
+              // Đưa toàn bộ vào khối căn giữa để khoảng cách trên (từ progress bar) và khoảng cách dưới (đáy màn hình) cân đối tuyệt đối
               Expanded(
                 child: Center(
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: IntrinsicHeight(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // --- HỘP BÊN TRÁI ---
-                            Expanded(
-                              child: _buildComparisonTouchBox(
-                                index: 0,
-                                label: 'Bên trái',
-                                items: leftItems,
-                                isSelected: isSelectedLeft,
-                                isCorrectChoice: isCorrectLeft,
-                                defaultBgColor: const Color(0xFFF0F7FF),
-                                defaultBorderColor: const Color(0xFFBAE6FD),
-                                themeColor: const Color(0xFF0284C7),
-                              ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Hộp câu hỏi: căn chỉnh icon và text cân đối đều trên dưới
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(color: AppColors.border),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.03),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
-
-                            const SizedBox(width: 8),
-
-                            // --- NÚT BẰNG NHAU Ở GIỮA ---
-                            _buildEqualButton(
-                              isSelected: isSelectedEqual,
-                              isCorrectChoice: isCorrectEqual,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.touch_app_rounded, color: AppColors.primary, size: 22),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    question.prompt,
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.baloo2(
+                                      fontSize: 16.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textPrimary,
+                                      height: 1.25,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
+                          ),
 
-                            const SizedBox(width: 8),
+                          const SizedBox(height: 18),
 
-                            // --- HỘP BÊN PHẢI ---
-                            Expanded(
-                              child: _buildComparisonTouchBox(
-                                index: 1,
-                                label: 'Bên phải',
-                                items: rightItems,
-                                isSelected: isSelectedRight,
-                                isCorrectChoice: isCorrectRight,
-                                defaultBgColor: const Color(0xFFFFF7ED),
-                                defaultBorderColor: const Color(0xFFFED7AA),
-                                themeColor: const Color(0xFFEA580C),
-                              ),
+                          // Hai hộp so sánh chạm trực tiếp + Nút "=" ở giữa
+                          // Dùng IntrinsicHeight để khung của cái lớn nhất áp dụng luôn cho cả cái nhỏ nhất
+                          IntrinsicHeight(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // --- HỘP BÊN TRÁI ---
+                                Expanded(
+                                  child: _buildComparisonTouchBox(
+                                    index: 0,
+                                    label: 'Bên trái',
+                                    items: leftItems,
+                                    isSelected: isSelectedLeft,
+                                    isCorrectChoice: isCorrectLeft,
+                                    defaultBgColor: const Color(0xFFF0F7FF),
+                                    defaultBorderColor: const Color(0xFFBAE6FD),
+                                    themeColor: const Color(0xFF0284C7),
+                                  ),
+                                ),
+
+                                const SizedBox(width: 8),
+
+                                // --- NÚT BẰNG NHAU Ở GIỮA ---
+                                _buildEqualButton(
+                                  isSelected: isSelectedEqual,
+                                  isCorrectChoice: isCorrectEqual,
+                                ),
+
+                                const SizedBox(width: 8),
+
+                                // --- HỘP BÊN PHẢI ---
+                                Expanded(
+                                  child: _buildComparisonTouchBox(
+                                    index: 1,
+                                    label: 'Bên phải',
+                                    items: rightItems,
+                                    isSelected: isSelectedRight,
+                                    isCorrectChoice: isCorrectRight,
+                                    defaultBgColor: const Color(0xFFFFF7ED),
+                                    defaultBorderColor: const Color(0xFFFED7AA),
+                                    themeColor: const Color(0xFFEA580C),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Gợi ý thao tác dưới chân
+                          Text(
+                            '👉 Chạm trực tiếp vào hộp bạn chọn',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
               ),
-
-              const SizedBox(height: 14),
-
-              // 5. Gợi ý thao tác dưới chân
-              Center(
-                child: Text(
-                  '👉 Chạm trực tiếp vào hộp bạn chọn',
-                  style: GoogleFonts.baloo2(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
             ],
           ),
         ),

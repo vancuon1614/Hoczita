@@ -80,6 +80,11 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(isGameActiveProvider.notifier).state = true;
+      }
+    });
     _loadHighestStars();
     _timerController = AnimationController(
       vsync: this,

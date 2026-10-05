@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../providers/checkin_provider.dart';
-import '../checkin_celebration_banner.dart';
 import 'checkin_logic.dart';
 import 'month_checkin_sheet.dart';
 
@@ -72,13 +71,6 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
 
   @override
   Widget build(BuildContext context) {
-    // Lắng nghe sự kiện điểm danh thành công để hiển thị popup
-    ref.listen<CheckinState>(checkinProvider, (previous, next) {
-      if (previous != null && !previous.hasCheckedInToday && next.hasCheckedInToday) {
-        CheckinCelebrationBanner.show(context);
-      }
-    });
-
     final checkinState = ref.watch(checkinProvider);
     final hasCheckedIn = checkinState.hasCheckedInToday;
     final streak = CheckinLogic.calculateStreak(checkinState.checkedDates, _today);

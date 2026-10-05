@@ -151,6 +151,11 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(isGameActiveProvider.notifier).state = true;
+      }
+    });
     _loadHighestStars();
   }
 

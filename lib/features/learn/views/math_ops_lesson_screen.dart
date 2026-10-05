@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../services/learning_progress_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class MathOpsLessonScreen extends StatefulWidget {
@@ -77,6 +78,7 @@ class _MathOpsLessonScreenState extends State<MathOpsLessonScreen> {
     });
 
     if (choiceValue == _correctResult) {
+      LearningProgressService.instance.recordMathCorrect(subject: 'math_ops');
       await Future.delayed(const Duration(milliseconds: 1200));
       if (mounted) {
         _handleNextQuestion();

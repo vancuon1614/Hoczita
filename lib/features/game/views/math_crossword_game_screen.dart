@@ -105,6 +105,11 @@ class _MathCrosswordGameScreenState extends ConsumerState<MathCrosswordGameScree
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(isGameActiveProvider.notifier).state = true;
+      }
+    });
     _loadHighestStars();
   }
 

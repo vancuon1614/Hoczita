@@ -15,6 +15,7 @@ import 'magic_number_path_game_screen.dart';
 import 'sudoku_lobby_screen.dart';
 import 'multiplication_table_game_screen.dart';
 import '../../../core/widgets/game_sound_toggle_button.dart';
+import '../../../core/providers/game_interaction_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 
@@ -123,13 +124,18 @@ class _GameTabState extends ConsumerState<GameTab> {
   }
 
   void _playGame(Widget gameScreen) async {
-    // Navigate to game screen and wait for completion
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => gameScreen),
-    );
-    // Reload scores to update star rating immediately
-    _loadGameScores();
+    ref.read(isGameActiveProvider.notifier).state = true;
+    try {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => gameScreen),
+      );
+    } finally {
+      if (mounted) {
+        ref.read(isGameActiveProvider.notifier).state = false;
+        _loadGameScores();
+      }
+    }
   }
 
   @override
