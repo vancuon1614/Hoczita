@@ -273,6 +273,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
               );
             } catch (nksErr) {
               debugPrint('Lỗi đồng bộ mật khẩu lên NKS: $nksErr');
+              if (!mounted) return;
               // Có thể mật khẩu cũ đúng với Supabase nhưng NKS lại khác, hoặc lỗi server NKS
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -285,6 +286,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
             }
           }
 
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Cập nhật mật khẩu thành công! 🎉'),

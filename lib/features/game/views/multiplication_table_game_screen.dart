@@ -70,8 +70,7 @@ class _MultiplicationTableGameScreenState
     );
 
     if (widget.initialTable != null) {
-      _selectedTable = widget.initialTable!;
-      _startRound(_selectedTable);
+      _startRound(MultiplicationLevel.easy);
     }
   }
 
@@ -84,18 +83,19 @@ class _MultiplicationTableGameScreenState
     super.dispose();
   }
 
-  void _startRound(int tableNumber) {
+  void _startRound(MultiplicationLevel level) {
     _timer?.cancel();
     _animController.reset();
 
-    final levelName = _selectedLevel == MultiplicationLevel.easy
+    final levelName = level == MultiplicationLevel.easy
         ? 'Dễ'
-        : _selectedLevel == MultiplicationLevel.medium
+        : level == MultiplicationLevel.medium
             ? 'Vừa'
             : 'Toán đố Thực tế';
 
     setState(() {
-      _selectedTable = tableNumber;
+      _selectedLevel = level;
+      _selectedTable = 0; // Luôn dùng toàn bộ bảng cửu chương 2 đến 9
       _isPlaying = true;
       _isGameOver = false;
       _isSavingScore = false;
@@ -112,10 +112,10 @@ class _MultiplicationTableGameScreenState
         _questionResults[i] = null;
       }
       _questions = MultiplicationQuestionGenerator.generateQuestions(
-        tableNumber: tableNumber,
-        level: _selectedLevel,
+        tableNumber: 0,
+        level: level,
       );
-      _mascotMessage = 'Bảng ${_selectedTable == 0 ? "Tổng hợp" : "$_selectedTable"} - Cấp độ $levelName. Chúc bạn làm thật tốt nhé! 🚀';
+      _mascotMessage = 'Cấp độ $levelName. Chúc bạn làm thật tốt nhé! 🚀';
     });
 
     ref.read(isGameActiveProvider.notifier).state = true;
@@ -452,51 +452,9 @@ class _MultiplicationTableGameScreenState
 
               const SizedBox(height: 24),
 
-              // Chọn Cấp Độ Thử Thách
+              // Chọn Chế Độ Thử Thách
               Text(
-                'CHỌN CẤP ĐỘ THỬ THÁCH',
-                style: GoogleFonts.baloo2(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textSecondary,
-                  letterSpacing: 1.0,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildLevelChip(
-                      level: MultiplicationLevel.easy,
-                      title: 'Dễ',
-                      subtitle: '2 × 9 = ?',
-                      icon: '🟢',
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildLevelChip(
-                      level: MultiplicationLevel.medium,
-                      title: 'Vừa',
-                      subtitle: '? × 9 = 18',
-                      icon: '🟡',
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildLevelChip(
-                      level: MultiplicationLevel.hard,
-                      title: 'Thực Tế',
-                      subtitle: 'Toán đố 💡',
-                      icon: '🔴',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 22),
-
-              Text(
-                'CHỌN BẢNG CỬU CHƯƠNG',
+                'CHỌN CHẾ ĐỘ THỬ THÁCH',
                 style: GoogleFonts.baloo2(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
@@ -506,32 +464,41 @@ class _MultiplicationTableGameScreenState
               ),
               const SizedBox(height: 12),
 
-              // Special "Tổng hợp" Card
-              _buildTableCard(
-                title: 'Thử Thách Tổng Hợp',
-                subtitle: 'Gồm ngẫu nhiên tất cả các bảng từ 2 đến 9',
-                tableNumber: 0,
-                isSpecial: true,
-                badgeText: 'HOT ⭐',
+              // Mode 1: Cấp Độ Dễ
+              _buildModeCard(
+                level: MultiplicationLevel.easy,
+                title: 'Cấp Độ Dễ',
+                subtitle: 'Phép nhân cơ bản rèn phản xạ nhanh',
+                exampleFormula: '2 × 9 = ?',
+                candyBadge: GelCandyBadge.green(emoji: '🟢', size: 48),
+                colorConfig: PastelToyCardColor.green,
+                tagText: 'Bảng Nhân 2 - 9',
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
 
-              // 2 to 9 Grid
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 1.45,
-                ),
-                itemCount: 8,
-                itemBuilder: (context, index) {
-                  final tableNum = index + 2; // 2..9
-                  return _buildTableGridItem(tableNum);
-                },
+              // Mode 2: Cấp Độ Vừa
+              _buildModeCard(
+                level: MultiplicationLevel.medium,
+                title: 'Cấp Độ Vừa',
+                subtitle: 'Điền khuyết ẩn số rèn tư duy toán học',
+                exampleFormula: '? × 9 = 18',
+                candyBadge: GelCandyBadge.orange(emoji: '🟡', size: 48),
+                colorConfig: PastelToyCardColor.orange,
+                tagText: 'Tư Duy & Điền Khuyết',
+              ),
+
+              const SizedBox(height: 14),
+
+              // Mode 3: Toán Đố Thực Tế
+              _buildModeCard(
+                level: MultiplicationLevel.hard,
+                title: 'Toán Đố Thực Tế',
+                subtitle: 'Tình huống đời sống (Mua kẹo, chia quà...)',
+                exampleFormula: 'Đời Sống 💡',
+                candyBadge: GelCandyBadge.blue(emoji: '💡', size: 48),
+                colorConfig: PastelToyCardColor.blue,
+                tagText: 'Ứng Dụng Thực Tế ⭐',
               ),
 
               const SizedBox(height: 24),
@@ -542,275 +509,143 @@ class _MultiplicationTableGameScreenState
     );
   }
 
-  Widget _buildLevelChip({
+  Widget _buildModeCard({
     required MultiplicationLevel level,
     required String title,
     required String subtitle,
-    required String icon,
-  }) {
-    final isSelected = (_selectedLevel == level);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            _selectedLevel = level;
-          });
-        },
-        borderRadius: BorderRadius.circular(18),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF00629D) : Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: isSelected ? const Color(0xFF00629D) : AppColors.border,
-              width: isSelected ? 2 : 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: isSelected
-                    ? const Color(0xFF00629D).withValues(alpha: 0.2)
-                    : Colors.black.withValues(alpha: 0.02),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(icon, style: const TextStyle(fontSize: 12)),
-                  const SizedBox(width: 4),
-                  Text(
-                    title,
-                    style: GoogleFonts.baloo2(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: isSelected ? Colors.white : AppColors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: GoogleFonts.baloo2(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: isSelected
-                      ? const Color(0xFFCFE5FF)
-                      : AppColors.textSecondary,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTableCard({
-    required String title,
-    required String subtitle,
-    required int tableNumber,
-    bool isSpecial = false,
-    String? badgeText,
+    required Widget candyBadge,
+    required PastelToyCardColor colorConfig,
+    required String tagText,
+    required String exampleFormula,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isSpecial ? const Color(0xFFFE9D00) : AppColors.border,
-          width: isSpecial ? 1.5 : 1,
-        ),
+        color: colorConfig.background,
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: isSpecial
-                ? const Color(0xFFFE9D00).withValues(alpha: 0.1)
-                : Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => _startRound(tableNumber),
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: isSpecial
-                        ? const Color(0xFFFFDCBB)
-                        : const Color(0xFFCFE5FF),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Center(
-                    child: Text(
-                      isSpecial ? '🌟' : '✖️',
-                      style: const TextStyle(fontSize: 24),
+          onTap: () => _startRound(level),
+          borderRadius: BorderRadius.circular(24),
+          child: Stack(
+            children: [
+              // Glossy pill reflection
+              Positioned(
+                top: 8,
+                left: 14,
+                child: Transform.rotate(
+                  angle: -0.26,
+                  child: Container(
+                    width: 24,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.72),
+                      borderRadius: BorderRadius.circular(4),
                     ),
                   ),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+              ),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                child: Row(
+                  children: [
+                    candyBadge,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.8),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  tagText,
+                                  style: GoogleFonts.baloo2(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: colorConfig.text,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: colorConfig.text.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  exampleFormula,
+                                  style: GoogleFonts.baloo2(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: colorConfig.text,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
                           Text(
                             title,
                             style: GoogleFonts.baloo2(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: colorConfig.text,
+                              height: 1.2,
                             ),
                           ),
-                          if (badgeText != null) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFE9D00),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                badgeText,
-                                style: GoogleFonts.baloo2(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle,
+                            style: GoogleFonts.baloo2(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: colorConfig.text.withValues(alpha: 0.8),
                             ),
-                          ],
+                          ),
                         ],
                       ),
-                      Text(
-                        subtitle,
-                        style: GoogleFonts.baloo2(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(
-                  Icons.play_circle_fill_rounded,
-                  color: Color(0xFF00629D),
-                  size: 32,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTableGridItem(int tableNum) {
-    final colors = [
-      const Color(0xFFE0F2FE), // Blue
-      const Color(0xFFFEF3C7), // Amber
-      const Color(0xFFD1FAE5), // Green
-      const Color(0xFFFCE7F3), // Pink
-      const Color(0xFFEDE9FE), // Purple
-      const Color(0xFFFFEDD5), // Orange
-      const Color(0xFFCCFBF1), // Teal
-      const Color(0xFFE2E8F0), // Slate
-    ];
-    final color = colors[(tableNum - 2) % colors.length];
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _startRound(tableNum),
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
+                    ),
+                    const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
+                      width: 40,
+                      height: 40,
                       decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: BorderRadius.circular(10),
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      child: Text(
-                        '$tableNum × ?',
-                        style: GoogleFonts.baloo2(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                    const Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      size: 14,
-                      color: AppColors.textSecondary,
-                    ),
-                  ],
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Bảng $tableNum',
-                      style: GoogleFonts.baloo2(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                        height: 1.1,
-                      ),
-                    ),
-                    Text(
-                      '$tableNum × 1 ... $tableNum × 10',
-                      style: GoogleFonts.baloo2(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
+                      child: Icon(
+                        Icons.play_arrow_rounded,
+                        color: colorConfig.text,
+                        size: 26,
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1495,10 +1330,10 @@ class _MultiplicationTableGameScreenState
 
                 // Action Buttons
                 ElevatedButton.icon(
-                  onPressed: () => _startRound(_selectedTable),
+                  onPressed: () => _startRound(_selectedLevel),
                   icon: const Icon(Icons.replay_rounded),
                   label: Text(
-                    'Chơi Lại Bảng Này',
+                    'Chơi Lại Chế Độ Này',
                     style: GoogleFonts.baloo2(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -1520,7 +1355,7 @@ class _MultiplicationTableGameScreenState
                   onPressed: () => setState(() => _isPlaying = false),
                   icon: const Icon(Icons.grid_view_rounded),
                   label: Text(
-                    'Chọn Bảng Khác',
+                    'Chọn Chế Độ Khác',
                     style: GoogleFonts.baloo2(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

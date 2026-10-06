@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/utils/avatar_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -284,11 +283,11 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
             } else if (croppedPath.startsWith('blob:')) {
               final response = await http.get(Uri.parse(croppedPath));
               final contentType = response.headers['content-type'] ?? 'image/jpeg';
-              base64Image = 'data:$contentType;base64,' + base64Encode(response.bodyBytes);
+              base64Image = 'data:$contentType;base64,${base64Encode(response.bodyBytes)}';
             } else {
               final bytes = await File(croppedPath).readAsBytes();
               final isPng = croppedPath.toLowerCase().endsWith('.png');
-              base64Image = 'data:image/${isPng ? 'png' : 'jpeg'};base64,' + base64Encode(bytes);
+              base64Image = 'data:image/${isPng ? 'png' : 'jpeg'};base64,${base64Encode(bytes)}';
             }
             
             debugPrint('Base64 Payload Size: ${(base64Image.length / 1024).toStringAsFixed(2)} KB');

@@ -7,6 +7,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/game_interaction_provider.dart';
 import '../models/game_question.dart';
 import 'multiple_choice_game_screen.dart';
+import '../../learn/views/widgets/gel_candy_icon.dart';
 
 class FlashcardStudyScreen extends ConsumerStatefulWidget {
   final String gameName;
@@ -259,33 +260,83 @@ class _FlashcardStudyScreenState extends ConsumerState<FlashcardStudyScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFCFE5FF),
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: const Color(0xFF00375A).withValues(alpha: 0.1),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
         ],
         border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.3),
+          color: const Color(0xFFBAE6FD),
           width: 2,
         ),
       ),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Text(
-            word,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.baloo2(
-              fontSize: 48,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
+      child: Stack(
+        children: [
+          // Glossy pill reflection
+          Positioned(
+            top: 14,
+            left: 18,
+            child: Transform.rotate(
+              angle: -0.26,
+              child: Container(
+                width: 32,
+                height: 9,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
             ),
           ),
-        ),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'TỪ VỰNG TIẾNG ANH 🇬🇧',
+                      style: GoogleFonts.baloo2(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF00375A),
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    word,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.baloo2(
+                      fontSize: 48,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF00375A),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Chạm để xem nghĩa tiếng Việt',
+                    style: GoogleFonts.baloo2(
+                      fontSize: 13,
+                      color: const Color(0xFF00375A).withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -302,70 +353,86 @@ class _FlashcardStudyScreenState extends ConsumerState<FlashcardStudyScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.primary,
+        color: const Color(0xFF00629D),
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.3),
+            color: const Color(0xFF00629D).withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Row(
+      child: Stack(
+        children: [
+          // Glossy pill reflection
+          Positioned(
+            top: 14,
+            left: 18,
+            child: Transform.rotate(
+              angle: -0.26,
+              child: Container(
+                width: 32,
+                height: 9,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+            ),
+          ),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Flexible(
-                    child: Text(
-                      word,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.baloo2(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white.withValues(alpha: 0.9),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          word,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.baloo2(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white.withValues(alpha: 0.95),
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 10),
+                      // Audio Button with Gel Candy 3D
+                      GestureDetector(
+                        onTap: () => _speak(word),
+                        child: GelCandyBadge.blue(
+                          icon: const Icon(Icons.volume_up_rounded, color: Colors.white),
+                          size: 42,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(height: 20),
                   Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.volume_up_rounded),
+                    height: 2,
+                    width: 80,
+                    color: Colors.white.withValues(alpha: 0.3),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    meaning,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.baloo2(
+                      fontSize: 40,
+                      fontWeight: FontWeight.w800,
                       color: Colors.white,
-                      onPressed: () => _speak(word),
-                      tooltip: 'Nghe phát âm',
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
-              Container(
-                height: 2,
-                width: 80,
-                color: Colors.white.withValues(alpha: 0.3),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                meaning,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.baloo2(
-                  fontSize: 42,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

@@ -5,9 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/services/scrmai_api_service.dart';
+import '../../../core/services/tts_service.dart';
 import '../../../core/widgets/mini_game_timer.dart';
 import '../../../core/widgets/game_sound_toggle_button.dart';
+import '../../../core/widgets/pastel_toy_card.dart';
 import '../../../core/providers/game_interaction_provider.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../learn/views/widgets/gel_candy_icon.dart';
 import '../models/game_question.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'common/mini_game_rank_banner.dart';
@@ -45,13 +50,15 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
   bool _isGameOver = false;
   bool _isSavingScore = false;
   late List<String?> _userAnswers;
+  late List<bool?> _questionResults;
 
   @override
   void initState() {
     super.initState();
     
-    // Initialize user answers list
+    // Initialize user answers and question results lists
     _userAnswers = List.filled(widget.questions.length, null);
+    _questionResults = List.filled(widget.questions.length, null);
     
     // Initialize timer controller
     _timerController = AnimationController(
@@ -82,6 +89,7 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
   void dispose() {
     ref.read(isGameActiveProvider.notifier).state = false;
     _timerController.dispose();
+    TtsService.instance.stopAll();
     super.dispose();
   }
 
@@ -110,13 +118,15 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
       final currentQuestion = widget.questions[_currentQuestionIndex];
       final isCorrect = choiceIndex != -1 && answerValue == currentQuestion.correctAnswer;
       
+      _questionResults[_currentQuestionIndex] = isCorrect;
+
       if (isCorrect) {
         _correctAnswersCount++;
       }
     });
 
-    // Pause for 700ms in comparison game to show touch feedback, 300ms for others
-    final delayMs = widget.gameName == 'comparison' ? 700 : 300;
+    // Pause for 700ms in comparison, 600ms for others to show visual PastelToyCard feedback
+    final delayMs = widget.gameName == 'comparison' ? 700 : 600;
     Future.delayed(Duration(milliseconds: delayMs), () {
       if (!mounted) return;
       if (_currentQuestionIndex < widget.questions.length - 1) {
@@ -144,7 +154,6 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
       _isSavingScore = true;
     });
 
-
     if (_correctAnswersCount >= 10) {
       _stars = 3;
     } else if (_correctAnswersCount >= 7) {
@@ -158,6 +167,21 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
     // Mỗi câu trả lời đúng được cộng 3 điểm để khích lệ bé học tập
     _score = _correctAnswersCount * 3;
 
+    // Ưu tiên 1: NKS SCRMAI API
+    final authState = ref.read(authProvider);
+    final memberName = authState.username ?? 'Học sinh';
+    try {
+      await ScrmaiApiService.instance.submitScore(
+        member: memberName,
+        game: widget.gameName,
+        level: '1',
+        score: _score,
+      );
+    } catch (e) {
+      debugPrint('Error syncing score to NKS SCRMAI: $e');
+    }
+
+    // Ưu tiên 2: Supabase
     try {
       await SupabaseService.instance.saveScore(
         gameName: widget.gameName,
@@ -165,7 +189,7 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
         score: _score,
       );
     } catch (e) {
-      debugPrint('Error saving score: $e');
+      debugPrint('Error saving score to Supabase: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -197,15 +221,37 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
     }
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF7F9FC),
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         centerTitle: true,
         title: Text(
           widget.gameTitle,
-          style: GoogleFonts.baloo2(fontWeight: FontWeight.bold),
+          style: GoogleFonts.baloo2(
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF00375A),
+            fontSize: 20,
+          ),
         ),
-        leading: IconButton(
-          icon: Icon(Icons.close_rounded),
-          onPressed: () => _showQuitConfirmation(),
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 6,
+                ),
+              ],
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.close_rounded, color: AppColors.textPrimary, size: 20),
+              onPressed: () => _showQuitConfirmation(),
+            ),
+          ),
         ),
         actions: const [
           Padding(
@@ -216,82 +262,164 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header progress & Timer Row
+              // 1. Header Progress & Timer Row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Câu hỏi ${_currentQuestionIndex + 1}/${widget.questions.length}',
-                    style: GoogleFonts.baloo2(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textSecondary,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE0F2FE),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFBAE6FD)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('🎯', style: TextStyle(fontSize: 13)),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Câu hỏi ${_currentQuestionIndex + 1}/${widget.questions.length}',
+                          style: GoogleFonts.baloo2(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF0284C7),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  // Animated Circular Countdown Timer chuẩn hóa
-                  GameCountdownTimer(
-                    progress: 1.0 - _timerController.value,
-                    remainingSeconds: (widget.timeLimitInSeconds - (_timerController.value * widget.timeLimitInSeconds).floor()),
-                    totalSeconds: widget.timeLimitInSeconds,
-                    customColor: timerColor,
-                    size: 42,
+
+                  // Animated Countdown Timer Pill with Gel Candy feel
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: timerColor.withValues(alpha: 0.15),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                      border: Border.all(color: timerColor.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GameCountdownTimer(
+                          progress: 1.0 - _timerController.value,
+                          remainingSeconds: (widget.timeLimitInSeconds - (_timerController.value * widget.timeLimitInSeconds).floor()),
+                          totalSeconds: widget.timeLimitInSeconds,
+                          customColor: timerColor,
+                          size: 26,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${(widget.timeLimitInSeconds - (_timerController.value * widget.timeLimitInSeconds).floor())}s',
+                          style: GoogleFonts.baloo2(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: timerColor,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
-              SizedBox(height: 12),
-              
-              // Top linear progress bar
+              const SizedBox(height: 10),
+
+              // Linear Progress Bar
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: LinearProgressIndicator(
                   value: progress,
-                  backgroundColor: AppColors.border,
-                  color: AppColors.primary,
-                  minHeight: 8,
+                  backgroundColor: const Color(0xFFE2E8F0),
+                  color: const Color(0xFF00629D),
+                  minHeight: 6,
                 ),
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 14),
 
-              // Question/Prompt Card
+              // 2. Question/Prompt Arena (Pastel Toy Card Style)
               Expanded(
                 flex: 4,
                 child: Container(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(26),
+                    border: Border.all(color: const Color(0xFFCCE3F5), width: 1.5),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.02),
-                        blurRadius: 10,
+                        color: const Color(0xFF00629D).withValues(alpha: 0.06),
+                        blurRadius: 14,
                         offset: const Offset(0, 4),
                       ),
                     ],
                   ),
-                  child: Column(
+                  child: Stack(
                     children: [
-                      Expanded(
-                        child: Center(
-                          child: SingleChildScrollView(
+                      // Glossy pill reflection
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        child: Transform.rotate(
+                          angle: -0.26,
+                          child: Container(
+                            width: 24,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF00629D).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Audio Button using Gel Candy 3D at top right
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child: GestureDetector(
+                          onTap: () {
+                            TtsService.instance.speakVietnamese(currentQuestion.prompt, forced: true);
+                          },
+                          child: GelCandyBadge.blue(
+                            icon: const Icon(Icons.volume_up_rounded, color: Colors.white),
+                            size: 42,
+                          ),
+                        ),
+                      ),
+
+                      // Question content
+                      Center(
+                        child: SingleChildScrollView(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text(
-                                  currentQuestion.prompt,
-                                  textAlign: TextAlign.center,
-                                  style: GoogleFonts.baloo2(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.textPrimary,
-                                    height: 1.3,
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 36.0),
+                                  child: Text(
+                                    currentQuestion.prompt,
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.baloo2(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      color: const Color(0xFF00375A),
+                                      height: 1.3,
+                                    ),
                                   ),
                                 ),
-                                SizedBox(height: 24),
+                                const SizedBox(height: 16),
                                 _buildQuestionPrompt(currentQuestion),
                               ],
                             ),
@@ -302,13 +430,18 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                   ),
                 ),
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 16),
 
-              // Answer options Grid (supports dynamic number of choices)
+              // 3. Answer options Grid (Pastel Toy Card Style)
               Expanded(
                 flex: 3,
                 child: _buildChoicesGrid(currentQuestion),
               ),
+
+              const SizedBox(height: 12),
+
+              // 4. Bottom Mascot & Question Progress Dots
+              _buildBottomProgressDots(),
             ],
           ),
         ),
@@ -408,7 +541,15 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         if (question.visualAsset != null) ...[
-          _buildVisualAsset(question.visualAsset!, height: 140.0, fontSize: 52),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: _buildVisualAsset(question.visualAsset!, height: 120.0, fontSize: 50),
+          ),
         ],
       ],
     );
@@ -534,45 +675,84 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
 
   Widget _buildChoiceButton(int index, GameQuestion question, [String? customValue]) {
     final choiceValue = customValue ?? question.choices[index];
-    
-    Color buttonColor = Colors.white;
-    Color borderColor = AppColors.border;
-    Color textColor = AppColors.textPrimary;
+    final isSelected = (_selectedChoiceIndex == index);
+    final isCorrectOption = (choiceValue == question.correctAnswer);
 
-    if (_selectedChoiceIndex == index) {
-      buttonColor = AppColors.primaryLight;
-      borderColor = AppColors.primary;
-      textColor = AppColors.primary;
+    bool? isCorrectResult;
+    if (_hasAnswered) {
+      if (isSelected) {
+        isCorrectResult = isCorrectOption;
+      } else if (isCorrectOption) {
+        isCorrectResult = true; // Nổi bật đáp án đúng khi người dùng chọn sai
+      }
     }
 
-    return GestureDetector(
+    final labels = ['LỰA CHỌN A', 'LỰA CHỌN B', 'LỰA CHỌN C', 'LỰA CHỌN D'];
+    final colors = PastelToyCardColor.standardFour;
+
+    return PastelToyCard(
+      label: labels[index % 4],
+      title: choiceValue,
+      colorConfig: colors[index % 4],
+      isSelected: isSelected,
+      isCorrect: isCorrectResult,
+      height: double.infinity,
       onTap: _hasAnswered ? null : () => _handleAnswer(index, choiceValue),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        decoration: BoxDecoration(
-          color: buttonColor,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: borderColor, width: 2.5),
-          boxShadow: _selectedChoiceIndex == index
-              ? [
-                  BoxShadow(
-                    color: borderColor.withValues(alpha: 0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  )
-                ]
-              : null,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          choiceValue,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.baloo2(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: textColor,
+    );
+  }
+
+  Widget _buildBottomProgressDots() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-        ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFFFEF3C7),
+            ),
+            child: const Center(
+              child: Text('🐝', style: TextStyle(fontSize: 16)),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Row(
+              children: List.generate(widget.questions.length, (i) {
+                final res = (i < _questionResults.length) ? _questionResults[i] : null;
+                Color barColor = const Color(0xFFE2E8F0);
+                if (res != null) {
+                  barColor = res ? const Color(0xFF00B460) : const Color(0xFFBA1A1A);
+                } else if (i == _currentQuestionIndex) {
+                  barColor = const Color(0xFFFE9D00);
+                }
+                return Expanded(
+                  child: Container(
+                    height: 5,
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    decoration: BoxDecoration(
+                      color: barColor,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
       ),
     );
   }

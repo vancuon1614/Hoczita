@@ -39,7 +39,8 @@ class PastelToyCard extends StatelessWidget {
   final bool isSelected;
   final bool? isCorrect; // null: default, true: green border, false: red border
   final double borderRadius;
-  final double height;
+  final double? height;
+  final double? fontSize;
   final bool showPillReflection;
 
   const PastelToyCard({
@@ -53,6 +54,7 @@ class PastelToyCard extends StatelessWidget {
     this.isCorrect,
     this.borderRadius = 22,
     this.height = 110,
+    this.fontSize,
     this.showPillReflection = true,
   });
 
@@ -137,9 +139,13 @@ class PastelToyCard extends StatelessWidget {
                           title!,
                           textAlign: TextAlign.center,
                           style: GoogleFonts.baloo2(
-                            fontSize: 26,
+                            fontSize: fontSize ??
+                                (title!.length > 12
+                                    ? 16
+                                    : (title!.length > 7 ? 20 : 26)),
                             fontWeight: FontWeight.w800,
                             color: textColor,
+                            height: 1.15,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
