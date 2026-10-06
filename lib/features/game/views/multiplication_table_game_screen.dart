@@ -1,28 +1,18 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/services/tts_service.dart';
+import '../../../core/services/scrmai_api_service.dart';
 import '../../../core/widgets/mini_game_timer.dart';
 import '../../../core/widgets/game_sound_toggle_button.dart';
+import '../../../core/widgets/pastel_toy_card.dart';
 import '../../../core/providers/game_interaction_provider.dart';
-
-class MultiplicationQuestion {
-  final int factorA;
-  final int factorB;
-  final int correctResult;
-  final List<int> options;
-
-  MultiplicationQuestion({
-    required this.factorA,
-    required this.factorB,
-    required this.correctResult,
-    required this.options,
-  });
-}
+import '../../auth/providers/auth_provider.dart';
+import '../../learn/views/widgets/gel_candy_icon.dart';
+import '../utils/multiplication_question_generator.dart';
 
 class MultiplicationTableGameScreen extends ConsumerStatefulWidget {
   final int? initialTable; // 2..9 or null for selection lobby
@@ -41,12 +31,12 @@ class _MultiplicationTableGameScreenState
     extends ConsumerState<MultiplicationTableGameScreen>
     with SingleTickerProviderStateMixin {
   final SupabaseService _db = SupabaseService.instance;
-  final Random _random = Random();
 
   bool _isPlaying = false;
   int _selectedTable = 2; // 0: tổng hợp, 2..9: bảng tương ứng
+  MultiplicationLevel _selectedLevel = MultiplicationLevel.easy;
   int _currentQuestionIndex = 0;
-  List<MultiplicationQuestion> _questions = [];
+  List<MultiplicationQuestionModel> _questions = [];
 
   int _lives = 3;
   int _score = 0;
@@ -98,6 +88,12 @@ class _MultiplicationTableGameScreenState
     _timer?.cancel();
     _animController.reset();
 
+    final levelName = _selectedLevel == MultiplicationLevel.easy
+        ? 'Dễ'
+        : _selectedLevel == MultiplicationLevel.medium
+            ? 'Vừa'
+            : 'Toán đố Thực tế';
+
     setState(() {
       _selectedTable = tableNumber;
       _isPlaying = true;
@@ -115,65 +111,16 @@ class _MultiplicationTableGameScreenState
       for (int i = 0; i < 10; i++) {
         _questionResults[i] = null;
       }
-      _questions = _generateQuestions(tableNumber);
-      _mascotMessage = 'Bạn đã chọn bảng ${_selectedTable == 0 ? "Tổng hợp" : "$_selectedTable"}. Chúc bạn làm thật tốt nhé! 🚀';
+      _questions = MultiplicationQuestionGenerator.generateQuestions(
+        tableNumber: tableNumber,
+        level: _selectedLevel,
+      );
+      _mascotMessage = 'Bảng ${_selectedTable == 0 ? "Tổng hợp" : "$_selectedTable"} - Cấp độ $levelName. Chúc bạn làm thật tốt nhé! 🚀';
     });
 
     ref.read(isGameActiveProvider.notifier).state = true;
     _startTimer();
     _speakCurrentQuestion();
-  }
-
-  List<MultiplicationQuestion> _generateQuestions(int tableNumber) {
-    final List<MultiplicationQuestion> list = [];
-    final List<int> multipliers = List.generate(10, (i) => i + 1)..shuffle(_random);
-
-    for (int i = 0; i < 10; i++) {
-      int a;
-      int b;
-
-      if (tableNumber == 0) {
-        // Tổng hợp từ 2 đến 9
-        a = _random.nextInt(8) + 2; // 2..9
-        b = _random.nextInt(10) + 1; // 1..10
-      } else {
-        a = tableNumber;
-        b = multipliers[i];
-      }
-
-      final correct = a * b;
-      final Set<int> optionSet = {correct};
-
-      // Sinh 3 đáp án sai gần sát và hợp lý
-      final List<int> deltas = [-a, a, -1, 1, -2, 2, -10, 10, -5, 5];
-      deltas.shuffle(_random);
-
-      for (final delta in deltas) {
-        final wrong = correct + delta;
-        if (wrong > 0 && wrong != correct && !optionSet.contains(wrong)) {
-          optionSet.add(wrong);
-          if (optionSet.length == 4) break;
-        }
-      }
-
-      while (optionSet.length < 4) {
-        final fallback = (a * (_random.nextInt(10) + 1)) + (_random.nextBool() ? 1 : -1);
-        if (fallback > 0 && fallback != correct && !optionSet.contains(fallback)) {
-          optionSet.add(fallback);
-        }
-      }
-
-      final options = optionSet.toList()..shuffle(_random);
-
-      list.add(MultiplicationQuestion(
-        factorA: a,
-        factorB: b,
-        correctResult: correct,
-        options: options,
-      ));
-    }
-
-    return list;
   }
 
   void _startTimer() {
@@ -191,15 +138,15 @@ class _MultiplicationTableGameScreenState
   void _speakCurrentQuestion({bool forced = false}) {
     if (_questions.isEmpty || _currentQuestionIndex >= _questions.length) return;
     final q = _questions[_currentQuestionIndex];
-    TtsService.instance.speakVietnamese('${q.factorA} nhân ${q.factorB} bằng bao nhiêu?', forced: forced);
+    TtsService.instance.speakVietnamese(q.ttsPrompt, forced: forced);
   }
 
   void _handleBubbleTap(int bubbleIndex) {
     if (_isAnswering || _isGameOver || _questions.isEmpty) return;
 
     final q = _questions[_currentQuestionIndex];
-    final chosenValue = q.options[bubbleIndex];
-    final isCorrect = (chosenValue == q.correctResult);
+    final chosenOpt = q.options[bubbleIndex];
+    final isCorrect = (chosenOpt.value == q.correctResult);
 
     setState(() {
       _isAnswering = true;
@@ -235,7 +182,7 @@ class _MultiplicationTableGameScreenState
         _lives = newLives;
         _combo = 1;
         _questionResults[_currentQuestionIndex] = false;
-        _mascotMessage = 'Chưa đúng rồi! ${q.factorA} × ${q.factorB} = ${q.correctResult} bạn nhé! 💪';
+        _mascotMessage = 'Chưa đúng rồi! Đáp án là ${q.correctDisplay} bạn nhé! 💪';
       });
 
       if (newLives <= 0) {
@@ -285,6 +232,27 @@ class _MultiplicationTableGameScreenState
       _isSavingScore = true;
     });
 
+    // Ưu tiên 1: NKS SCRMAI API
+    final authState = ref.read(authProvider);
+    final memberName = authState.username ?? 'Học sinh';
+    final levelStr = _selectedLevel == MultiplicationLevel.easy
+        ? '1'
+        : _selectedLevel == MultiplicationLevel.medium
+            ? '2'
+            : '3';
+
+    try {
+      await ScrmaiApiService.instance.submitScore(
+        member: memberName,
+        game: 'M01',
+        level: levelStr,
+        score: _score,
+      );
+    } catch (e) {
+      debugPrint('Error syncing score to NKS SCRMAI: $e');
+    }
+
+    // Ưu tiên 2: Supabase
     try {
       await _db.saveScore(
         gameName: gameName,
@@ -292,7 +260,7 @@ class _MultiplicationTableGameScreenState
         score: _score,
       );
     } catch (e) {
-      debugPrint('Error saving multiplication score: $e');
+      debugPrint('Error saving multiplication score to Supabase: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -484,6 +452,49 @@ class _MultiplicationTableGameScreenState
 
               const SizedBox(height: 24),
 
+              // Chọn Cấp Độ Thử Thách
+              Text(
+                'CHỌN CẤP ĐỘ THỬ THÁCH',
+                style: GoogleFonts.baloo2(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textSecondary,
+                  letterSpacing: 1.0,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildLevelChip(
+                      level: MultiplicationLevel.easy,
+                      title: 'Dễ',
+                      subtitle: '2 × 9 = ?',
+                      icon: '🟢',
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildLevelChip(
+                      level: MultiplicationLevel.medium,
+                      title: 'Vừa',
+                      subtitle: '? × 9 = 18',
+                      icon: '🟡',
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildLevelChip(
+                      level: MultiplicationLevel.hard,
+                      title: 'Thực Tế',
+                      subtitle: 'Toán đố 💡',
+                      icon: '🔴',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 22),
+
               Text(
                 'CHỌN BẢNG CỬU CHƯƠNG',
                 style: GoogleFonts.baloo2(
@@ -524,6 +535,80 @@ class _MultiplicationTableGameScreenState
               ),
 
               const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLevelChip({
+    required MultiplicationLevel level,
+    required String title,
+    required String subtitle,
+    required String icon,
+  }) {
+    final isSelected = (_selectedLevel == level);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _selectedLevel = level;
+          });
+        },
+        borderRadius: BorderRadius.circular(18),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF00629D) : Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isSelected ? const Color(0xFF00629D) : AppColors.border,
+              width: isSelected ? 2 : 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isSelected
+                    ? const Color(0xFF00629D).withValues(alpha: 0.2)
+                    : Colors.black.withValues(alpha: 0.02),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(icon, style: const TextStyle(fontSize: 12)),
+                  const SizedBox(width: 4),
+                  Text(
+                    title,
+                    style: GoogleFonts.baloo2(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: isSelected ? Colors.white : AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: GoogleFonts.baloo2(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected
+                      ? const Color(0xFFCFE5FF)
+                      : AppColors.textSecondary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
         ),
@@ -968,7 +1053,7 @@ class _MultiplicationTableGameScreenState
     );
   }
 
-  Widget _buildProblemArena(MultiplicationQuestion q, String tableTitle) {
+  Widget _buildProblemArena(MultiplicationQuestionModel q, String tableTitle) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -1012,77 +1097,67 @@ class _MultiplicationTableGameScreenState
 
           // Main Content
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          tableTitle,
-                          style: GoogleFonts.baloo2(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFFCFE5FF),
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFCFE5FF).withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            'Câu ${_currentQuestionIndex + 1}/10',
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            q.formulaHeader,
                             style: GoogleFonts.baloo2(
-                              fontSize: 10,
+                              fontSize: 12,
                               fontWeight: FontWeight.bold,
                               color: const Color(0xFFCFE5FF),
+                              letterSpacing: 0.8,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '${q.factorA} × ${q.factorB} = ?',
-                      style: GoogleFonts.baloo2(
-                        fontSize: 34,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        letterSpacing: 1.5,
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFCFE5FF).withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'Câu ${_currentQuestionIndex + 1}/10',
+                              style: GoogleFonts.baloo2(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFFCFE5FF),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-
-                // Audio Button
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
+                      const SizedBox(height: 6),
+                      Text(
+                        q.questionText,
+                        style: GoogleFonts.baloo2(
+                          fontSize: q.level == MultiplicationLevel.hard ? 17 : 32,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          height: q.level == MultiplicationLevel.hard ? 1.35 : 1.2,
+                          letterSpacing: q.level == MultiplicationLevel.hard ? 0.2 : 1.5,
+                        ),
                       ),
                     ],
                   ),
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.volume_up_rounded,
-                      color: Color(0xFF00629D),
-                      size: 26,
-                    ),
-                    onPressed: () => _speakCurrentQuestion(forced: true),
-                    tooltip: 'Nghe đọc phép tính',
+                ),
+                const SizedBox(width: 10),
+
+                // Audio Button using Gel Candy 3D
+                GestureDetector(
+                  onTap: () => _speakCurrentQuestion(forced: true),
+                  child: GelCandyBadge.blue(
+                    icon: const Icon(Icons.volume_up_rounded, color: Colors.white),
+                    size: 46,
                   ),
                 ),
               ],
@@ -1093,7 +1168,7 @@ class _MultiplicationTableGameScreenState
     );
   }
 
-  Widget _buildBubbleGrid(MultiplicationQuestion q) {
+  Widget _buildBubbleGrid(MultiplicationQuestionModel q) {
     return LayoutBuilder(
       builder: (context, constraints) {
         return GridView.builder(
@@ -1113,154 +1188,40 @@ class _MultiplicationTableGameScreenState
     );
   }
 
-  Widget _buildBubbleItem(int index, MultiplicationQuestion q) {
-    final value = q.options[index];
+  Widget _buildBubbleItem(int index, MultiplicationQuestionModel q) {
+    final opt = q.options[index];
     final isSelected = (_selectedBubbleIndex == index);
-    final isCorrectOption = (value == q.correctResult);
+    final isCorrectOption = (opt.value == q.correctResult);
 
-    // Color definitions matching design
-    final bubbleConfigs = [
-      {
-        'label': 'BÓNG A',
-        'bg': const Color(0xFFCFE5FF),
-        'text': const Color(0xFF00375A),
-      },
-      {
-        'label': 'BÓNG B',
-        'bg': const Color(0xFFFFDCBB),
-        'text': const Color(0xFF663C00),
-      },
-      {
-        'label': 'BÓNG C',
-        'bg': const Color(0xFFE6E8EB),
-        'text': const Color(0xFF191C1E),
-      },
-      {
-        'label': 'BÓNG D',
-        'bg': const Color(0xFFD1FAE5),
-        'text': const Color(0xFF003D1D),
-      },
-    ];
-
-    final config = bubbleConfigs[index % bubbleConfigs.length];
-    Color cardBg = config['bg'] as Color;
-    Color textColor = config['text'] as Color;
-    Border? border;
-
+    bool? isCorrectResult;
     if (_isAnswering) {
       if (isSelected) {
-        if (isCorrectOption) {
-          cardBg = const Color(0xFF6CFE9F);
-          border = Border.all(color: const Color(0xFF00B460), width: 3);
-        } else {
-          cardBg = const Color(0xFFFFDAD6);
-          border = Border.all(color: const Color(0xFFBA1A1A), width: 3);
-        }
+        isCorrectResult = isCorrectOption;
       } else if (isCorrectOption) {
-        // Highlight correct option if user got it wrong
-        border = Border.all(color: const Color(0xFF00B460), width: 2.5);
+        isCorrectResult = true; // highlight correct answer if wrong
       }
     }
 
-    Widget bubbleWidget = Container(
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(22),
-        border: border,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          // Glossy pill reflection
-          Positioned(
-            top: 8,
-            left: 14,
-            child: Transform.rotate(
-              angle: -0.26,
-              child: Container(
-                width: 20,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-            ),
-          ),
+    final labels = ['BÓNG A', 'BÓNG B', 'BÓNG C', 'BÓNG D'];
+    final colors = PastelToyCardColor.standardFour;
 
-          // Correct / Wrong Badge on top right
-          if (_isAnswering && (isSelected || isCorrectOption))
-            Positioned(
-              top: 8,
-              right: 8,
-              child: Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: isCorrectOption
-                      ? const Color(0xFF00B460)
-                      : const Color(0xFFBA1A1A),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  isCorrectOption ? Icons.check_rounded : Icons.close_rounded,
-                  color: Colors.white,
-                  size: 16,
-                ),
-              ),
-            ),
-
-          // Content
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  config['label'] as String,
-                  style: GoogleFonts.baloo2(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.0,
-                    color: textColor.withValues(alpha: 0.7),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '$value',
-                  style: GoogleFonts.baloo2(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w800,
-                    color: textColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    Widget card = PastelToyCard(
+      label: labels[index % 4],
+      title: opt.display,
+      colorConfig: colors[index % 4],
+      isSelected: isSelected,
+      isCorrect: isCorrectResult,
+      onTap: () => _handleBubbleTap(index),
     );
 
     if (isSelected) {
-      bubbleWidget = ScaleTransition(
+      card = ScaleTransition(
         scale: _scaleAnimation,
-        child: bubbleWidget,
+        child: card,
       );
     }
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => _handleBubbleTap(index),
-        borderRadius: BorderRadius.circular(22),
-        child: bubbleWidget,
-      ),
-    );
+    return card;
   }
 
   Widget _buildBottomMascotCard() {
