@@ -9,6 +9,9 @@ class GelCandyBadge extends StatelessWidget {
   final Color shadowColor;
   final String? miniBadge;
   final Color? miniBadgeColor;
+  final bool isOutlined;
+  final Color? borderColor;
+  final Color? backgroundColor;
 
   const GelCandyBadge({
     super.key,
@@ -19,6 +22,9 @@ class GelCandyBadge extends StatelessWidget {
     required this.shadowColor,
     this.miniBadge,
     this.miniBadgeColor,
+    this.isOutlined = false,
+    this.borderColor,
+    this.backgroundColor,
   }) : assert(icon != null || emoji != null);
 
   // Pre-configured Candy Styles
@@ -92,6 +98,9 @@ class GelCandyBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveBorderColor = borderColor ?? (gradientColors.isNotEmpty ? gradientColors[1] : shadowColor);
+    final isOutlineMode = isOutlined || backgroundColor != null;
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -101,40 +110,45 @@ class GelCandyBadge extends StatelessWidget {
           height: size,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(size * 0.38),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: gradientColors,
-            ),
+            color: isOutlineMode ? (backgroundColor ?? Colors.white) : null,
+            gradient: isOutlineMode
+                ? null
+                : LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: gradientColors,
+                  ),
             boxShadow: [
               // 3D Bottom Depth Shadow
               BoxShadow(
-                color: shadowColor.withValues(alpha: 0.42),
-                offset: const Offset(0, 5),
-                blurRadius: 10,
+                color: (isOutlineMode ? effectiveBorderColor : shadowColor)
+                    .withValues(alpha: isOutlineMode ? 0.16 : 0.22),
+                offset: const Offset(0, 3.5),
+                blurRadius: isOutlineMode ? 6 : 7,
                 spreadRadius: 0,
               ),
               // Soft Ambient Glow
               BoxShadow(
-                color: shadowColor.withValues(alpha: 0.18),
+                color: (isOutlineMode ? effectiveBorderColor : shadowColor)
+                    .withValues(alpha: isOutlineMode ? 0.06 : 0.08),
                 offset: const Offset(0, 1),
                 blurRadius: 3,
-                spreadRadius: 1,
+                spreadRadius: 0,
               ),
             ],
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.45),
-              width: 1.5,
+              color: isOutlineMode ? effectiveBorderColor : Colors.white.withValues(alpha: 0.25),
+              width: isOutlineMode ? 2.5 : 1.2,
             ),
           ),
           child: Stack(
             children: [
-              // Glossy Reflection Highlight (Top Half Dome)
+              // Glossy Reflection Highlight
               Positioned(
                 top: 2,
                 left: 4,
                 right: 4,
-                height: size * 0.42,
+                height: size * 0.40,
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.vertical(
@@ -144,10 +158,15 @@ class GelCandyBadge extends StatelessWidget {
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.white.withValues(alpha: 0.55),
-                        Colors.white.withValues(alpha: 0.05),
-                      ],
+                      colors: isOutlineMode
+                          ? [
+                              effectiveBorderColor.withValues(alpha: 0.08),
+                              Colors.transparent,
+                            ]
+                          : [
+                              Colors.white.withValues(alpha: 0.28),
+                              Colors.white.withValues(alpha: 0.02),
+                            ],
                     ),
                   ),
                 ),
@@ -159,13 +178,27 @@ class GelCandyBadge extends StatelessWidget {
                         emoji!,
                         style: TextStyle(
                           fontSize: size * 0.52,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withValues(alpha: isOutlineMode ? 0.08 : 0.22),
+                              offset: const Offset(0, 1.5),
+                              blurRadius: 3,
+                            ),
+                          ],
                         ),
                       )
                     : Theme(
                         data: Theme.of(context).copyWith(
                           iconTheme: IconThemeData(
-                            color: Colors.white,
+                            color: isOutlineMode ? effectiveBorderColor : Colors.white,
                             size: size * 0.54,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black.withValues(alpha: isOutlineMode ? 0.10 : 0.25),
+                                offset: const Offset(0, 1.5),
+                                blurRadius: 3,
+                              ),
+                            ],
                           ),
                         ),
                         child: icon!,

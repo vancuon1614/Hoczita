@@ -10,6 +10,8 @@ import '../../../core/widgets/game_sound_toggle_button.dart';
 import '../../../core/providers/game_interaction_provider.dart';
 import 'common/mini_game_rank_banner.dart';
 import '../utils/math_crossword_generator.dart' as gen;
+import '../../../core/widgets/pastel_toy_card.dart';
+import '../../learn/views/widgets/gel_candy_icon.dart';
 
 enum CellType { empty, number, operator, equals }
 
@@ -622,33 +624,22 @@ class _MathCrosswordGameScreenState extends ConsumerState<MathCrosswordGameScree
 
   Widget _buildDifficultySelection() {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Light bluish-white background like the image
+      backgroundColor: const Color(0xFFF7F9FC),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.black87),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Math Crossword',
-              style: GoogleFonts.baloo2(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-                color: const Color(0xFF2C3E50),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.blueGrey.shade100,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Icon(Icons.grid_4x4_rounded, size: 20, color: Colors.blueGrey),
-            ),
-          ],
+        title: Text(
+          'Ô Chữ Toán Học',
+          style: GoogleFonts.baloo2(
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+            fontSize: 20,
+          ),
         ),
         actions: const [
           Padding(
@@ -658,154 +649,161 @@ class _MathCrosswordGameScreenState extends ConsumerState<MathCrosswordGameScree
         ],
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // 3D Grid Icon
-              Center(
-                child: Image.asset(
-                  'ImageFolder/mathcount.gif', 
-                  height: 120,
-                  errorBuilder: (context, error, stackTrace) => const Icon(
-                    Icons.grid_on_rounded,
-                    size: 80,
-                    color: AppColors.primary,
+              // Hero Banner
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF7C3AED), Color(0xFFA855F7)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF7C3AED).withValues(alpha: 0.25),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Chọn Số Lượng Phép Tính',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.baloo2(
-                  fontSize: 22, 
-                  fontWeight: FontWeight.w600, 
-                  color: const Color(0xFF2C3E50),
-                ),
-              ),
-              const SizedBox(height: 32),
-              _buildDifficultyButton(
-                title: 'Khởi động',
-                subtitle: 'Làm quen nhẹ nhàng với 5 bài tập.',
-                difficulty: 5,
-                backgroundColor: const Color(0xFFE4F3E4),
-                iconColor: const Color(0xFF4CAF50),
-                stars: _easyStars,
-              ),
-              const SizedBox(height: 16),
-              _buildDifficultyButton(
-                title: 'Tập trung',
-                subtitle: 'Tăng cường thử thách với 10 bài tập.',
-                difficulty: 10,
-                backgroundColor: const Color(0xFFFDEBCE),
-                iconColor: const Color(0xFFF59E0B),
-                stars: _mediumStars,
-              ),
-              const SizedBox(height: 16),
-              _buildDifficultyButton(
-                title: 'Thử thách',
-                subtitle: 'Dành cho người chơi nâng cao với 20 bài tập.',
-                difficulty: 20,
-                backgroundColor: const Color(0xFFFFE5E5),
-                iconColor: const Color(0xFFEF4444),
-                stars: _hardStars,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDifficultyButton({
-    required String title,
-    required String subtitle,
-    required int difficulty,
-    required Color backgroundColor,
-    required Color iconColor,
-    required int stars,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _selectDifficulty(difficulty),
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-            child: Row(
-              children: [
-                // Circular play icon
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: iconColor,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: iconColor.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: GoogleFonts.baloo2(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF1E293B), // Dark text
-                        ),
-                      ),
-                      Text(
-                        subtitle,
-                        style: GoogleFonts.baloo2(
-                          fontSize: 10,
-                          color: const Color(0xFF334155),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Stars
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: List.generate(
-                    3,
-                    (index) => Padding(
-                      padding: const EdgeInsets.only(left: 2),
-                      child: Icon(
-                        Icons.star_rounded,
-                        color: index < stars ? iconColor.withValues(alpha: 0.6) : Colors.transparent,
-                        size: 20,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              'TOÁN TIỂU HỌC',
+                              style: GoogleFonts.baloo2(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFFF3E8FF),
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Ô Chữ Số Học',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              height: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Giải ô chữ bằng các con số sao cho các phép tính ngang dọc đều chuẩn xác!',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 13,
+                              color: const Color(0xFFF3E8FF),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(18),
+                        child: Image.asset(
+                          'ImageFolder/crossword.gif',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => const Center(
+                            child: Text(
+                              '➕',
+                              style: TextStyle(fontSize: 34),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Chọn Chế Độ Thử Thách
+              Text(
+                'CHỌN CHẾ ĐỘ THỬ THÁCH',
+                style: GoogleFonts.baloo2(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textSecondary,
+                  letterSpacing: 1.0,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Mode 1: Khởi Động
+              PastelModeCard(
+                title: 'Khởi Động',
+                subtitle: 'Làm quen nhẹ nhàng với 5 bài tập',
+                tagText: 'Phép Tính Cơ Bản',
+                chipText: '5 Bài Tập 🔢',
+                icon: GelCandyBadge.green(emoji: '🟢', size: 48),
+                colorConfig: PastelToyCardColor.green,
+                stars: _easyStars,
+                onTap: () => _selectDifficulty(5),
+              ),
+
+              const SizedBox(height: 14),
+
+              // Mode 2: Tập Trung
+              PastelModeCard(
+                title: 'Tập Trung',
+                subtitle: 'Tăng cường thử thách với 10 bài tập',
+                tagText: 'Tính Nhẩm Nhanh',
+                chipText: '10 Bài Tập 🧩',
+                icon: GelCandyBadge.orange(emoji: '🟡', size: 48),
+                colorConfig: PastelToyCardColor.orange,
+                stars: _mediumStars,
+                onTap: () => _selectDifficulty(10),
+              ),
+
+              const SizedBox(height: 14),
+
+              // Mode 3: Thử Thách
+              PastelModeCard(
+                title: 'Thử Thách',
+                subtitle: 'Dành cho người chơi nâng cao với 20 bài tập',
+                tagText: 'Toán Nâng Cao ⭐',
+                chipText: '20 Bài Tập 🏆',
+                icon: GelCandyBadge.blue(emoji: '💡', size: 48),
+                colorConfig: PastelToyCardColor.blue,
+                stars: _hardStars,
+                onTap: () => _selectDifficulty(20),
+              ),
+
+              const SizedBox(height: 24),
+            ],
           ),
         ),
       ),

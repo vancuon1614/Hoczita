@@ -352,7 +352,7 @@ class _MultiplicationTableGameScreenState
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -450,7 +450,7 @@ class _MultiplicationTableGameScreenState
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
 
               // Chọn Chế Độ Thử Thách
               Text(
@@ -462,7 +462,7 @@ class _MultiplicationTableGameScreenState
                   letterSpacing: 1.0,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
 
               // Mode 1: Cấp Độ Dễ
               _buildModeCard(
@@ -470,12 +470,12 @@ class _MultiplicationTableGameScreenState
                 title: 'Cấp Độ Dễ',
                 subtitle: 'Phép nhân cơ bản rèn phản xạ nhanh',
                 exampleFormula: '2 × 9 = ?',
-                candyBadge: GelCandyBadge.green(emoji: '🟢', size: 48),
+                candyBadge: GelCandyBadge.green(emoji: '🟢', size: 52),
                 colorConfig: PastelToyCardColor.green,
                 tagText: 'Bảng Nhân 2 - 9',
               ),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
               // Mode 2: Cấp Độ Vừa
               _buildModeCard(
@@ -483,12 +483,12 @@ class _MultiplicationTableGameScreenState
                 title: 'Cấp Độ Vừa',
                 subtitle: 'Điền khuyết ẩn số rèn tư duy toán học',
                 exampleFormula: '? × 9 = 18',
-                candyBadge: GelCandyBadge.orange(emoji: '🟡', size: 48),
+                candyBadge: GelCandyBadge.orange(emoji: '🟡', size: 52),
                 colorConfig: PastelToyCardColor.orange,
                 tagText: 'Tư Duy & Điền Khuyết',
               ),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
               // Mode 3: Toán Đố Thực Tế
               _buildModeCard(
@@ -496,12 +496,12 @@ class _MultiplicationTableGameScreenState
                 title: 'Toán Đố Thực Tế',
                 subtitle: 'Tình huống đời sống (Mua kẹo, chia quà...)',
                 exampleFormula: 'Đời Sống 💡',
-                candyBadge: GelCandyBadge.blue(emoji: '💡', size: 48),
+                candyBadge: GelCandyBadge.blue(emoji: '💡', size: 52),
                 colorConfig: PastelToyCardColor.blue,
                 tagText: 'Ứng Dụng Thực Tế ⭐',
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
             ],
           ),
         ),
@@ -518,137 +518,14 @@ class _MultiplicationTableGameScreenState
     required String tagText,
     required String exampleFormula,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: colorConfig.background,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _startRound(level),
-          borderRadius: BorderRadius.circular(24),
-          child: Stack(
-            children: [
-              // Glossy pill reflection
-              Positioned(
-                top: 8,
-                left: 14,
-                child: Transform.rotate(
-                  angle: -0.26,
-                  child: Container(
-                    width: 24,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.72),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ),
-              ),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-                child: Row(
-                  children: [
-                    candyBadge,
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  tagText,
-                                  style: GoogleFonts.baloo2(
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.bold,
-                                    color: colorConfig.text,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: colorConfig.text.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  exampleFormula,
-                                  style: GoogleFonts.baloo2(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: colorConfig.text,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            title,
-                            style: GoogleFonts.baloo2(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: colorConfig.text,
-                              height: 1.2,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            subtitle,
-                            style: GoogleFonts.baloo2(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
-                              color: colorConfig.text.withValues(alpha: 0.8),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.play_arrow_rounded,
-                        color: colorConfig.text,
-                        size: 26,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return PastelModeCard(
+      title: title,
+      subtitle: subtitle,
+      tagText: tagText,
+      chipText: exampleFormula,
+      icon: candyBadge,
+      colorConfig: colorConfig,
+      onTap: () => _startRound(level),
     );
   }
 
@@ -663,339 +540,247 @@ class _MultiplicationTableGameScreenState
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close_rounded, color: AppColors.textPrimary),
-          onPressed: _showQuitConfirmation,
-        ),
         centerTitle: true,
         title: Text(
-          'Thử Thách Tính Nhanh',
+          'Tính Nhanh',
           style: GoogleFonts.baloo2(
             fontWeight: FontWeight.bold,
-            color: const Color(0xFF00629D),
-            fontSize: 18,
+            color: const Color(0xFF00375A),
+            fontSize: 20,
+          ),
+        ),
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 6,
+                ),
+              ],
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.close_rounded, color: AppColors.textPrimary, size: 20),
+              onPressed: _showQuitConfirmation,
+            ),
           ),
         ),
         actions: [
-          const GameSoundToggleButton(),
-          GameCountUpTimer(elapsedSeconds: _secondsElapsed),
-          const SizedBox(width: 8),
+          // Thay Hình 4 bằng Hình 5 (nút 3D Gel Candy duy nhất trên màn hình)
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: GestureDetector(
+              onTap: () => _speakCurrentQuestion(forced: true),
+              child: GelCandyBadge.blue(
+                icon: const Icon(Icons.volume_up_rounded, color: Colors.white, size: 22),
+                size: 38,
+              ),
+            ),
+          ),
         ],
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 4),
+              // 1. Hàng Sub-Header: Tiến độ câu hỏi & Timer (như Hình 2)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE0F2FE),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFBAE6FD)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('🎯', style: TextStyle(fontSize: 13)),
+                        const SizedBox(width: 4),
+                        Text(
+                          _selectedTable == 0
+                              ? 'Câu hỏi ${_currentQuestionIndex + 1}/10'
+                              : 'Bảng $_selectedTable • Câu ${_currentQuestionIndex + 1}/10',
+                          style: GoogleFonts.baloo2(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF0284C7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
-              // 1. TOP HUD CARD
-              _buildTopHudCard(),
+                  // Mạng và Timer Pill (như Hình 2)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          for (int i = 0; i < 3; i++) ...[
+                            Icon(
+                              i < _lives
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              color: const Color(0xFFDC2626),
+                              size: 17,
+                            ),
+                            if (i < 2) const SizedBox(width: 2),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(width: 8),
 
-              const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFDC2626).withValues(alpha: 0.15),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                          border: Border.all(
+                            color: const Color(0xFFDC2626).withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.timer_outlined, size: 15, color: Color(0xFFDC2626)),
+                            const SizedBox(width: 4),
+                            Text(
+                              GameCountUpTimer.formatSeconds(_secondsElapsed),
+                              style: GoogleFonts.baloo2(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: const Color(0xFFDC2626),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
 
-              // 2. PROBLEM ARENA: CLOUD FLOATING BANNER
-              _buildProblemArena(q, tableTitle),
-
+              // (LƯỢC BỎ HOÀN TOÀN HÌNH 3 - THANH TIẾN TRÌNH THEO ĐÚNG YÊU CẦU)
               const SizedBox(height: 14),
 
-              // 3. 4 BUBBLE CHOICES (2x2 GRID)
+              // 2. KHUNG CÂU HỎI: Pastel Toy Card Style (như Hình 2)
               Expanded(
+                flex: 4,
+                child: _buildProblemArena(q, tableTitle),
+              ),
+
+              const SizedBox(height: 16),
+
+              // 3. 4 THẺ ĐÁP ÁN LỰA CHỌN (2x2 Grid)
+              Expanded(
+                flex: 3,
                 child: _buildBubbleGrid(q),
               ),
 
               const SizedBox(height: 12),
 
-              // (LƯỢC BỎ HOÀN TOÀN KHỐI TRỢ THỦ HỌC TẬP THEO YÊU CẦU CỦA NGƯỜI DÙNG)
-
-              // 4. BOTTOM MASCOT REACTION CARD
-              _buildBottomMascotCard(),
-
-              const SizedBox(height: 12),
+              // 4. BOTTOM MASCOT PROGRESS DOTS (như Hình 2)
+              _buildBottomProgressDots(),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildTopHudCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Row 1: Lives & Score
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Lives Pill
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFDAD6).withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (int i = 0; i < 3; i++) ...[
-                      Icon(
-                        i < _lives
-                            ? Icons.favorite_rounded
-                            : Icons.favorite_border_rounded,
-                        color: const Color(0xFFBA1A1A),
-                        size: 18,
-                      ),
-                      if (i < 2) const SizedBox(width: 3),
-                    ],
-                    const SizedBox(width: 6),
-                    Text(
-                      '$_lives Mạng',
-                      style: GoogleFonts.baloo2(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFFBA1A1A),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Score Pill
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFDCBB),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.stars_rounded,
-                      color: Color(0xFF885200),
-                      size: 18,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$_score Điểm',
-                      style: GoogleFonts.baloo2(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF663C00),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-
-          // Row 2: Timer & Combo Gauge
-          Row(
-            children: [
-              // Timer Display in HUD
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFECEEF1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.timer_outlined,
-                      size: 15,
-                      color: Color(0xFF00629D),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      GameCountUpTimer.formatSeconds(_secondsElapsed),
-                      style: GoogleFonts.baloo2(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF00629D),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(width: 10),
-
-              // Combo Gauge
-              Expanded(
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.local_fire_department_rounded,
-                      size: 18,
-                      color: Color(0xFFFE9D00),
-                    ),
-                    const SizedBox(width: 2),
-                    Text(
-                      'Combo x$_combo',
-                      style: GoogleFonts.baloo2(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF663C00),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          height: 8,
-                          color: const Color(0xFFECEEF1),
-                          child: FractionallySizedBox(
-                            alignment: Alignment.centerLeft,
-                            widthFactor: ((_combo - 1) / 3).clamp(0.1, 1.0),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: _combo > 1
-                                    ? const Color(0xFFFE9D00)
-                                    : const Color(0xFFBEC7D4),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }
 
   Widget _buildProblemArena(MultiplicationQuestionModel q, String tableTitle) {
     return Container(
-      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF00629D),
-        borderRadius: BorderRadius.circular(24),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: const Color(0xFFCCE3F5), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF00629D).withValues(alpha: 0.25),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            color: const Color(0xFF00629D).withValues(alpha: 0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Stack(
         children: [
-          // Decorative background bubbles
+          // Glossy pill reflection
           Positioned(
-            right: -20,
-            bottom: -20,
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: const Color(0xFF00A3FF).withValues(alpha: 0.25),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          Positioned(
-            left: 40,
-            top: -20,
-            child: Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                color: const Color(0xFFCFE5FF).withValues(alpha: 0.15),
-                shape: BoxShape.circle,
+            top: 0,
+            left: 0,
+            child: Transform.rotate(
+              angle: -0.26,
+              child: Container(
+                width: 24,
+                height: 7,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00629D).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
             ),
           ),
 
-          // Main Content
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            q.formulaHeader,
-                            style: GoogleFonts.baloo2(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFFCFE5FF),
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFCFE5FF).withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'Câu ${_currentQuestionIndex + 1}/10',
-                              style: GoogleFonts.baloo2(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFFCFE5FF),
-                              ),
-                            ),
-                          ),
-                        ],
+          // Question content (Chỉ sử dụng 1 icon loa duy nhất trên AppBar theo yêu cầu)
+          Center(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      q.level == MultiplicationLevel.hard
+                          ? 'Hãy đọc đề bài và tính kết quả:'
+                          : 'Hãy tính nhanh kết quả của phép tính:',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.baloo2(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF00375A),
+                        height: 1.3,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Text(
                         q.questionText,
+                        textAlign: TextAlign.center,
                         style: GoogleFonts.baloo2(
-                          fontSize: q.level == MultiplicationLevel.hard ? 17 : 32,
+                          fontSize: q.level == MultiplicationLevel.hard ? 18 : 34,
                           fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          height: q.level == MultiplicationLevel.hard ? 1.35 : 1.2,
-                          letterSpacing: q.level == MultiplicationLevel.hard ? 0.2 : 1.5,
+                          color: const Color(0xFF00375A),
+                          letterSpacing: q.level == MultiplicationLevel.hard ? 0.3 : 1.5,
+                          height: 1.25,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 10),
-
-                // Audio Button using Gel Candy 3D
-                GestureDetector(
-                  onTap: () => _speakCurrentQuestion(forced: true),
-                  child: GelCandyBadge.blue(
-                    icon: const Icon(Icons.volume_up_rounded, color: Colors.white),
-                    size: 46,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ],
@@ -1037,7 +822,7 @@ class _MultiplicationTableGameScreenState
       }
     }
 
-    final labels = ['BÓNG A', 'BÓNG B', 'BÓNG C', 'BÓNG D'];
+    final labels = ['LỰA CHỌN A', 'LỰA CHỌN B', 'LỰA CHỌN C', 'LỰA CHỌN D'];
     final colors = PastelToyCardColor.standardFour;
 
     Widget card = PastelToyCard(
@@ -1059,129 +844,59 @@ class _MultiplicationTableGameScreenState
     return card;
   }
 
-  Widget _buildBottomMascotCard() {
+  Widget _buildBottomProgressDots() {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF2F4F7),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              // Mascot Avatar
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFD1FAE5),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Center(
-                      child: Text(
-                        '🐝',
-                        style: TextStyle(fontSize: 24),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: -2,
-                    right: -2,
-                    child: Container(
-                      width: 16,
-                      height: 16,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF00B460),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.star_rounded,
-                        color: Colors.white,
-                        size: 11,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(width: 12),
-
-              // Speech Content
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Bạn Ong Học Đi',
-                          style: GoogleFonts.baloo2(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF006D38),
-                          ),
-                        ),
-                        Text(
-                          'Câu ${_currentQuestionIndex + 1} / 10',
-                          style: GoogleFonts.baloo2(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _mascotMessage,
-                      style: GoogleFonts.baloo2(
-                        fontSize: 12,
-                        color: AppColors.textPrimary,
-                        height: 1.2,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-
-          const SizedBox(height: 8),
-
-          // 10 Segmented Dots
-          Row(
-            children: List.generate(10, (idx) {
-              Color segColor;
-              if (idx < _currentQuestionIndex) {
-                segColor = (_questionResults[idx] == true)
-                    ? const Color(0xFF00B460)
-                    : const Color(0xFFBA1A1A);
-              } else if (idx == _currentQuestionIndex) {
-                segColor = const Color(0xFFFE9D00);
-              } else {
-                segColor = const Color(0xFFE0E3E6);
-              }
-
-              return Expanded(
-                child: Container(
-                  height: 6,
-                  margin: EdgeInsets.only(
-                    left: idx == 0 ? 0 : 3,
-                    right: idx == 9 ? 0 : 3,
+        ],
+      ),
+      child: Row(
+        children: [
+          Tooltip(
+            message: _mascotMessage,
+            child: Container(
+              width: 30,
+              height: 30,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFFFEF3C7),
+              ),
+              child: const Center(
+                child: Text('🐝', style: TextStyle(fontSize: 16)),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Row(
+              children: List.generate(10, (i) {
+                final res = (i < _questionResults.length) ? _questionResults[i] : null;
+                Color barColor = const Color(0xFFE2E8F0);
+                if (res != null) {
+                  barColor = res ? const Color(0xFF00B460) : const Color(0xFFBA1A1A);
+                } else if (i == _currentQuestionIndex) {
+                  barColor = const Color(0xFFFE9D00);
+                }
+                return Expanded(
+                  child: Container(
+                    height: 5,
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    decoration: BoxDecoration(
+                      color: barColor,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
                   ),
-                  decoration: BoxDecoration(
-                    color: segColor,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-              );
-            }),
+                );
+              }),
+            ),
           ),
         ],
       ),

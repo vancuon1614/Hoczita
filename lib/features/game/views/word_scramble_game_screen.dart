@@ -11,6 +11,8 @@ import '../../../core/services/tts_service.dart';
 import 'common/mini_game_rank_banner.dart';
 import '../services/eduword_service.dart';
 import '../models/eduword_model.dart';
+import '../../../core/widgets/pastel_toy_card.dart';
+import '../../learn/views/widgets/gel_candy_icon.dart';
 
 enum ScrambleDifficulty { easy, medium, hard }
 
@@ -428,33 +430,22 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: const Color(0xFFF7F9FC),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.black87),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Word Scramble',
-              style: GoogleFonts.baloo2(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-                color: const Color(0xFF2C3E50),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.blueGrey.shade100,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Icon(Icons.sort_by_alpha_rounded, size: 20, color: Colors.blueGrey),
-            ),
-          ],
+        title: Text(
+          'Word Scramble',
+          style: GoogleFonts.baloo2(
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+            fontSize: 20,
+          ),
         ),
         actions: const [
           Padding(
@@ -464,147 +455,161 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
         ],
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Center(
-                child: Image.asset(
-                  'ImageFolder/wordscramble.webp', 
-                  height: 120,
-                  errorBuilder: (context, error, stackTrace) => const Icon(
-                    Icons.sort_by_alpha_rounded,
-                    size: 80,
-                    color: AppColors.primary,
+              // Hero Banner
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFEA580C), Color(0xFFFB923C)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFEA580C).withValues(alpha: 0.25),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Please Select Mode',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.baloo2(
-                  fontSize: 22, 
-                  fontWeight: FontWeight.w600, 
-                  color: const Color(0xFF2C3E50),
-                ),
-              ),
-              const SizedBox(height: 32),
-              _buildDifficultyButton(
-                title: 'Easy',
-                subtitle: '3–5 letters, 10s / word',
-                difficulty: ScrambleDifficulty.easy,
-                backgroundColor: const Color(0xFFE4F3E4),
-                iconColor: const Color(0xFF4CAF50),
-                stars: _easyStars,
-              ),
-              const SizedBox(height: 16),
-              _buildDifficultyButton(
-                title: 'Medium',
-                subtitle: '6–10 letters, 10s / word',
-                difficulty: ScrambleDifficulty.medium,
-                backgroundColor: const Color(0xFFFDEBCE),
-                iconColor: const Color(0xFFF59E0B),
-                stars: _mediumStars,
-              ),
-              const SizedBox(height: 16),
-              _buildDifficultyButton(
-                title: 'Hard',
-                subtitle: '> 10 letters, 10s / word',
-                difficulty: ScrambleDifficulty.hard,
-                backgroundColor: const Color(0xFFFFE5E5),
-                iconColor: const Color(0xFFEF4444),
-                stars: _hardStars,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDifficultyButton({
-    required String title,
-    required String subtitle,
-    required ScrambleDifficulty difficulty,
-    required Color backgroundColor,
-    required Color iconColor,
-    required int stars,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _selectDifficulty(difficulty),
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: iconColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.sort_by_alpha_rounded,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: GoogleFonts.baloo2(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      Text(
-                        subtitle,
-                        style: GoogleFonts.baloo2(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: List.generate(
-                    3,
-                    (index) => Padding(
-                      padding: const EdgeInsets.only(left: 2),
-                      child: Icon(
-                        Icons.star_rounded,
-                        color: index < stars ? iconColor.withValues(alpha: 0.6) : Colors.transparent,
-                        size: 20,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              'NGOẠI NGỮ TIẾNG ANH',
+                              style: GoogleFonts.baloo2(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFFFFEDD5),
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Xáo Trộn Chữ Cái',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              height: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Sắp xếp các chữ cái bị đảo lộn thành từ vựng tiếng Anh hoàn chỉnh trong vòng 10 giây!',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 13,
+                              color: const Color(0xFFFFEDD5),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(18),
+                        child: Image.asset(
+                          'ImageFolder/wordscramble.webp',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => const Center(
+                            child: Text(
+                              '🔤',
+                              style: TextStyle(fontSize: 34),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Chọn Chế Độ Thử Thách
+              Text(
+                'CHỌN CHẾ ĐỘ THỬ THÁCH',
+                style: GoogleFonts.baloo2(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textSecondary,
+                  letterSpacing: 1.0,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Mode 1: Cấp Độ Dễ
+              PastelModeCard(
+                title: 'Cấp Độ Dễ',
+                subtitle: 'Từ vựng ngắn 3–5 chữ cái rèn phản xạ',
+                tagText: '3 - 5 Ký Tự',
+                chipText: '10s / từ ⏱️',
+                icon: GelCandyBadge.green(emoji: '🔤', size: 48),
+                colorConfig: PastelToyCardColor.green,
+                stars: _easyStars,
+                onTap: () => _selectDifficulty(ScrambleDifficulty.easy),
+              ),
+
+              const SizedBox(height: 14),
+
+              // Mode 2: Cấp Độ Vừa
+              PastelModeCard(
+                title: 'Cấp Độ Vừa',
+                subtitle: 'Từ vựng thông dụng 6–10 chữ cái',
+                tagText: '6 - 10 Ký Tự',
+                chipText: '10s / từ ⏱️',
+                icon: GelCandyBadge.orange(emoji: '🧩', size: 48),
+                colorConfig: PastelToyCardColor.orange,
+                stars: _mediumStars,
+                onTap: () => _selectDifficulty(ScrambleDifficulty.medium),
+              ),
+
+              const SizedBox(height: 14),
+
+              // Mode 3: Cấp Độ Khó
+              PastelModeCard(
+                title: 'Cấp Độ Khó',
+                subtitle: 'Từ vựng nâng cao C1 trên 10 chữ cái',
+                tagText: 'C1 Nâng Cao ⭐',
+                chipText: '> 10 ký tự ⏱️',
+                icon: GelCandyBadge.blue(emoji: '🎯', size: 48),
+                colorConfig: PastelToyCardColor.blue,
+                stars: _hardStars,
+                onTap: () => _selectDifficulty(ScrambleDifficulty.hard),
+              ),
+
+              const SizedBox(height: 24),
+            ],
           ),
         ),
       ),

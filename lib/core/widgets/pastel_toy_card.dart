@@ -108,7 +108,7 @@ class PastelToyCard extends StatelessWidget {
                       width: 22,
                       height: 6.5,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.72),
+                        color: Colors.white.withValues(alpha: 0.45),
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
@@ -183,3 +183,185 @@ class PastelToyCard extends StatelessWidget {
     );
   }
 }
+
+/// Thẻ lựa chọn chế độ chơi phong cách Pastel Toy Card + Gel Candy 3D
+class PastelModeCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String tagText;
+  final String? chipText;
+  final Widget icon;
+  final PastelToyCardColor colorConfig;
+  final VoidCallback onTap;
+  final int? stars;
+
+  const PastelModeCard({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.tagText,
+    this.chipText,
+    required this.icon,
+    required this.colorConfig,
+    required this.onTap,
+    this.stars,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: colorConfig.background,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: Stack(
+            children: [
+              // Glossy pill reflection
+              Positioned(
+                top: 8,
+                left: 14,
+                child: Transform.rotate(
+                  angle: -0.26,
+                  child: Container(
+                    width: 24,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+              ),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 18,
+                ),
+                child: Row(
+                  children: [
+                    icon,
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.8),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  tagText,
+                                  style: GoogleFonts.baloo2(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: colorConfig.text,
+                                  ),
+                                ),
+                              ),
+                              if (chipText != null && chipText!.isNotEmpty) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: colorConfig.text.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    chipText!,
+                                    style: GoogleFonts.baloo2(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: colorConfig.text,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              if (stars != null && stars! > 0) ...[
+                                const Spacer(),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: List.generate(
+                                    3,
+                                    (idx) => Icon(
+                                      Icons.star_rounded,
+                                      size: 15,
+                                      color: idx < stars!
+                                          ? const Color(0xFFFFB300)
+                                          : colorConfig.text.withValues(alpha: 0.2),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            title,
+                            style: GoogleFonts.baloo2(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: colorConfig.text,
+                              height: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle,
+                            style: GoogleFonts.baloo2(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: colorConfig.text.withValues(alpha: 0.8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.play_arrow_rounded,
+                        color: colorConfig.text,
+                        size: 28,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+

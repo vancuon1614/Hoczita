@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'widgets/gel_candy_icon.dart';
 import 'random_flashcard_screen.dart';
 
 class FlashcardTopicItem {
@@ -29,8 +28,8 @@ class TopicSelectionSheet extends StatelessWidget {
       category: null,
       title: 'Tất Cả Chủ Đề',
       emoji: '🌟',
-      primaryColor: Color(0xFFF59E0B),
-      gradient: [Color(0xFFFDE68A), Color(0xFFF59E0B), Color(0xFFD97706)],
+      primaryColor: Color(0xFF6366F1),
+      gradient: [Color(0xFF818CF8), Color(0xFF6366F1), Color(0xFF3730A3)],
       count: 120,
     ),
     FlashcardTopicItem(
@@ -38,23 +37,23 @@ class TopicSelectionSheet extends StatelessWidget {
       title: 'Động Vật',
       emoji: '🐶',
       primaryColor: Color(0xFF3B82F6),
-      gradient: [Color(0xFF93C5FD), Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+      gradient: [Color(0xFF60A5FA), Color(0xFF2563EB), Color(0xFF1D4ED8)],
       count: 10,
     ),
     FlashcardTopicItem(
       category: 'fruits',
       title: 'Hoa Quả',
       emoji: '🍎',
-      primaryColor: Color(0xFFEF4444),
-      gradient: [Color(0xFFFCA5A5), Color(0xFFEF4444), Color(0xFFB91C1C)],
+      primaryColor: Color(0xFF16A34A),
+      gradient: [Color(0xFF86EFAC), Color(0xFF22C55E), Color(0xFF15803D)],
       count: 10,
     ),
     FlashcardTopicItem(
       category: 'vegatable',
       title: 'Rau Củ',
       emoji: '🥕',
-      primaryColor: Color(0xFF10B981),
-      gradient: [Color(0xFF6EE7B7), Color(0xFF10B981), Color(0xFF047857)],
+      primaryColor: Color(0xFF0284C7),
+      gradient: [Color(0xFF7DD3FC), Color(0xFF0284C7), Color(0xFF0369A1)],
       count: 10,
     ),
     FlashcardTopicItem(
@@ -62,39 +61,39 @@ class TopicSelectionSheet extends StatelessWidget {
       title: 'Phương Tiện',
       emoji: '🚗',
       primaryColor: Color(0xFF6366F1),
-      gradient: [Color(0xFFA5B4FC), Color(0xFF6366F1), Color(0xFF4338CA)],
+      gradient: [Color(0xFF818CF8), Color(0xFF4F46E5), Color(0xFF3730A3)],
       count: 10,
     ),
     FlashcardTopicItem(
       category: 'school',
       title: 'Trường Học',
       emoji: '🎒',
-      primaryColor: Color(0xFFEC4899),
-      gradient: [Color(0xFFF9A8D4), Color(0xFFEC4899), Color(0xFFBE185D)],
+      primaryColor: Color(0xFFD97706),
+      gradient: [Color(0xFFFDE047), Color(0xFFEAB308), Color(0xFFA16207)],
       count: 10,
     ),
     FlashcardTopicItem(
       category: 'home',
       title: 'Gia Đình',
       emoji: '🏠',
-      primaryColor: Color(0xFFF97316),
-      gradient: [Color(0xFFFDBA74), Color(0xFFF97316), Color(0xFFC2410C)],
+      primaryColor: Color(0xFF059669),
+      gradient: [Color(0xFF6EE7B7), Color(0xFF10B981), Color(0xFF047857)],
       count: 10,
     ),
     FlashcardTopicItem(
       category: 'nature',
       title: 'Thiên Nhiên',
       emoji: '🌈',
-      primaryColor: Color(0xFF14B8A6),
-      gradient: [Color(0xFF5EEAD4), Color(0xFF14B8A6), Color(0xFF0F766E)],
+      primaryColor: Color(0xFF0284C7),
+      gradient: [Color(0xFF7DD3FC), Color(0xFF0EA5E9), Color(0xFF0369A1)],
       count: 10,
     ),
     FlashcardTopicItem(
       category: 'space',
       title: 'Vũ Trụ',
       emoji: '🚀',
-      primaryColor: Color(0xFF8B5CF6),
-      gradient: [Color(0xFFC4B5FD), Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+      primaryColor: Color(0xFF7E22CE),
+      gradient: [Color(0xFFA855F7), Color(0xFF7E22CE), Color(0xFF3B0764)],
       count: 10,
     ),
     FlashcardTopicItem(
@@ -102,31 +101,31 @@ class TopicSelectionSheet extends StatelessWidget {
       title: 'Đại Dương',
       emoji: '🐠',
       primaryColor: Color(0xFF0EA5E9),
-      gradient: [Color(0xFF7DD3FC), Color(0xFF0EA5E9), Color(0xFF0369A1)],
+      gradient: [Color(0xFF38BDF8), Color(0xFF0284C7), Color(0xFF0F172A)],
       count: 10,
     ),
     FlashcardTopicItem(
       category: 'toy',
       title: 'Đồ Chơi',
       emoji: '🧸',
-      primaryColor: Color(0xFFD946EF),
-      gradient: [Color(0xFFF0ABFC), Color(0xFFD946EF), Color(0xFFA21CAF)],
+      primaryColor: Color(0xFFDB2777),
+      gradient: [Color(0xFFF472B6), Color(0xFFDB2777), Color(0xFF9D174D)],
       count: 10,
     ),
     FlashcardTopicItem(
       category: 'clothing',
       title: 'Trang Phục',
       emoji: '👕',
-      primaryColor: Color(0xFF059669),
-      gradient: [Color(0xFF6EE7B7), Color(0xFF059669), Color(0xFF047857)],
+      primaryColor: Color(0xFFEA580C),
+      gradient: [Color(0xFFFDBA74), Color(0xFFF97316), Color(0xFFC2410C)],
       count: 10,
     ),
     FlashcardTopicItem(
       category: 'food',
       title: 'Món Ăn',
       emoji: '🍕',
-      primaryColor: Color(0xFFEA580C),
-      gradient: [Color(0xFFFDBA74), Color(0xFFEA580C), Color(0xFF9A3412)],
+      primaryColor: Color(0xFF0284C7),
+      gradient: [Color(0xFF38BDF8), Color(0xFF0284C7), Color(0xFF075985)],
       count: 10,
     ),
   ];
@@ -242,29 +241,28 @@ class TopicSelectionSheet extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: isAll ? const Color(0xFFFFFBEB) : const Color(0xFFF8FAFC),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: isAll
-                              ? const Color(0xFFFCD34D)
-                              : Colors.grey.shade200,
-                          width: isAll ? 2 : 1.2,
-                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: item.primaryColor.withValues(alpha: 0.08),
+                            color: Colors.black.withValues(alpha: 0.04),
                             blurRadius: 8,
-                            offset: const Offset(0, 3),
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
                       child: Row(
                         children: [
-                          GelCandyBadge(
-                            emoji: item.emoji,
-                            size: 46,
-                            gradientColors: item.gradient,
-                            shadowColor: item.primaryColor,
+                          // Biểu tượng chủ thể không khung viền, tự do và sắc nét 100%
+                          SizedBox(
+                            width: 44,
+                            height: 44,
+                            child: Center(
+                              child: Text(
+                                item.emoji,
+                                style: const TextStyle(fontSize: 32),
+                              ),
+                            ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,

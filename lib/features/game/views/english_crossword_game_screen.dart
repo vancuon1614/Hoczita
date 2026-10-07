@@ -15,6 +15,8 @@ import 'common/mini_game_rank_banner.dart';
 import '../models/english_crossword_level.dart';
 import '../utils/english_crossword_generator.dart';
 import 'common/game_video_demo_dialog.dart';
+import '../../../core/widgets/pastel_toy_card.dart';
+import '../../learn/views/widgets/gel_candy_icon.dart';
 
 class EnglishCrosswordCell {
   final int row;
@@ -1202,33 +1204,22 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
 
   Widget _buildDifficultySelection() {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Light bluish-white background like the image
+      backgroundColor: const Color(0xFFF7F9FC),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.black87),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'English Crossword',
-              style: GoogleFonts.baloo2(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-                color: const Color(0xFF2C3E50),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.blueGrey.shade100,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Icon(Icons.translate_rounded, size: 20, color: Colors.blueGrey),
-            ),
-          ],
+        title: Text(
+          'English Crossword',
+          style: GoogleFonts.baloo2(
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+            fontSize: 20,
+          ),
         ),
         actions: [
           const GameSoundToggleButton(),
@@ -1247,207 +1238,211 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
         ],
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Center(
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      GameVideoDemoDialog.show(
-                        context,
-                        assetPath: 'ImageFolder/demo_crossword.webm',
-                        title: 'Demo Hướng Dẫn - English Crossword',
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(20),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              // Hero Banner
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFBE185D), Color(0xFFEC4899)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFBE185D).withValues(alpha: 0.25),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
                       child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Image.asset(
-                            'ImageFolder/crossword.gif', 
-                            height: 110,
-                            errorBuilder: (context, error, stackTrace) => const Icon(
-                              Icons.translate_rounded,
-                              size: 80,
-                              color: AppColors.primary,
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              'NGOẠI NGỮ TIẾNG ANH',
+                              style: GoogleFonts.baloo2(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFFFCE7F3),
+                                letterSpacing: 1.0,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                            decoration: BoxDecoration(
+                          Text(
+                            'Ô Chữ Tiếng Anh',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.04),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
+                              height: 1.2,
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.play_circle_fill_rounded,
-                                  color: Color(0xFF00B460),
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'Bấm xem video demo',
-                                  style: GoogleFonts.baloo2(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF1E293B),
-                                  ),
-                                ),
-                              ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Giải ô chữ bằng từ vựng tiếng Anh theo các gợi ý tiếng Việt sinh động!',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 13,
+                              color: const Color(0xFFFCE7F3),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(18),
+                        child: Image.asset(
+                          'ImageFolder/crossword.gif',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => const Center(
+                            child: Text(
+                              '🔠',
+                              style: TextStyle(fontSize: 34),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 20),
-              Text(
-                'Please Select Mode',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.baloo2(
-                  fontSize: 22, 
-                  fontWeight: FontWeight.w600, 
-                  color: const Color(0xFF2C3E50),
-                ),
-              ),
-              const SizedBox(height: 28),
-              _buildDifficultyButton(
-                title: 'Easy',
-                subtitle: '5 words, Small grid',
-                difficulty: CrosswordDifficulty.easy,
-                backgroundColor: const Color(0xFFE4F3E4),
-                iconColor: const Color(0xFF4CAF50),
-                stars: _easyStars,
-              ),
-              const SizedBox(height: 16),
-              _buildDifficultyButton(
-                title: 'Medium',
-                subtitle: '9 words, Medium grid',
-                difficulty: CrosswordDifficulty.medium,
-                backgroundColor: const Color(0xFFFDEBCE),
-                iconColor: const Color(0xFFF59E0B),
-                stars: _mediumStars,
-              ),
-              const SizedBox(height: 16),
-              _buildDifficultyButton(
-                title: 'Hard',
-                subtitle: '14 words, Large grid',
-                difficulty: CrosswordDifficulty.hard,
-                backgroundColor: const Color(0xFFFFE5E5),
-                iconColor: const Color(0xFFEF4444),
-                stars: _hardStars,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildDifficultyButton({
-    required String title,
-    required String subtitle,
-    required CrosswordDifficulty difficulty,
-    required Color backgroundColor,
-    required Color iconColor,
-    required int stars,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _selectDifficulty(difficulty),
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: iconColor,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: iconColor.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: GoogleFonts.baloo2(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF1E293B),
+              const SizedBox(height: 12),
+
+              // Nút xem video demo
+              Center(
+                child: InkWell(
+                  onTap: () {
+                    GameVideoDemoDialog.show(
+                      context,
+                      assetPath: 'ImageFolder/demo_crossword.webm',
+                      title: 'Demo Hướng Dẫn - English Crossword',
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
                         ),
-                      ),
-                      Text(
-                        subtitle,
-                        style: GoogleFonts.baloo2(
-                          fontSize: 10,
-                          color: const Color(0xFF334155),
-                          fontWeight: FontWeight.w500,
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.play_circle_fill_rounded,
+                          color: Color(0xFF00B460),
+                          size: 16,
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: List.generate(
-                    3,
-                    (index) => Padding(
-                      padding: const EdgeInsets.only(left: 2),
-                      child: Icon(
-                        Icons.star_rounded,
-                        color: index < stars ? iconColor.withValues(alpha: 0.6) : Colors.transparent,
-                        size: 20,
-                      ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Bấm xem video hướng dẫn demo',
+                          style: GoogleFonts.baloo2(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF1E293B),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Chọn Chế Độ Thử Thách
+              Text(
+                'CHỌN CHẾ ĐỘ THỬ THÁCH',
+                style: GoogleFonts.baloo2(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textSecondary,
+                  letterSpacing: 1.0,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Mode 1: Cấp Độ Dễ
+              PastelModeCard(
+                title: 'Cấp Độ Dễ',
+                subtitle: 'Lưới ô chữ 5 từ vựng, dễ nhìn dễ đoán',
+                tagText: '5 Từ Vựng',
+                chipText: 'Lưới 5x5 🔠',
+                icon: GelCandyBadge.green(emoji: '🟢', size: 48),
+                colorConfig: PastelToyCardColor.green,
+                stars: _easyStars,
+                onTap: () => _selectDifficulty(CrosswordDifficulty.easy),
+              ),
+
+              const SizedBox(height: 14),
+
+              // Mode 2: Cấp Độ Vừa
+              PastelModeCard(
+                title: 'Cấp Độ Vừa',
+                subtitle: 'Lưới ô chữ 9 từ vựng đan xen nhau',
+                tagText: '9 Từ Vựng',
+                chipText: 'Lưới 7x7 🧩',
+                icon: GelCandyBadge.orange(emoji: '🟡', size: 48),
+                colorConfig: PastelToyCardColor.orange,
+                stars: _mediumStars,
+                onTap: () => _selectDifficulty(CrosswordDifficulty.medium),
+              ),
+
+              const SizedBox(height: 14),
+
+              // Mode 3: Cấp Độ Khó
+              PastelModeCard(
+                title: 'Cấp Độ Khó',
+                subtitle: 'Lưới ô chữ 14 từ vựng đầy thử thách',
+                tagText: '14 Từ Vựng ⭐',
+                chipText: 'Lưới 9x9 🏆',
+                icon: GelCandyBadge.blue(emoji: '💡', size: 48),
+                colorConfig: PastelToyCardColor.blue,
+                stars: _hardStars,
+                onTap: () => _selectDifficulty(CrosswordDifficulty.hard),
+              ),
+
+              const SizedBox(height: 24),
+            ],
           ),
         ),
       ),
