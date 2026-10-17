@@ -187,7 +187,7 @@ class GameContent {
       final List<String> choices = [correct, ...wrongs]..shuffle();
       
       return GameQuestion(
-        prompt: 'Từ "${item.en}" trong tiếng Việt nghĩa là gì?',
+        prompt: 'What does "${item.en}" mean?',
         choices: choices,
         correctAnswer: correct,
       );
@@ -206,7 +206,7 @@ class GameContent {
       final String imageUrl = getSupabaseImageUrl(item);
       
       return GameQuestion(
-        prompt: 'Hình ảnh trên tương ứng với từ tiếng Anh nào?',
+        prompt: 'Which English word matches the picture above?',
         visualAsset: imageUrl,
         choices: choices,
         correctAnswer: correct,

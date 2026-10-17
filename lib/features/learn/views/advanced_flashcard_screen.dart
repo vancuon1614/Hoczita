@@ -42,7 +42,17 @@ class _AdvancedFlashcardScreenState extends State<AdvancedFlashcardScreen> {
     await _flutterTts.setPitch(1.0);
   }
 
+  DateTime _lastSpeakTime = DateTime.fromMillisecondsSinceEpoch(0);
+
   Future<void> _speak(String text) async {
+    final now = DateTime.now();
+    if (now.difference(_lastSpeakTime).inMilliseconds < 450) {
+      return; // Chống spam tap
+    }
+    _lastSpeakTime = now;
+    try {
+      await _flutterTts.stop();
+    } catch (_) {}
     await _flutterTts.speak(text);
   }
 
@@ -145,7 +155,7 @@ class _AdvancedFlashcardScreenState extends State<AdvancedFlashcardScreen> {
           ],
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF0F172A)),
+          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F172A)),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
@@ -506,13 +516,9 @@ class _AdvancedFlashcardScreenState extends State<AdvancedFlashcardScreen> {
                   const SizedBox(width: 8),
                   GestureDetector(
                     onTap: () => _speak(item.word),
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.25),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.volume_up_rounded, color: Colors.white, size: 22),
+                    child: GelCandyBadge.blue(
+                      icon: const Icon(Icons.volume_up_rounded, color: Colors.white, size: 20),
+                      size: 38,
                     ),
                   ),
                 ],

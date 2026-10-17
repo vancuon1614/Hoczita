@@ -83,22 +83,22 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: !hasCheckedIn ? const Color(0xFF0047AB) : const Color(0xFFE0E3E6),
-              width: !hasCheckedIn ? 2.5 : 1.5,
+              color: const Color(0xFF4F6EA0).withValues(alpha: !hasCheckedIn ? 0.16 : 0.08),
+              width: 1.2,
             ),
             boxShadow: [
-              if (!hasCheckedIn)
-                BoxShadow(
-                  color: const Color(0xFF0047AB).withValues(alpha: 0.25 * _pulseAnimation.value),
-                  blurRadius: 14,
-                  spreadRadius: 2,
-                )
-              else
-                const BoxShadow(
-                  color: Color(0x0D000000),
-                  blurRadius: 12,
-                  offset: Offset(0, 4),
-                ),
+              BoxShadow(
+                color: const Color(0xFF4F6EA0).withValues(alpha: !hasCheckedIn ? 0.10 : 0.06),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+                spreadRadius: -4,
+              ),
+              BoxShadow(
+                color: const Color(0xFF4F6EA0).withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+                spreadRadius: -2,
+              ),
             ],
           ),
           clipBehavior: Clip.antiAlias,
@@ -110,29 +110,35 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
           // 1. Reminder Banner (Chỉ hiển thị khi CHƯA điểm danh; khi đã điểm danh xong thì ẩn đi theo yêu cầu)
           if (!hasCheckedIn)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: const BoxDecoration(
-                color: Color(0xFFEBF3FC),
-                borderRadius: BorderRadius.only(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(22),
                   topRight: Radius.circular(22),
+                ),
+                border: Border(
+                  bottom: BorderSide(
+                    color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
+                    width: 1,
+                  ),
                 ),
               ),
               child: Row(
                 children: [
                   const Icon(
                     Icons.notifications_active_rounded,
-                    color: Color(0xFF0047AB),
-                    size: 20,
+                    color: Color(0xFF1E60D0),
+                    size: 18,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       "🎯 Đừng quên 'check-in' lớp học hôm nay nhé!",
                       style: GoogleFonts.baloo2(
-                        fontSize: 14,
+                        fontSize: 13.5,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFF0047AB),
+                        color: const Color(0xFF1E40AF),
                       ),
                     ),
                   ),
@@ -401,7 +407,7 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
         innerCell = _buildCircle(const Color(0xFFE0E3E6), Icons.close_rounded, const Color(0xFF6F7883));
         break;
       case DayCellState.todayPending:
-        innerCell = _buildCircle(Colors.white, Icons.star_rounded, const Color(0xFF0047AB), border: const Color(0xFF0047AB));
+        innerCell = _buildCircle(Colors.white, Icons.star_rounded, const Color(0xFF1E60D0), border: const Color(0xFF1E60D0));
         break;
       case DayCellState.future:
         innerCell = _buildCircle(const Color(0xFFF2F4F7), Icons.lock_outline_rounded, const Color(0xFFBEC7D4));
@@ -412,13 +418,13 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
       innerCell = ScaleTransition(
         scale: _pulseAnimation,
         child: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Color(0x400047AB),
+                color: const Color(0xFF1E60D0).withValues(alpha: 0.25),
                 blurRadius: 10,
-                offset: Offset(0, 2),
+                offset: const Offset(0, 2),
               )
             ],
           ),
@@ -431,7 +437,7 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
     String displayLabel = label;
     Color labelColor = const Color(0xFF3F4852);
     if (state == DayCellState.todayPending) {
-      labelColor = const Color(0xFF0047AB);
+      labelColor = const Color(0xFF1E60D0);
       displayLabel = 'Hôm nay';
     } else if (state == DayCellState.todayDone) {
       labelColor = const Color(0xFF00B460);
@@ -463,7 +469,7 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
       decoration: BoxDecoration(
         color: bgColor,
         shape: BoxShape.circle,
-        border: border != null ? Border.all(color: border, width: 3.5) : null,
+        border: border != null ? Border.all(color: border, width: 2.2) : null,
       ),
       child: Icon(icon, color: iconColor, size: 20),
     );
@@ -530,36 +536,36 @@ class _WeekCheckinRowState extends ConsumerState<WeekCheckinRow> with SingleTick
     }
 
     return Container(
-      height: 56,
+      height: 52,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(9999),
+        borderRadius: BorderRadius.circular(24),
         gradient: const LinearGradient(
-          colors: [Color(0xFF0A58CA), Color(0xFF0047AB)],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+          colors: [Color(0xFF1E60D0), Color(0xFF0047AB)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0xFF003380),
-            offset: Offset(0, 4),
-            blurRadius: 0,
+            color: const Color(0xFF0047AB).withValues(alpha: 0.28),
+            offset: const Offset(0, 4),
+            blurRadius: 14,
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(9999),
+          borderRadius: BorderRadius.circular(24),
           onTap: widget.onPlayGame,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.sports_esports_rounded, color: Colors.white, size: 24),
+              const Icon(Icons.sports_esports_rounded, color: Colors.white, size: 22),
               const SizedBox(width: 8),
               Text(
                 'Chơi Game Điểm Danh',
                 style: GoogleFonts.baloo2(
-                  fontSize: 18,
+                  fontSize: 16.5,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),

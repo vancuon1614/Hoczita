@@ -55,7 +55,7 @@ class PastelToyCard extends StatelessWidget {
     this.borderRadius = 22,
     this.height = 110,
     this.fontSize,
-    this.showPillReflection = true,
+    this.showPillReflection = false,
   });
 
   @override
@@ -74,6 +74,20 @@ class PastelToyCard extends StatelessWidget {
       }
     } else if (isSelected) {
       border = Border.all(color: textColor, width: 2.5);
+    }
+
+    String? displayLabel = label;
+    if (displayLabel != null) {
+      final trimmed = displayLabel.trim();
+      final matchLegacy = RegExp(r'^(?:LỰA CHỌN|OPTION)\s*([A-Za-z0-9])$', caseSensitive: false).firstMatch(trimmed);
+      if (matchLegacy != null) {
+        displayLabel = '(${matchLegacy.group(1)!.toUpperCase()})';
+      } else {
+        final matchSingle = RegExp(r'^\(?([A-Za-z0-9])\)?$').firstMatch(trimmed);
+        if (matchSingle != null) {
+          displayLabel = '(${matchSingle.group(1)!.toUpperCase()})';
+        }
+      }
     }
 
     return Container(
@@ -115,43 +129,53 @@ class PastelToyCard extends StatelessWidget {
                   ),
                 ),
 
-              // Nội dung chính
+              // Nhãn lựa chọn ở góc trên cùng bên trái: (A), (B), (C), (D)...
+              if (displayLabel != null)
+                Positioned(
+                  top: 9,
+                  left: 14,
+                  child: Text(
+                    displayLabel,
+                    style: GoogleFonts.baloo2(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: textColor.withValues(alpha: 0.70),
+                      height: 1.0,
+                    ),
+                  ),
+                ),
+
+              // Nội dung chính: Đáp án ở vị trí trung tâm nổi bật (+2 đơn vị kích thước)
               Center(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      if (label != null) ...[
-                        Text(
-                          label!,
-                          style: GoogleFonts.baloo2(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.8,
-                            color: textColor.withValues(alpha: 0.65),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                      ],
                       if (title != null) ...[
-                        Text(
-                          title!,
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.baloo2(
-                            fontSize: fontSize ??
-                                (title!.length > 12
-                                    ? 16
-                                    : (title!.length > 7 ? 20 : 26)),
-                            fontWeight: FontWeight.w800,
-                            color: textColor,
-                            height: 1.15,
+                        Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              title!,
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.baloo2(
+                                fontSize: fontSize ??
+                                    (title!.length > 12
+                                        ? 18
+                                        : (title!.length > 7 ? 22 : 28)),
+                                fontWeight: FontWeight.w800,
+                                color: textColor,
+                                height: 1.15,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
-                      ?child,
+                      if (child != null) Flexible(child: child!),
                     ],
                   ),
                 ),
@@ -211,13 +235,24 @@ class PastelModeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: colorConfig.background,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: colorConfig.text.withValues(alpha: 0.12),
+          width: 1.2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 12,
+            color: const Color(0xFF4F6EA0).withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+            spreadRadius: -4,
+          ),
+          BoxShadow(
+            color: const Color(0xFF4F6EA0).withValues(alpha: 0.04),
+            blurRadius: 10,
             offset: const Offset(0, 4),
+            spreadRadius: -2,
           ),
         ],
       ),
@@ -226,138 +261,84 @@ class PastelModeCard extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(24),
-          child: Stack(
-            children: [
-              // Glossy pill reflection
-              Positioned(
-                top: 8,
-                left: 14,
-                child: Transform.rotate(
-                  angle: -0.26,
-                  child: Container(
-                    width: 24,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.45),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ),
-              ),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 18,
-                ),
-                child: Row(
-                  children: [
-                    icon,
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
+            child: Row(
+              children: [
+                icon,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  tagText,
-                                  style: GoogleFonts.baloo2(
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.bold,
-                                    color: colorConfig.text,
-                                  ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                            decoration: BoxDecoration(
+                              color: colorConfig.background,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              tagText,
+                              style: GoogleFonts.baloo2(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: colorConfig.text,
+                              ),
+                            ),
+                          ),
+                          if (chipText != null && chipText!.isNotEmpty) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: const Color(0xFFE2E8F0),
+                                  width: 1,
                                 ),
                               ),
-                              if (chipText != null && chipText!.isNotEmpty) ...[
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: colorConfig.text.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    chipText!,
-                                    style: GoogleFonts.baloo2(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: colorConfig.text,
-                                    ),
-                                  ),
+                              child: Text(
+                                chipText!,
+                                style: GoogleFonts.baloo2(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF475569),
                                 ),
-                              ],
-                              if (stars != null && stars! > 0) ...[
-                                const Spacer(),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: List.generate(
-                                    3,
-                                    (idx) => Icon(
-                                      Icons.star_rounded,
-                                      size: 15,
-                                      color: idx < stars!
-                                          ? const Color(0xFFFFB300)
-                                          : colorConfig.text.withValues(alpha: 0.2),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            title,
-                            style: GoogleFonts.baloo2(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: colorConfig.text,
-                              height: 1.2,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            subtitle,
-                            style: GoogleFonts.baloo2(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
-                              color: colorConfig.text.withValues(alpha: 0.8),
-                            ),
-                          ),
+                          ],
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                      const SizedBox(height: 6),
+                      Text(
+                        title,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF1E293B),
+                          height: 1.2,
+                        ),
                       ),
-                      child: Icon(
-                        Icons.play_arrow_rounded,
-                        color: colorConfig.text,
-                        size: 28,
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF64748B),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

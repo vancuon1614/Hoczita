@@ -1,5 +1,7 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/animated_icon.dart';
@@ -72,6 +74,18 @@ class _GameTabState extends ConsumerState<GameTab> {
         }
       }
 
+      // Đồng bộ thêm từ Local Cache nếu offline hoặc chưa đăng nhập
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        const codes = ['M01', 'M02', 'M03', 'M04', 'M05', 'M06', 'E01', 'E02', 'E03', 'E04', 'E05', 'E06'];
+        for (final code in codes) {
+          final localStars = prefs.getInt('hoczita_best_stars_$code') ?? 0;
+          if (localStars > (tempStarsMap[code] ?? 0)) {
+            tempStarsMap[code] = localStars;
+          }
+        }
+      } catch (_) {}
+
       int getModeStars(String baseName) {
         int starsCount = 0;
         if ((tempStarsMap['${baseName}_easy'] ?? 0) == 3) starsCount++;
@@ -81,22 +95,23 @@ class _GameTabState extends ConsumerState<GameTab> {
       }
 
       final Map<String, int> starsMap = {
-        'flashcard_speed': tempStarsMap['flashcard_speed'] ?? 0,
-        'memory_match': tempStarsMap['memory_match'] ?? 0,
-        'picture_guess': tempStarsMap['picture_guess'] ?? 0,
-        'counting': tempStarsMap['counting'] ?? 0,
-        'math_ops': tempStarsMap['math_ops'] ?? 0,
-        'comparison': tempStarsMap['comparison'] ?? 0,
-        'math_crossword': getModeStars('math_crossword'),
-        'english_crossword': getModeStars('english_crossword'),
-        'word_scramble': getModeStars('word_scramble'),
-        'magic_words': getModeStars('magic_words') > 0
-            ? getModeStars('magic_words')
-            : (tempStarsMap['magic_words'] ?? 0),
-        'magic_number_path': tempStarsMap['magic_number_path'] ?? 0,
-        'sudoku_medium': tempStarsMap['sudoku_medium'] ?? (tempStarsMap['sudoku_easy'] ?? 0),
+        'flashcard_speed': max(tempStarsMap['flashcard_speed'] ?? 0, tempStarsMap['E01'] ?? 0),
+        'memory_match': max(tempStarsMap['memory_match'] ?? 0, tempStarsMap['E02'] ?? 0),
+        'picture_guess': max(tempStarsMap['picture_guess'] ?? 0, tempStarsMap['E03'] ?? 0),
+        'counting': max(tempStarsMap['counting'] ?? 0, tempStarsMap['M01'] ?? 0),
+        'math_ops': max(tempStarsMap['math_ops'] ?? 0, tempStarsMap['M02'] ?? 0),
+        'comparison': max(tempStarsMap['comparison'] ?? 0, tempStarsMap['M03'] ?? 0),
+        'math_crossword': max(getModeStars('math_crossword'), tempStarsMap['M04'] ?? 0),
+        'english_crossword': max(getModeStars('english_crossword'), tempStarsMap['E04'] ?? 0),
+        'word_scramble': max(getModeStars('word_scramble'), tempStarsMap['E05'] ?? 0),
+        'magic_words': max(
+          getModeStars('magic_words') > 0 ? getModeStars('magic_words') : (tempStarsMap['magic_words'] ?? 0),
+          tempStarsMap['E06'] ?? 0,
+        ),
+        'magic_number_path': max(tempStarsMap['magic_number_path'] ?? 0, tempStarsMap['M06'] ?? 0),
+        'sudoku_medium': tempStarsMap['sudoku_medium'] ?? (tempStarsMap['sudoku_easy'] ?? (tempStarsMap['M05'] ?? 0)),
         'multiplication_table': () {
-          int maxS = 0;
+          int maxS = tempStarsMap['M02'] ?? 0;
           for (final k in tempStarsMap.keys) {
             if (k.startsWith('multiplication_table')) {
               final s = tempStarsMap[k] ?? 0;
@@ -164,29 +179,41 @@ class _GameTabState extends ConsumerState<GameTab> {
           actions: const [
             Padding(
               padding: EdgeInsets.only(right: 12),
-              child: GameSoundToggleButton(),
+              child: GameSoundToggleButton(isPlayScreen: false),
             ),
           ],
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(60),
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: AppColors.border.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(16),
+                color: const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(20),
               ),
               child: TabBar(
                 indicator: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(12),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1E60D0), Color(0xFF0047AB)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x330047AB),
+                      offset: Offset(0, 2),
+                      blurRadius: 4,
+                    ),
+                  ],
                 ),
                 indicatorSize: TabBarIndicatorSize.tab,
                 labelColor: Colors.white,
-                unselectedLabelColor: AppColors.textSecondary,
+                unselectedLabelColor: const Color(0xFF64748B),
                 labelStyle: GoogleFonts.baloo2(fontWeight: FontWeight.bold, fontSize: 14),
                 dividerColor: Colors.transparent,
                 tabs: const [
-                  Tab(text: 'Ngoại ngữ 🇬🇧'),
+                  Tab(text: 'English 🇬🇧'),
                   Tab(text: 'Toán học 🔢'),
                 ],
               ),
@@ -221,7 +248,7 @@ class _GameTabState extends ConsumerState<GameTab> {
           _buildGameCard(
             context: context,
             title: 'Flashcard Speed Run',
-            subtitle: 'Chọn đúng nghĩa của từ tiếng Anh trong vòng 6 giây cực kỳ kịch tính.',
+            subtitle: 'Choose the correct meaning of the English word within 6 exciting seconds.',
             icon: Icons.flash_on_rounded,
             color: Colors.amber,
             stars: _highestStars['flashcard_speed'] ?? 0,
@@ -240,7 +267,7 @@ class _GameTabState extends ConsumerState<GameTab> {
           _buildGameCard(
             context: context,
             title: 'Memory Match',
-            subtitle: 'Lật 16 mảnh thẻ ghép cặp từ tiếng Anh với nghĩa tiếng Việt tương ứng.',
+            subtitle: 'Flip 16 cards to match English words with their corresponding pictures and meanings.',
             icon: Icons.grid_view_rounded,
             color: Colors.purple,
             stars: _highestStars['memory_match'] ?? 0,
@@ -254,7 +281,7 @@ class _GameTabState extends ConsumerState<GameTab> {
           _buildGameCard(
             context: context,
             title: 'Picture Guess',
-            subtitle: 'Nhìn hình ảnh minh họa đoán nhanh từ vựng tương ứng trong 10 giây.',
+            subtitle: 'Look at the picture and quickly choose the matching English word in 10 seconds.',
             icon: Icons.image_search_rounded,
             color: Colors.teal,
             stars: _highestStars['picture_guess'] ?? 0,
@@ -273,7 +300,7 @@ class _GameTabState extends ConsumerState<GameTab> {
           _buildGameCard(
             context: context,
             title: 'English Crossword',
-            subtitle: 'Giải ô chữ bằng từ vựng Tiếng Anh theo các gợi ý tiếng Việt sinh động.',
+            subtitle: 'Solve crosswords with English vocabulary and fun interactive clues.',
             icon: Icons.grid_on_rounded,
             color: Colors.pink,
             stars: _highestStars['english_crossword'] ?? 0,
@@ -287,7 +314,7 @@ class _GameTabState extends ConsumerState<GameTab> {
           _buildGameCard(
             context: context,
             title: 'Word Scramble',
-            subtitle: 'Sắp xếp các chữ cái bị xáo trộn thành từ tiếng Anh hoàn chỉnh trong 10 giây.',
+            subtitle: 'Rearrange scrambled letters to form the correct English word in 10 seconds.',
             icon: Icons.shuffle_rounded,
             color: Colors.deepOrange,
             stars: _highestStars['word_scramble'] ?? 0,
@@ -301,7 +328,7 @@ class _GameTabState extends ConsumerState<GameTab> {
           _buildGameCard(
             context: context,
             title: 'Magic Words',
-            subtitle: 'Tìm các từ ẩn trên ma trận chữ với 3 cấp độ Easy, Medium và Hard.',
+            subtitle: 'Find hidden words across the letter grid with 3 levels: Easy, Medium, and Hard.',
             icon: Icons.font_download_rounded,
             color: Colors.indigo,
             stars: _highestStars['magic_words'] ?? 0,
@@ -347,6 +374,7 @@ class _GameTabState extends ConsumerState<GameTab> {
                 gameName: 'counting',
                 gameTitle: 'Đếm Số Nhanh',
                 questions: GameContent.getCountingQuestions(),
+                timeLimitInSeconds: 6,
               ),
             ),
           ),
@@ -354,7 +382,7 @@ class _GameTabState extends ConsumerState<GameTab> {
           _buildGameCard(
             context: context,
             title: 'Tính Nhanh',
-            subtitle: 'Điền kết quả đúng cho phép tính cộng trừ trong phạm vi 100.',
+            subtitle: 'Điền kết quả đúng cho phép tính cộng trừ trong phạm vi 100 trong vòng 7 giây.',
             icon: Icons.train_rounded,
             color: Colors.blue,
             stars: _highestStars['math_ops'] ?? 0,
@@ -365,6 +393,7 @@ class _GameTabState extends ConsumerState<GameTab> {
                 gameName: 'math_ops',
                 gameTitle: 'Tính Nhanh',
                 questions: GameContent.getMathOpsQuestions(),
+                timeLimitInSeconds: 7,
               ),
             ),
           ),
@@ -467,12 +496,19 @@ class _GameTabState extends ConsumerState<GameTab> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: color.withValues(alpha: 0.12), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: const Color(0xFF4F6EA0).withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+            spreadRadius: -4,
+          ),
+          BoxShadow(
+            color: const Color(0xFF4F6EA0).withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
+            spreadRadius: -2,
           ),
         ],
       ),
@@ -482,26 +518,41 @@ class _GameTabState extends ConsumerState<GameTab> {
           onTap: onTap,
           borderRadius: BorderRadius.circular(24),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Row(
               children: [
-                // Visual Icon/Image
+                // Visual Squircle Icon/Image (des.zip style)
                 Container(
-                  width: 64,
-                  height: 64,
+                  width: 58,
+                  height: 58,
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        color.withValues(alpha: 0.18),
+                        color.withValues(alpha: 0.06),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: color.withValues(alpha: 0.22), width: 1.2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.12),
+                        offset: const Offset(0, 3),
+                        blurRadius: 8,
+                      ),
+                    ],
                   ),
                   clipBehavior: Clip.antiAlias,
                   alignment: Alignment.center,
                   child: imageUrl != null
                       ? CachedNetworkImage(
                           imageUrl: imageUrl,
-                          width: 52,
-                          height: 52,
+                          width: 46,
+                          height: 46,
                           fit: BoxFit.contain,
-                          placeholder: (context, url) => SizedBox(
+                          placeholder: (context, url) => const SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
@@ -509,13 +560,13 @@ class _GameTabState extends ConsumerState<GameTab> {
                           errorWidget: (context, url, error) => AnimatedGameIcon(
                             icon: icon,
                             color: color,
-                            size: 28,
+                            size: 26,
                             animationType: animationType,
                           ),
                         )
                       : imagePath != null
                           ? Padding(
-                              padding: const EdgeInsets.all(8),
+                              padding: const EdgeInsets.all(6),
                               child: Image.asset(
                                 imagePath,
                                 width: 44,
@@ -524,7 +575,7 @@ class _GameTabState extends ConsumerState<GameTab> {
                                 errorBuilder: (context, error, stackTrace) => AnimatedGameIcon(
                                   icon: icon,
                                   color: color,
-                                  size: 28,
+                                  size: 26,
                                   animationType: animationType,
                                 ),
                               ),
@@ -532,51 +583,36 @@ class _GameTabState extends ConsumerState<GameTab> {
                           : AnimatedGameIcon(
                               icon: icon,
                               color: color,
-                              size: 28,
+                              size: 26,
                               animationType: animationType,
                             ),
                 ),
-                SizedBox(width: 16),
+                const SizedBox(width: 14),
                 // Texts
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.baloo2(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ),
-                          // Star Badge
-                          Row(
-                            children: List.generate(
-                              3,
-                              (index) => Icon(
-                                Icons.star_rounded,
-                                size: 16,
-                                color: index < stars ? AppColors.accent : AppColors.border,
-                              ),
-                            ),
-                          ),
-                        ],
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 16.5,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF1E293B),
+                        ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Text(
                         subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.baloo2(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                          height: 1.3,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF64748B),
+                          height: 1.35,
                         ),
                       ),
                     ],

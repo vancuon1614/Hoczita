@@ -101,13 +101,33 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
           final data = response['data'];
           final email = data['email'] ?? '';
           final name = data['name'] ?? data['username'] ?? email.split('@')[0];
-          final avatar = data['avatar'] ?? '';
+          final avatar = (data['avatar'] ?? '').toString().trim();
           final point = data['point'] ?? 0;
 
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('cached_user_name_$email', name);
           await prefs.setString('cached_user_avatar_$email', avatar);
           await prefs.setInt('cached_user_point_$email', point);
+
+          // Tự động đồng bộ link ảnh đại diện từ NKS API lên Supabase profiles
+          if (avatar.isNotEmpty && _db.hasSession) {
+            final userId = _db.client.auth.currentUser?.id;
+            if (userId != null) {
+              try {
+                await _db.client
+                    .from('profiles')
+                    .update({
+                      'avatar_url': avatar,
+                      'username': name,
+                      'updated_at': DateTime.now().toIso8601String(),
+                    })
+                    .eq('id', userId);
+                debugPrint('ProfileTab: Đã tự động đồng bộ avatar từ NKS API lên Supabase: $avatar');
+              } catch (e) {
+                debugPrint('ProfileTab: Lỗi đồng bộ avatar lên Supabase: $e');
+              }
+            }
+          }
 
           if (mounted) {
             setState(() {
@@ -310,6 +330,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                             DropdownMenuItem<String?>(
                               value: null,
                               child: Text('Tất cả trò chơi'),
+                            ),
+                            DropdownMenuItem<String?>(
+                              value: 'multiplication_table',
+                              child: Text('Bảng Cửu Chương / Tính Nhanh'),
                             ),
                             DropdownMenuItem<String?>(
                               value: 'flashcard_speed',
@@ -560,15 +584,16 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 player: rank2,
                 blockHeight: 66,
                 gradientColors: const [
-                  Color(0xFFE2E8F0),
+                  Color(0xFFF8FAFC),
                   Color(0xFFCBD5E1),
                   Color(0xFF94A3B8),
                 ],
-                borderColor: const Color(0xFFCBD5E1),
-                textColor: const Color(0xFF475569),
+                borderColor: const Color(0xFF94A3B8),
+                textColor: const Color(0xFF334155),
                 pillBgColor: const Color(0xFFEFF6FF),
-                pillTextColor: const Color(0xFF2563EB),
+                pillTextColor: const Color(0xFF1D4ED8),
                 title: 'SILVER',
+                isMe: myRank == 2,
               ),
 
               const SizedBox(width: 8),
@@ -579,35 +604,37 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 player: rank1,
                 blockHeight: 98,
                 gradientColors: const [
-                  Color(0xFFFCD34D),
+                  Color(0xFFFFEE72),
+                  Color(0xFFFFC72C),
                   Color(0xFFF59E0B),
-                  Color(0xFFD97706),
                 ],
-                borderColor: const Color(0xFFF59E0B),
-                textColor: const Color(0xFF78350F),
-                pillBgColor: const Color(0xFFFEF3C7),
-                pillTextColor: const Color(0xFFB45309),
+                borderColor: const Color(0xFFEAB308),
+                textColor: const Color(0xFF713F12),
+                pillBgColor: const Color(0xFFFEF9C3),
+                pillTextColor: const Color(0xFF854D0E),
                 title: 'WINNER',
                 isWinner: true,
+                isMe: myRank == 1,
               ),
 
               const SizedBox(width: 8),
 
-              // Hạng 3: Bục Đồng (Bên phải)
+              // Hạng 3: Bục Đồng Đỏ Ánh Kim (Bên phải)
               _buildPodiumColumn(
                 rank: 3,
                 player: rank3,
-                blockHeight: 52,
+                blockHeight: 56,
                 gradientColors: const [
-                  Color(0xFFFED7AA),
-                  Color(0xFFFB923C),
-                  Color(0xFFEA580C),
+                  Color(0xFFE59470),
+                  Color(0xFFBA582C),
+                  Color(0xFF8C320A),
                 ],
-                borderColor: const Color(0xFFFDBA74),
-                textColor: const Color(0xFF7C2D12),
-                pillBgColor: const Color(0xFFFFF7ED),
-                pillTextColor: const Color(0xFFEA580C),
+                borderColor: const Color(0xFFA6461D),
+                textColor: Colors.white,
+                pillBgColor: const Color(0xFFFCEEE8),
+                pillTextColor: const Color(0xFF8B320F),
                 title: 'BRONZE',
+                isMe: myRank == 3,
               ),
             ],
           ),
@@ -661,42 +688,49 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
 
           // Danh sách mở rộng cho các thứ hạng tiếp theo (Hạng 4 đến 10) nếu có
           if (list.length > 3) ...[
-            const SizedBox(height: 8),
-            Center(
-              child: TextButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _showFullLeaderboard = !_showFullLeaderboard;
-                  });
-                },
-                icon: Icon(
-                  _showFullLeaderboard
-                      ? Icons.keyboard_arrow_up_rounded
-                      : Icons.keyboard_arrow_down_rounded,
-                  size: 20,
-                  color: AppColors.primary,
-                ),
-                label: Text(
-                  _showFullLeaderboard
-                      ? 'Thu gọn bảng xếp hạng'
-                      : 'Xem thêm hạng 4 - ${list.length}',
-                  style: GoogleFonts.baloo2(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.bold,
+            if (!_showFullLeaderboard) ...[
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _showFullLeaderboard = true;
+                    });
+                  },
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 20,
                     color: AppColors.primary,
+                  ),
+                  label: Text(
+                    'Xem thêm hạng 4 - ${min(10, list.length)}',
+                    style: GoogleFonts.baloo2(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
             if (_showFullLeaderboard) ...[
               const Divider(height: 16, color: Color(0xFFF1F5F9)),
-              ...List.generate(list.length - 3, (idx) {
+              ...List.generate(min(10, list.length) - 3, (idx) {
                 final itemIndex = idx + 3;
                 final entry = list[itemIndex];
                 final r = itemIndex + 1;
                 final name = entry['username'] as String? ?? 'Ẩn danh';
                 final s = entry['total_score'] as int? ?? 0;
                 final isMe = r == myRank;
+
+                String? itemAvatar = entry['avatar_url'] as String? ?? entry['avatar'] as String?;
+                if ((itemAvatar == null || itemAvatar.isEmpty) && isMe) {
+                  final activeAvatar = _cachedAvatar ?? _avatarPath ?? '';
+                  if (activeAvatar.isNotEmpty) {
+                    itemAvatar = activeAvatar;
+                  }
+                }
+                final ImageProvider? itemAvatarImage = resolveAvatarImage(itemAvatar);
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 6),
@@ -731,7 +765,44 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 8),
+                      // Avatar nhỏ người chơi
+                      ClipOval(
+                        child: SizedBox(
+                          width: 26,
+                          height: 26,
+                          child: itemAvatarImage != null
+                              ? Image(
+                                  image: itemAvatarImage,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) => Container(
+                                    color: const Color(0xFFE2E8F0),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      _getInitials(name),
+                                      style: GoogleFonts.baloo2(
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFF64748B),
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              : Container(
+                                  color: const Color(0xFFE2E8F0),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    _getInitials(name),
+                                    style: GoogleFonts.baloo2(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           name + (isMe ? ' (Bạn)' : ''),
@@ -757,6 +828,29 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   ),
                 );
               }),
+              const SizedBox(height: 6),
+              Center(
+                child: TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _showFullLeaderboard = false;
+                    });
+                  },
+                  icon: const Icon(
+                    Icons.keyboard_arrow_up_rounded,
+                    size: 20,
+                    color: AppColors.primary,
+                  ),
+                  label: Text(
+                    'Thu gọn bảng xếp hạng',
+                    style: GoogleFonts.baloo2(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ],
         ],
@@ -775,12 +869,24 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     required Color pillTextColor,
     required String title,
     bool isWinner = false,
+    bool isMe = false,
   }) {
     final hasPlayer = player != null;
     final name =
         hasPlayer ? (player['username'] as String? ?? 'Ẩn danh') : '---';
     final score = hasPlayer ? (player['total_score'] as int? ?? 0) : 0;
     final initials = hasPlayer ? _getInitials(name) : '-';
+
+    // Lấy avatar của tài khoản
+    String? effectiveAvatar =
+        player?['avatar_url'] as String? ?? player?['avatar'] as String?;
+    if ((effectiveAvatar == null || effectiveAvatar.isEmpty) && isMe) {
+      final activeAvatar = _cachedAvatar ?? _avatarPath ?? '';
+      if (activeAvatar.isNotEmpty) {
+        effectiveAvatar = activeAvatar;
+      }
+    }
+    final ImageProvider? avatarImage = resolveAvatarImage(effectiveAvatar);
 
     return Expanded(
       child: Column(
@@ -817,24 +923,54 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 ),
               ],
             ),
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: gradientColors,
-                ),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                initials,
-                style: GoogleFonts.baloo2(
-                  fontSize: isWinner ? 18 : 14,
-                  fontWeight: FontWeight.w900,
-                  color: isWinner ? const Color(0xFF78350F) : textColor,
-                ),
-              ),
+            child: ClipOval(
+              child: avatarImage != null
+                  ? Image(
+                      image: avatarImage,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: gradientColors,
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            initials,
+                            style: GoogleFonts.baloo2(
+                              fontSize: isWinner ? 18 : 14,
+                              fontWeight: FontWeight.w900,
+                              color: isWinner
+                                  ? const Color(0xFF78350F)
+                                  : textColor,
+                            ),
+                          ),
+                        );
+                      },
+                    )
+                  : Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: gradientColors,
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        initials,
+                        style: GoogleFonts.baloo2(
+                          fontSize: isWinner ? 18 : 14,
+                          fontWeight: FontWeight.w900,
+                          color: isWinner ? const Color(0xFF78350F) : textColor,
+                        ),
+                      ),
+                    ),
             ),
           ),
           const SizedBox(height: 6),
@@ -914,13 +1050,6 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     fontWeight: FontWeight.w900,
                     color: isWinner ? Colors.white : textColor,
                     height: 1.1,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
                   ),
                 ),
                 Text(
@@ -931,7 +1060,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     letterSpacing: 1.2,
                     color: isWinner
                         ? const Color(0xFF451A03).withValues(alpha: 0.85)
-                        : textColor.withValues(alpha: 0.85),
+                        : (rank == 3
+                            ? Colors.white.withValues(alpha: 0.9)
+                            : textColor.withValues(alpha: 0.85)),
                   ),
                 ),
               ],

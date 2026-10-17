@@ -7,7 +7,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/game_interaction_provider.dart';
 import '../models/game_question.dart';
 import 'multiple_choice_game_screen.dart';
-import '../../learn/views/widgets/gel_candy_icon.dart';
 
 class FlashcardStudyScreen extends ConsumerStatefulWidget {
   final String gameName;
@@ -49,7 +48,17 @@ class _FlashcardStudyScreenState extends ConsumerState<FlashcardStudyScreen> {
     await _flutterTts.setPitch(1.0);
   }
 
+  DateTime _lastSpeakTime = DateTime.fromMillisecondsSinceEpoch(0);
+
   Future<void> _speak(String text) async {
+    final now = DateTime.now();
+    if (now.difference(_lastSpeakTime).inMilliseconds < 450) {
+      return; // Chống spam tap
+    }
+    _lastSpeakTime = now;
+    try {
+      await _flutterTts.stop();
+    } catch (_) {}
     await _flutterTts.speak(text);
   }
 
@@ -101,7 +110,7 @@ class _FlashcardStudyScreenState extends ConsumerState<FlashcardStudyScreen> {
         elevation: 0,
         centerTitle: true,
         title: Text(
-          'Học Từ Vựng',
+          'Vocabulary Study',
           style: GoogleFonts.baloo2(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
@@ -109,7 +118,7 @@ class _FlashcardStudyScreenState extends ConsumerState<FlashcardStudyScreen> {
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -124,7 +133,7 @@ class _FlashcardStudyScreenState extends ConsumerState<FlashcardStudyScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Thẻ ${_currentIndex + 1}/${widget.questions.length}',
+                    'Card ${_currentIndex + 1}/${widget.questions.length}',
                     style: GoogleFonts.baloo2(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -136,7 +145,7 @@ class _FlashcardStudyScreenState extends ConsumerState<FlashcardStudyScreen> {
                       const Icon(Icons.lightbulb_outline, color: Colors.amber, size: 20),
                       const SizedBox(width: 4),
                       Text(
-                        'Chạm để lật thẻ',
+                        'Tap to flip',
                         style: GoogleFonts.baloo2(
                           fontSize: 14,
                           color: AppColors.textSecondary,
@@ -222,7 +231,7 @@ class _FlashcardStudyScreenState extends ConsumerState<FlashcardStudyScreen> {
                       onPressed: _startChallenge,
                       icon: const Icon(Icons.play_arrow_rounded, color: Colors.white),
                       label: Text(
-                        'Bắt Đầu Thi',
+                        'Start Challenge',
                         style: GoogleFonts.baloo2(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -305,7 +314,7 @@ class _FlashcardStudyScreenState extends ConsumerState<FlashcardStudyScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      'TỪ VỰNG TIẾNG ANH 🇬🇧',
+                      'ENGLISH VOCABULARY 🇬🇧',
                       style: GoogleFonts.baloo2(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -326,7 +335,7 @@ class _FlashcardStudyScreenState extends ConsumerState<FlashcardStudyScreen> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Chạm để xem nghĩa tiếng Việt',
+                    'Tap card to flip',
                     style: GoogleFonts.baloo2(
                       fontSize: 13,
                       color: const Color(0xFF00375A).withValues(alpha: 0.6),
@@ -402,12 +411,25 @@ class _FlashcardStudyScreenState extends ConsumerState<FlashcardStudyScreen> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      // Audio Button with Gel Candy 3D
+                      // Audio Button (Clean Circular style)
                       GestureDetector(
                         onTap: () => _speak(word),
-                        child: GelCandyBadge.blue(
-                          icon: const Icon(Icons.volume_up_rounded, color: Colors.white),
-                          size: 42,
+                        child: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.4),
+                              width: 1.2,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.volume_up_rounded,
+                            color: Colors.white,
+                            size: 22,
+                          ),
                         ),
                       ),
                     ],

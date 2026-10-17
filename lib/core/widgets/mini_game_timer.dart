@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../theme/app_theme.dart';
 
 /// Đồng hồ đếm thời gian tăng dần chuẩn (tiêu chuẩn English Crossword)
 class GameCountUpTimer extends StatelessWidget {
@@ -51,19 +50,24 @@ class GameCountUpTimer extends StatelessWidget {
       displayStr = '00:00';
     }
 
-    final effectiveTextColor = textColor ?? AppColors.primary;
-    final effectiveBgColor = bgColor ?? AppColors.primaryLight;
-    final effectiveBorderColor = borderColor ?? AppColors.primary.withValues(alpha: 0.15);
+    final effectiveTextColor = textColor ?? const Color(0xFF0284C7);
+    final effectiveBgColor = bgColor ?? Colors.white;
+    final effectiveBorderColor = borderColor ?? const Color(0xFFBAE6FD);
+    final bool isLong = displayStr.length > 5;
+    final double containerWidth = isLong ? 96 : 80;
+    final double textWidth = isLong ? 56 : 42;
 
     return Container(
+      width: containerWidth,
+      alignment: Alignment.center,
       margin: margin ?? const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 5),
       decoration: BoxDecoration(
         color: effectiveBgColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: effectiveBorderColor,
-          width: 1,
+          width: 1.2,
         ),
       ),
       child: Row(
@@ -73,18 +77,21 @@ class GameCountUpTimer extends StatelessWidget {
         children: [
           Icon(
             Icons.timer_outlined,
-            size: 14,
+            size: 15,
             color: effectiveTextColor,
           ),
           const SizedBox(width: 4),
-          Text(
-            displayStr,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.baloo2(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: effectiveTextColor,
-              fontFeatures: const [FontFeature.tabularFigures()],
+          SizedBox(
+            width: textWidth,
+            child: Text(
+              displayStr,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.baloo2(
+                fontSize: 12.5,
+                fontWeight: FontWeight.bold,
+                color: effectiveTextColor,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
           ),
         ],

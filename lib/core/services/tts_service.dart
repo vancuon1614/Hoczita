@@ -16,7 +16,6 @@ class TtsService {
 
   final FlutterTts _tts = FlutterTts();
   final List<_SpeechRequest> _queue = [];
-  bool _isProcessing = false;
   bool _initialized = false;
 
   final ValueNotifier<bool> isSpeakingNotifier = ValueNotifier(false);
@@ -49,7 +48,16 @@ class TtsService {
     }
   }
 
+  DateTime _lastToggleTime = DateTime.fromMillisecondsSinceEpoch(0);
+  DateTime _lastSpeakTime = DateTime.fromMillisecondsSinceEpoch(0);
+  String? _lastSpokenText;
+
   Future<void> toggleEnabled() async {
+    final now = DateTime.now();
+    if (now.difference(_lastToggleTime).inMilliseconds < 450) {
+      return;
+    }
+    _lastToggleTime = now;
     await setEnabled(!isEnabled);
   }
 
@@ -83,17 +91,29 @@ class TtsService {
 
   Future<void> _enqueue(String text, String locale) async {
     await _ensureInit();
+    final now = DateTime.now();
+    // Chống spam: Nếu vừa yêu cầu cùng 1 nội dung trong 450ms thì bỏ qua
+    if (_lastSpokenText == text && now.difference(_lastSpeakTime).inMilliseconds < 450) {
+      return;
+    }
+    _lastSpeakTime = now;
+    _lastSpokenText = text;
+
+    // Luôn dọn sạch hàng đợi cũ và dừng phát âm trước đó để không bị dồn ứ giọng đọc
+    _queue.clear();
+    try {
+      await _tts.stop();
+    } catch (_) {}
+
     _queue.add(_SpeechRequest(text, locale));
-    if (!_isProcessing) _processNext();
+    _processNext();
   }
 
   Future<void> _processNext() async {
     if (_queue.isEmpty) {
-      _isProcessing = false;
       isSpeakingNotifier.value = false;
       return;
     }
-    _isProcessing = true;
     isSpeakingNotifier.value = true;
 
     final req = _queue.removeAt(0);
@@ -121,7 +141,6 @@ class TtsService {
     try {
       await _tts.stop();
     } catch (_) {}
-    _isProcessing = false;
     isSpeakingNotifier.value = false;
   }
 }

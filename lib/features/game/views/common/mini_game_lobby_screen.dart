@@ -98,24 +98,9 @@ class _MiniGameLobbyScreenState extends State<MiniGameLobbyScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 6,
-                ),
-              ],
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF191C1E), size: 20),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF191C1E)),
+          onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           widget.gameTitle,
@@ -127,7 +112,7 @@ class _MiniGameLobbyScreenState extends State<MiniGameLobbyScreen> {
         ),
         centerTitle: true,
         actions: [
-          const GameSoundToggleButton(),
+          const GameSoundToggleButton(isPlayScreen: false),
           Container(
             margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -171,50 +156,79 @@ class _MiniGameLobbyScreenState extends State<MiniGameLobbyScreen> {
               _buildHeroCard(currentDiff),
               const SizedBox(height: 18),
 
-              // 4. Action CTA Buttons
-              SizedBox(
+              // 4. Action CTA Buttons (des.zip style)
+              Container(
                 height: 54,
-                child: ElevatedButton.icon(
-                  onPressed: () => widget.onPlay(currentDiff),
-                  icon: const Icon(Icons.play_circle_fill_rounded, size: 24, color: Colors.white),
-                  label: Text(
-                    'Đã Hiểu & Bắt Đầu Chơi Ngay',
-                    style: GoogleFonts.baloo2(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1E60D0), Color(0xFF0047AB)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(28),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0047AB).withValues(alpha: 0.3),
+                      blurRadius: 14,
+                      offset: const Offset(0, 5),
                     ),
-                    elevation: 3,
-                    shadowColor: AppColors.primary.withValues(alpha: 0.35),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => widget.onPlay(currentDiff),
+                    borderRadius: BorderRadius.circular(24),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.play_circle_fill_rounded, size: 24, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Đã Hiểu & Bắt Đầu Chơi Ngay',
+                          style: GoogleFonts.baloo2(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
               const SizedBox(height: 10),
 
               // Secondary Button: Hướng dẫn nhanh 1 phút
-              SizedBox(
+              Container(
                 height: 48,
-                child: TextButton.icon(
-                  onPressed: _openHowToPlay,
-                  icon: const Icon(Icons.menu_book_rounded, size: 20, color: Color(0xFF475569)),
-                  label: Text(
-                    'Xem Hướng Dẫn Nhanh 1 Phút',
-                    style: GoogleFonts.baloo2(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF475569),
-                    ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: const Color(0xFFE2E8F0),
+                    width: 1.2,
                   ),
-                  style: TextButton.styleFrom(
-                    backgroundColor: const Color(0xFFECEEF1),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _openHowToPlay,
+                    borderRadius: BorderRadius.circular(24),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.menu_book_rounded, size: 20, color: Color(0xFF475569)),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Xem Hướng Dẫn Nhanh 1 Phút',
+                          style: GoogleFonts.baloo2(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF475569),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -229,15 +243,26 @@ class _MiniGameLobbyScreenState extends State<MiniGameLobbyScreen> {
 
   Widget _buildMascotBanner() {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: const Color(0xFF4F6EA0).withValues(alpha: 0.1),
+          width: 1.2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
+            color: const Color(0xFF4F6EA0).withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+            spreadRadius: -4,
+          ),
+          BoxShadow(
+            color: const Color(0xFF4F6EA0).withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+            spreadRadius: -2,
           ),
         ],
       ),
@@ -331,15 +356,30 @@ class _MiniGameLobbyScreenState extends State<MiniGameLobbyScreen> {
           ValueListenableBuilder<bool>(
             valueListenable: TtsService.instance.isSpeakingNotifier,
             builder: (context, isSpeaking, _) {
-              return IconButton(
-                icon: Icon(
-                  Icons.volume_up_rounded,
-                  color: isSpeaking ? AppColors.primary : AppColors.textSecondary,
+              return Tooltip(
+                message: 'Nghe lời chào',
+                child: GestureDetector(
+                  onTap: () {
+                    TtsService.instance.speakVietnamese(widget.welcomeTitle, forced: true);
+                  },
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEBF3FF),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0xFF1E60D0).withValues(alpha: 0.2),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.volume_up_rounded,
+                      color: Color(0xFF1E60D0),
+                      size: 20,
+                    ),
+                  ),
                 ),
-                tooltip: 'Nghe lời chào',
-                onPressed: () {
-                  TtsService.instance.speakVietnamese(widget.welcomeTitle, forced: true);
-                },
               );
             },
           ),

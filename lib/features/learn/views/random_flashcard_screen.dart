@@ -54,11 +54,30 @@ class _RandomFlashcardScreenState extends State<RandomFlashcardScreen> {
 
     _generateMoreCards(10);
     _recordCurrentWord();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _precacheCardImages();
+    });
+  }
+
+  void _precacheCardImages() {
+    if (!mounted) return;
+    for (final item in _cards) {
+      final url = GameContent.getSupabaseImageUrl(item);
+      precacheImage(CachedNetworkImageProvider(url), context);
+    }
   }
 
   void _generateMoreCards(int count) {
+    final startIdx = _cards.length;
     for (int i = 0; i < count; i++) {
       _cards.add(_filteredPool[_random.nextInt(_filteredPool.length)]);
+    }
+    if (mounted && startIdx < _cards.length) {
+      for (int i = startIdx; i < _cards.length; i++) {
+        final url = GameContent.getSupabaseImageUrl(_cards[i]);
+        precacheImage(CachedNetworkImageProvider(url), context);
+      }
     }
   }
 
@@ -79,7 +98,17 @@ class _RandomFlashcardScreenState extends State<RandomFlashcardScreen> {
     await _flutterTts.setPitch(1.0);
   }
 
+  DateTime _lastSpeakTime = DateTime.fromMillisecondsSinceEpoch(0);
+
   Future<void> _speak(String text) async {
+    final now = DateTime.now();
+    if (now.difference(_lastSpeakTime).inMilliseconds < 450) {
+      return; // Chống spam tap
+    }
+    _lastSpeakTime = now;
+    try {
+      await _flutterTts.stop();
+    } catch (_) {}
     await _flutterTts.speak(text);
   }
 
@@ -137,7 +166,7 @@ class _RandomFlashcardScreenState extends State<RandomFlashcardScreen> {
           ],
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
@@ -323,16 +352,54 @@ class _RandomFlashcardScreenState extends State<RandomFlashcardScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Expanded(
-                child: CachedNetworkImage(
-                  imageUrl: imageUrl,
-                  fit: BoxFit.contain,
-                  placeholder: (context, url) => const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2.5),
-                  ),
-                  errorWidget: (context, url, error) => const Icon(
-                    Icons.broken_image_rounded,
-                    color: AppColors.error,
-                    size: 64,
+                child: Center(
+                  child: AspectRatio(
+                    aspectRatio: 1.0,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        fit: BoxFit.cover,
+                        fadeInDuration: const Duration(milliseconds: 150),
+                        fadeOutDuration: const Duration(milliseconds: 150),
+                        memCacheWidth: 600,
+                        memCacheHeight: 600,
+                        imageBuilder: (context, imageProvider) => Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(24),
+                            image: DecorationImage(
+                              image: imageProvider,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                        placeholder: (context, url) => Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2.5),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.broken_image_rounded,
+                              color: AppColors.error,
+                              size: 64,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),

@@ -2,12 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/services/supabase_service.dart';
 import '../../../core/widgets/mini_game_timer.dart';
 import '../../../core/widgets/game_sound_toggle_button.dart';
 import '../../../core/providers/game_interaction_provider.dart';
 import '../../../core/services/tts_service.dart';
-import '../../../core/services/scrmai_api_service.dart';
+import '../../../core/services/game_score_sync_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../constants/game_content.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -18,6 +17,7 @@ class MemoryCard {
   final int pairId;
   final String text;
   final bool isEnglish;
+  final String emoji;
   bool isFlipped;
   bool isMatched;
 
@@ -25,6 +25,7 @@ class MemoryCard {
     required this.id,
     required this.pairId,
     required this.text,
+    required this.emoji,
     this.isEnglish = true,
     this.isFlipped = false,
     this.isMatched = false,
@@ -43,6 +44,7 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
   int? _firstCardIndex;
   int? _secondCardIndex;
   bool _isBusy = false;
+  Timer? _singleCardAutoCloseTimer;
 
   final Stopwatch _stopwatch = Stopwatch();
   Timer? _timer;
@@ -53,6 +55,136 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
   int _score = 0;
   bool _isGameOver = false;
   bool _isSavingScore = false;
+
+  static String _getVocabEmoji(String en) {
+    switch (en.toLowerCase().trim()) {
+      case 'dog': return '🐶';
+      case 'cat': return '🐱';
+      case 'lion': return '🦁';
+      case 'elephant': return '🐘';
+      case 'monkey': return '🐵';
+      case 'rabbit': return '🐰';
+      case 'bear': return '🐻';
+      case 'tiger': return '🐯';
+      case 'sheep': return '🐑';
+      case 'pig': return '🐷';
+      case 'apple': return '🍎';
+      case 'banana': return '🍌';
+      case 'orange': return '🍊';
+      case 'watermelon': return '🍉';
+      case 'strawberry': return '🍓';
+      case 'grape': return '🍇';
+      case 'mango': return '🥭';
+      case 'pineapple': return '🍍';
+      case 'peach': return '🍑';
+      case 'cherry': return '🍒';
+      case 'carrot': return '🥕';
+      case 'tomato': return '🍅';
+      case 'potato': return '🥔';
+      case 'corn': return '🌽';
+      case 'broccoli': return '🥦';
+      case 'pumpkin': return '🎃';
+      case 'onion': return '🧅';
+      case 'cucumber': return '🥒';
+      case 'mushroom': return '🍄';
+      case 'pea': return '🫛';
+      case 'car': return '🚗';
+      case 'airplane': return '✈️';
+      case 'train': return '🚆';
+      case 'bicycle': return '🚲';
+      case 'ship': return '🚢';
+      case 'helicopter': return '🚁';
+      case 'bus': return '🚌';
+      case 'motorcycle': return '🏍️';
+      case 'boat': return '🚤';
+      case 'truck': return '🚚';
+      case 'book': return '📖';
+      case 'pen': return '🖊️';
+      case 'pencil': return '✏️';
+      case 'ruler': return '📏';
+      case 'eraser': return '🧼';
+      case 'backpack': return '🎒';
+      case 'desk': return '🪑';
+      case 'chair': return '🪑';
+      case 'computer': return '💻';
+      case 'clock': return '⏰';
+      case 'bed': return '🛏️';
+      case 'table': return '🪵';
+      case 'sofa': return '🛋️';
+      case 'lamp': return '💡';
+      case 'door': return '🚪';
+      case 'window': return '🪟';
+      case 'cup': return '🥤';
+      case 'spoon': return '🥄';
+      case 'fork': return '🍴';
+      case 'plate': return '🍽️';
+      case 'tree': return '🌳';
+      case 'flower': return '🌸';
+      case 'sun': return '☀️';
+      case 'moon': return '🌙';
+      case 'star': return '⭐';
+      case 'cloud': return '☁️';
+      case 'rain': return '🌧️';
+      case 'mountain': return '⛰️';
+      case 'river': return '🌊';
+      case 'rainbow': return '🌈';
+      case 'rocket': return '🚀';
+      case 'planet': return '🪐';
+      case 'astronaut': return '👨‍🚀';
+      case 'comet': return '☄️';
+      case 'telescope': return '🔭';
+      case 'satellite': return '🛰️';
+      case 'fish': return '🐟';
+      case 'shark': return '🦈';
+      case 'whale': return '🐋';
+      case 'dolphin': return '🐬';
+      case 'octopus': return '🐙';
+      case 'crab': return '🦀';
+      case 'turtle': return '🐢';
+      case 'jellyfish': return '🪼';
+      case 'shell': return '🐚';
+      case 'starfish': return '⭐';
+      case 'ball': return '⚽';
+      case 'doll': return '🪆';
+      case 'robot': return '🤖';
+      case 'kite': return '🪁';
+      case 'balloon': return '🎈';
+      case 'puzzle': return '🧩';
+      case 'drum': return '🥁';
+      case 'shirt': return '👕';
+      case 'pants': return '👖';
+      case 'dress': return '👗';
+      case 'hat': return '🧢';
+      case 'shoes': return '👟';
+      case 'socks': return '🧦';
+      case 'jacket': return '🧥';
+      case 'glasses': return '👓';
+      case 'scarf': return '🧣';
+      case 'boots': return '👢';
+      case 'bread': return '🍞';
+      case 'milk': return '🥛';
+      case 'ice cream': return '🍦';
+      case 'lollipop': return '🍭';
+      case 'cake': return '🎂';
+      case 'pizza': return '🍕';
+      case 'egg': return '🥚';
+      case 'cheese': return '🧀';
+      case 'burger': return '🍔';
+      case 'juice': return '🧃';
+      default: return '✨';
+    }
+  }
+
+  static String _getVietnameseEmoji(String en, String defaultEmoji) {
+    switch (en.toLowerCase().trim()) {
+      case 'cat': return '🐾';
+      case 'apple': return '🍏';
+      case 'dog': return '🦴';
+      case 'lion': return '🐾';
+      case 'rabbit': return '🥕';
+      default: return defaultEmoji;
+    }
+  }
 
   @override
   void initState() {
@@ -67,12 +199,15 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
   @override
   void dispose() {
     ref.read(isGameActiveProvider.notifier).state = false;
+    _singleCardAutoCloseTimer?.cancel();
     _timer?.cancel();
     _stopwatch.stop();
     super.dispose();
   }
 
   void _setupGame() {
+    _singleCardAutoCloseTimer?.cancel();
+    _singleCardAutoCloseTimer = null;
     _matchedPairsCount = 0;
     _score = 0;
     _firstCardIndex = null;
@@ -81,25 +216,29 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
     _isSavingScore = false;
     
     // Pick 8 random pairs from the global 120 vocabulary pool
-    final vocabPool = GameContent.allVocab.map((item) => {'en': item.en, 'vi': item.vi}).toList();
-    vocabPool.shuffle();
+    final vocabPool = List<VocabItem>.from(GameContent.allVocab)..shuffle();
     final selectedPairs = vocabPool.take(8).toList();
 
     final List<MemoryCard> cardList = [];
     for (int i = 0; i < selectedPairs.length; i++) {
       final pair = selectedPairs[i];
+      final emoji = _getVocabEmoji(pair.en);
+      final viEmoji = _getVietnameseEmoji(pair.en, emoji);
+
       // English card
       cardList.add(MemoryCard(
         id: i * 2,
         pairId: i,
-        text: pair['en']!,
+        text: pair.en,
+        emoji: emoji,
         isEnglish: true,
       ));
       // Vietnamese card
       cardList.add(MemoryCard(
         id: (i * 2) + 1,
         pairId: i,
-        text: pair['vi']!,
+        text: pair.vi,
+        emoji: viEmoji,
         isEnglish: false,
       ));
     }
@@ -143,13 +282,29 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
 
     if (_firstCardIndex == null) {
       _firstCardIndex = index;
+      // Khởi động hẹn giờ 2 giây: nếu sau 2s người dùng không bấm thẻ thứ 2 thì thẻ sẽ tự úp lại
+      _singleCardAutoCloseTimer?.cancel();
+      _singleCardAutoCloseTimer = Timer(const Duration(seconds: 2), () {
+        if (!mounted) return;
+        if (_firstCardIndex != null && _secondCardIndex == null) {
+          setState(() {
+            _cards[_firstCardIndex!].isFlipped = false;
+            _firstCardIndex = null;
+          });
+        }
+      });
     } else {
+      // Đã bấm thẻ thứ 2: hủy ngay hẹn giờ tự đóng thẻ đơn lẻ
+      _singleCardAutoCloseTimer?.cancel();
+      _singleCardAutoCloseTimer = null;
       _secondCardIndex = index;
       _checkMatch();
     }
   }
 
   void _checkMatch() {
+    _singleCardAutoCloseTimer?.cancel();
+    _singleCardAutoCloseTimer = null;
     _isBusy = true;
     final firstCard = _cards[_firstCardIndex!];
     final secondCard = _cards[_secondCardIndex!];
@@ -192,22 +347,11 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
     _elapsedTimeString = GameCountUpTimer.formatSeconds(_secondsElapsed);
 
     final elapsedSeconds = _secondsElapsed;
-    int stars = 0;
+    int finalScore = 15;
     if (elapsedSeconds < 25) {
-      stars = 3;
-    } else if (elapsedSeconds < 45) {
-      stars = 2;
-    } else {
-      stars = 1;
-    }
-
-    int finalScore = 0;
-    if (stars == 3) {
       finalScore = 30;
-    } else if (stars == 2) {
+    } else if (elapsedSeconds < 45) {
       finalScore = 20;
-    } else if (stars == 1) {
-      finalScore = 10;
     }
 
     setState(() {
@@ -216,30 +360,20 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
       _isSavingScore = true;
     });
 
-    // Ưu tiên 1: NKS SCRMAI API
     final authState = ref.read(authProvider);
     final memberName = authState.username ?? 'Học sinh';
 
     try {
-      await ScrmaiApiService.instance.submitScore(
-        member: memberName,
-        game: 'L02',
+      await GameScoreSyncService.instance.saveScoreParallel(
+        gameCodeOrName: 'E02',
         level: '1',
         score: finalScore,
+        stars: 0,
+        durationSeconds: _secondsElapsed,
+        memberName: memberName,
       );
     } catch (e) {
-      debugPrint('Error syncing score to NKS SCRMAI: $e');
-    }
-
-    // Ưu tiên 2: Supabase
-    try {
-      await SupabaseService.instance.saveScore(
-        gameName: 'memory_match',
-        stars: stars,
-        score: _score,
-      );
-    } catch (e) {
-      debugPrint('Error saving score: $e');
+      debugPrint('Error saving memory_match score: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -273,113 +407,134 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
           icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
           onPressed: () => _showQuitConfirmation(),
         ),
-        actions: [
-          const GameSoundToggleButton(),
-          GameCountUpTimer(elapsedSeconds: _secondsElapsed),
-          const SizedBox(width: 8),
+        actions: const [
+          GameSoundToggleButton(),
+          SizedBox(width: 8),
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Header Status & Instruction Banner
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE0F2FE),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '8 CẶP TỪ VỰNG',
-                            style: GoogleFonts.baloo2(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF0369A1),
-                              letterSpacing: 0.8,
-                            ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Tính toán kích thước để thẻ to rõ, tỷ lệ đẹp, vừa vặn không bị quá dài và không để thừa khoảng trống đáy
+            const horizontalPadding = 14.0;
+            const crossAxisSpacing = 8.0;
+            const mainAxisSpacing = 8.0;
+
+            final availableHeight = constraints.maxHeight;
+            // Trừ phần Header (~38px) + Banner (~36px) + spacings (~20px) + đệm đáy an toàn (~16px)
+            final availableGridHeight = (availableHeight - 110.0).clamp(320.0, 720.0);
+            final availableGridWidth = constraints.maxWidth - (horizontalPadding * 2);
+
+            final itemWidth = (availableGridWidth - (crossAxisSpacing * 3)) / 4;
+            final itemHeight = (availableGridHeight - (mainAxisSpacing * 3)) / 4;
+            final dynamicAspectRatio = (itemWidth / itemHeight).clamp(0.59, 0.65);
+            final remaining = 8 - _matchedPairsCount;
+            final isNearEnd = remaining <= 3 && remaining > 0;
+
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(horizontalPadding, 6, horizontalPadding, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 1. Header Progress & Timer Row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isNearEnd ? const Color(0xFFFFFBEB) : const Color(0xFFE0F2FE),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isNearEnd ? const Color(0xFFFDE68A) : const Color(0xFFBAE6FD),
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFD1FAE5),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFF16A34A).withValues(alpha: 0.3)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.stars_rounded, color: Color(0xFF16A34A), size: 14),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Đã ghép: $_matchedPairsCount / 8',
+                        child: isNearEnd
+                            ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.stars_rounded, color: Color(0xFFD97706), size: 15),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    'Matched: $_matchedPairsCount / 8 • Final Sprint',
+                                    style: GoogleFonts.baloo2(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFFB45309),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Text(
+                                'Matched: $_matchedPairsCount / 8',
                                 style: GoogleFonts.baloo2(
-                                  fontSize: 11.5,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF003D1D),
+                                  color: const Color(0xFF0284C7),
                                 ),
                               ),
-                            ],
+                      ),
+                      GameCountUpTimer(
+                        elapsedSeconds: _secondsElapsed,
+                        margin: EdgeInsets.zero,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // 2. Thẻ Bé Ong Hội Thoại (khi còn 3 cặp cuối) hoặc Instruction Banner
+                  if (isNearEnd)
+                    _buildMascotCard(remaining)
+                  else
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
                           ),
+                        ],
+                      ),
+                      child: Text(
+                        'Tap cards to match English and Vietnamese words!',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Chạm lật thẻ kẹo thạch 3D để ghép các cặp từ Tiếng Anh và Tiếng Việt tương ứng!',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.baloo2(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
                       ),
                     ),
-                  ],
-                ),
+
+                  const SizedBox(height: 10),
+
+                  // 4x4 Grid of Cards (Lấp đầy không gian vừa vặn, không bị dư trống đáy)
+                  Expanded(
+                    child: Center(
+                      child: GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 4,
+                          mainAxisSpacing: mainAxisSpacing,
+                          crossAxisSpacing: crossAxisSpacing,
+                          childAspectRatio: dynamicAspectRatio,
+                        ),
+                        itemCount: 16,
+                        itemBuilder: (context, index) {
+                          return _buildCardItem(index);
+                        },
+                      ),
+                    ),
+                  ),
+                ],
               ),
-
-              const SizedBox(height: 18),
-
-              // 4x4 Grid of Cards
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
-                  childAspectRatio: 0.76, // Tỉ lệ thẻ chữ nhật dọc thanh thoát
-                ),
-                itemCount: 16,
-                itemBuilder: (context, index) {
-                  return _buildCardItem(index);
-                },
-              ),
-
-              const SizedBox(height: 16),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -401,223 +556,175 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
     );
   }
 
-  /// Mặt úp: Phong cách Gel Candy / Jelly 3D bóng bẩy căng mọng
+  /// Mặt úp: Phong cách thẻ 3D xanh biển với đế dày và bong bóng dấu hỏi như mẫu
   Widget _buildGelCandyCard() {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF38BDF8), // Xanh trời sáng
-            Color(0xFF0284C7), // Xanh dương kẹo thạch
-            Color(0xFF0369A1), // Xanh biển sâu 3D
-          ],
-        ),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.5),
-          width: 1.5,
-        ),
+        color: const Color(0xFF0275B1), // Màu đế thẻ 3D đậm hơn
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          // 3D Bottom Depth Shadow
           BoxShadow(
-            color: const Color(0xFF0284C7).withValues(alpha: 0.42),
-            offset: const Offset(0, 5),
-            blurRadius: 8,
-          ),
-          // Ambient Glow
-          BoxShadow(
-            color: const Color(0xFF0284C7).withValues(alpha: 0.2),
-            offset: const Offset(0, 1),
-            blurRadius: 3,
-            spreadRadius: 1,
+            color: const Color(0xFF0284C7).withValues(alpha: 0.25),
+            offset: const Offset(0, 3.5),
+            blurRadius: 7,
           ),
         ],
       ),
-      child: Stack(
-        children: [
-          // Vòm phản quang bóng loáng (Glossy Dome Reflection)
-          Positioned(
-            top: 2,
-            left: 4,
-            right: 4,
-            height: 32,
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(15),
-                  bottom: Radius.circular(8),
-                ),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.white.withValues(alpha: 0.65),
-                    Colors.white.withValues(alpha: 0.08),
-                  ],
-                ),
+      padding: const EdgeInsets.only(bottom: 4.0), // Độ dày đế 3D
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF38BDF8), // Xanh trời sáng
+              Color(0xFF0284C7), // Xanh biển đậm
+            ],
+          ),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.35),
+            width: 1.2,
+          ),
+        ),
+        child: Center(
+          child: Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.22),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.5),
+                width: 1.2,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: const Text(
+              '?',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 19,
+                fontWeight: FontWeight.w900,
               ),
             ),
           ),
-
-          // Tâm thẻ: Viên ngọc tròn Jelly 3D chứa dấu hỏi trắng
-          Center(
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.22),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.5),
-                  width: 1.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.12),
-                    offset: const Offset(0, 2),
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: Text(
-                  '?',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black26,
-                        offset: Offset(0, 1.5),
-                        blurRadius: 2,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  /// Mặt lật mở: Phong cách Pastel Toy Card (hoặc Victory Mint khi đã ghép trúng)
+  /// Mặt lật mở: Phong cách thẻ đồ họa (hình minh họa + từ + nhãn EN/VI + tích xanh khi khớp)
   Widget _buildFacedUpCard(MemoryCard card) {
     final isMatched = card.isMatched;
     final isEnglish = card.isEnglish;
 
-    // Màu sắc theo ngữ cảnh
-    final Color bgColor;
-    final Color borderColor;
-    final Color textColor;
-    final Color shadowColor;
-    final String tagLabel;
+    final Color bgColor = isMatched ? const Color(0xFFF0FDF4) : Colors.white;
+    final Color borderColor = isMatched ? const Color(0xFF16A34A) : const Color(0xFFBAE6FD);
+    final Color base3DColor = isMatched ? const Color(0xFF15803D) : const Color(0xFFE2E8F0);
+    final Color textColor = isMatched ? const Color(0xFF14532D) : const Color(0xFF00375A);
+    final Color subtitleColor = isMatched ? const Color(0xFF16A34A) : const Color(0xFF38BDF8);
 
-    if (isMatched) {
-      // Victory Mint Pastel Green
-      bgColor = const Color(0xFFD1FAE5);
-      borderColor = const Color(0xFF16A34A);
-      textColor = const Color(0xFF003D1D);
-      shadowColor = const Color(0xFF16A34A).withValues(alpha: 0.25);
-      tagLabel = isEnglish ? 'EN 🇬🇧' : 'VI 🇻🇳';
-    } else if (isEnglish) {
-      // Pastel Toy Blue
-      bgColor = const Color(0xFFCFE5FF);
-      borderColor = const Color(0xFF00629D);
-      textColor = const Color(0xFF00375A);
-      shadowColor = const Color(0xFF00629D).withValues(alpha: 0.15);
-      tagLabel = 'EN 🇬🇧';
-    } else {
-      // Pastel Toy Orange
-      bgColor = const Color(0xFFFFDCBB);
-      borderColor = const Color(0xFFEA580C);
-      textColor = const Color(0xFF663C00);
-      shadowColor = const Color(0xFFEA580C).withValues(alpha: 0.15);
-      tagLabel = 'VI 🇻🇳';
-    }
-
-    // Adaptive font size
-    final textLength = card.text.length;
-    final double fontSize = textLength > 10 ? 11.0 : (textLength > 6 ? 12.5 : 14.5);
+    final String subtitle = isMatched
+        ? (isEnglish ? 'EN' : 'VN')
+        : (isEnglish ? 'ENGLISH' : 'TIẾNG VIỆT');
 
     return Container(
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: borderColor, width: 2.2),
+        color: base3DColor,
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: shadowColor,
+            color: isMatched
+                ? const Color(0xFF16A34A).withValues(alpha: 0.18)
+                : Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Stack(
-        children: [
-          // Vệt bóng viên thuốc nghiêng (Glossy Pill Reflection)
-          Positioned(
-            top: 6,
-            left: 8,
-            child: Transform.rotate(
-              angle: -0.26,
-              child: Container(
-                width: 18,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.72),
-                  borderRadius: BorderRadius.circular(3),
+      padding: const EdgeInsets.only(bottom: 3.5), // Đế thẻ 3D
+      child: Container(
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: borderColor,
+            width: isMatched ? 2.2 : 1.5,
+          ),
+        ),
+        child: Stack(
+          children: [
+            // Badge tích xanh khi đã ghép trúng ở góc trên bên phải
+            if (isMatched)
+              Positioned(
+                top: 5,
+                right: 5,
+                child: Container(
+                  width: 17,
+                  height: 17,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF16A34A),
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.check_rounded,
+                    color: Colors.white,
+                    size: 12,
+                  ),
                 ),
               ),
-            ),
-          ),
 
-          // Tag ngôn ngữ EN/VI ở góc trên phải
-          Positioned(
-            top: 5,
-            right: 5,
-            child: isMatched
-                ? const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 16)
-                : Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.75),
-                      borderRadius: BorderRadius.circular(6),
+            // Nội dung chính của thẻ (Icon/Emoji + Tên từ vựng + Phụ đề EN/VN)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Hình minh họa emoji
+                    Text(
+                      card.emoji,
+                      style: const TextStyle(fontSize: 26),
                     ),
-                    child: Text(
-                      tagLabel,
-                      style: GoogleFonts.baloo2(
-                        fontSize: 8.5,
-                        fontWeight: FontWeight.bold,
-                        color: textColor.withValues(alpha: 0.8),
+                    const SizedBox(height: 4),
+
+                    // Tên từ vựng (tự động co giãn theo độ dài)
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        card.text,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w800,
+                          color: textColor,
+                          height: 1.15,
+                        ),
                       ),
                     ),
-                  ),
-          ),
+                    const SizedBox(height: 2),
 
-          // Nội dung chữ từ vựng
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              child: Text(
-                card.text,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.baloo2(
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.w800,
-                  color: textColor,
-                  height: 1.15,
+                    // Nhãn ngôn ngữ (ENGLISH / TIẾNG VIỆT hoặc EN / VN)
+                    Text(
+                      subtitle,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.baloo2(
+                        fontSize: isMatched ? 10.0 : 9.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                        color: subtitleColor,
+                        height: 1.0,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -627,23 +734,23 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Thoát Trò Chơi?'),
-        content: Text('Tiến trình chơi hiện tại của bạn sẽ không được lưu lại.'),
+        title: const Text('Quit Game?'),
+        content: const Text('Your current game progress will not be saved.'),
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // Đóng dialog
-              _stopwatch.start(); // Tiếp tục bấm giờ
+              Navigator.pop(context); // Close dialog
+              _stopwatch.start(); // Resume timer
             },
-            child: Text('Chơi tiếp'),
+            child: const Text('Keep Playing'),
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // Đóng dialog
-              Navigator.pop(context); // Thoát game
+              Navigator.pop(context); // Close dialog
+              Navigator.pop(context); // Quit game
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: Text('Thoát'),
+            child: const Text('Quit'),
           ),
         ],
       ),
@@ -651,16 +758,6 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
   }
 
   Widget _buildSummaryView() {
-    final elapsedSeconds = _stopwatch.elapsedMilliseconds / 1000;
-    int stars = 0;
-    if (elapsedSeconds < 25) {
-      stars = 3;
-    } else if (elapsedSeconds < 45) {
-      stars = 2;
-    } else {
-      stars = 1;
-    }
-
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -678,17 +775,17 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
                     color: Color(0xFFFFF9E6),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.emoji_events_rounded,
                     color: Colors.amber,
                     size: 80,
                   ),
                 ),
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
               
               Text(
-                'Xuất Sắc! 🎉',
+                'Awesome! 🎉',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.baloo2(
                   fontSize: 26,
@@ -696,39 +793,17 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
                   color: AppColors.textPrimary,
                 ),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               
               Text(
-                'Bạn đã hoàn thành ghép 8 cặp từ trong $_elapsedTimeString.',
+                'You matched all 8 pairs in $_elapsedTimeString!',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.baloo2(
                   fontSize: 14,
                   color: AppColors.textSecondary,
                 ),
               ),
-              SizedBox(height: 24),
-
-              // Stars Display
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(3, (index) {
-                  final active = index < stars;
-                  return AnimatedScale(
-                    scale: active ? 1.3 : 1.0,
-                    duration: Duration(milliseconds: 300 + (index * 150)),
-                    curve: Curves.elasticOut,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Icon(
-                        Icons.star_rounded,
-                        size: 48,
-                        color: active ? Colors.amber : AppColors.border,
-                      ),
-                    ),
-                  );
-                }),
-              ),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
 
               // Time & Score Cards
               Row(
@@ -743,10 +818,10 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
                       child: Column(
                         children: [
                           Text(
-                            'Thời gian',
+                            'Time',
                             style: GoogleFonts.baloo2(fontSize: 11, color: AppColors.primary),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text(
                             _elapsedTimeString,
                             style: GoogleFonts.baloo2(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
@@ -755,7 +830,7 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
                       ),
                     ),
                   ),
-                  SizedBox(width: 16),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -766,10 +841,10 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
                       child: Column(
                         children: [
                           Text(
-                            'Điểm cộng',
+                            'Score Earned',
                             style: GoogleFonts.baloo2(fontSize: 11, color: AppColors.success),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text(
                             '+$_score',
                             style: GoogleFonts.baloo2(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.success),
@@ -787,6 +862,7 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
                 gameName: 'memory_match',
                 gameTitle: 'Memory Match',
                 currentScore: _score,
+                isEnglish: true,
               ),
 
               const SizedBox(height: 28),
@@ -806,19 +882,24 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       elevation: 0,
+                      padding: EdgeInsets.zero,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(24),
                       ),
                     ),
                     child: _isSavingScore
-                        ? SizedBox(
+                        ? const SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                           )
                         : Text(
-                            'Quay lại danh mục',
-                            style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, fontSize: 14),
+                            'Back to Menu',
+                            style: GoogleFonts.baloo2(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              height: 1.2,
+                            ),
                           ),
                   ),
                 ),
@@ -827,6 +908,150 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  String _getMascotDialogue(int remaining) {
+    if (remaining == 1) {
+      return 'Only 1 pair left! Let\'s bring sweet honey home, little bee! 🐝';
+    } else if (remaining == 2) {
+      return 'Only 2 pairs left! Let\'s bring sweet honey home, little bee! 🐝';
+    } else if (remaining == 3) {
+      return 'Only 3 pairs left! Let\'s bring sweet honey home, little bee! 🐝';
+    }
+    return 'Find matching pairs to complete the challenge! 🐝';
+  }
+
+  Widget _buildMascotCard(int remaining) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Avatar Bé Ong với huy hiệu ngôi sao xanh
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFFFDE68A), width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFD97706).withValues(alpha: 0.15),
+                          blurRadius: 5,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: const Text('🐝', style: TextStyle(fontSize: 20)),
+                  ),
+                  Positioned(
+                    top: -1,
+                    right: -1,
+                    child: Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF16A34A),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 1.5),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.star_rounded, size: 8, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 10),
+
+              // Tên Mascot + Số câu + Câu thoại
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Smart Bee',
+                          style: GoogleFonts.baloo2(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF92400E),
+                          ),
+                        ),
+                        Text(
+                          '$_matchedPairsCount / 8 Pairs',
+                          style: GoogleFonts.baloo2(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      _getMascotDialogue(remaining),
+                      style: GoogleFonts.baloo2(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF334155),
+                        height: 1.25,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+
+          // Thanh tiến trình phân đoạn 8 vạch
+          Row(
+            children: List.generate(8, (i) {
+              final isDone = i < _matchedPairsCount;
+              final isCurrent = i == _matchedPairsCount;
+              Color segColor = const Color(0xFFE2E8F0);
+              if (isDone) {
+                segColor = const Color(0xFF16A34A);
+              } else if (isCurrent) {
+                segColor = const Color(0xFFF59E0B);
+              }
+              return Expanded(
+                child: Container(
+                  height: 5,
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  decoration: BoxDecoration(
+                    color: segColor,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
       ),
     );
   }

@@ -96,6 +96,23 @@ class GelCandyBadge extends StatelessWidget {
     );
   }
 
+  factory GelCandyBadge.grey({
+    Widget? icon,
+    String? emoji,
+    double size = 52,
+    String? miniBadge,
+  }) {
+    return GelCandyBadge(
+      icon: icon,
+      emoji: emoji,
+      size: size,
+      gradientColors: const [Color(0xFF94A3B8), Color(0xFF64748B), Color(0xFF475569)],
+      shadowColor: const Color(0xFF64748B),
+      miniBadge: miniBadge,
+      miniBadgeColor: const Color(0xFFCBD5E1),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final effectiveBorderColor = borderColor ?? (gradientColors.isNotEmpty ? gradientColors[1] : shadowColor);
@@ -104,12 +121,12 @@ class GelCandyBadge extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // 3D Gel Candy Base Container
+        // Modern iOS Educational Squircle Badge (des.zip style)
         Container(
           width: size,
           height: size,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(size * 0.38),
+            borderRadius: BorderRadius.circular(size * 0.32),
             color: isOutlineMode ? (backgroundColor ?? Colors.white) : null,
             gradient: isOutlineMode
                 ? null
@@ -119,111 +136,53 @@ class GelCandyBadge extends StatelessWidget {
                     colors: gradientColors,
                   ),
             boxShadow: [
-              // 3D Bottom Depth Shadow
               BoxShadow(
                 color: (isOutlineMode ? effectiveBorderColor : shadowColor)
-                    .withValues(alpha: isOutlineMode ? 0.16 : 0.22),
-                offset: const Offset(0, 3.5),
-                blurRadius: isOutlineMode ? 6 : 7,
-                spreadRadius: 0,
-              ),
-              // Soft Ambient Glow
-              BoxShadow(
-                color: (isOutlineMode ? effectiveBorderColor : shadowColor)
-                    .withValues(alpha: isOutlineMode ? 0.06 : 0.08),
-                offset: const Offset(0, 1),
-                blurRadius: 3,
-                spreadRadius: 0,
+                    .withValues(alpha: isOutlineMode ? 0.12 : 0.22),
+                offset: const Offset(0, 3),
+                blurRadius: isOutlineMode ? 6 : 8,
               ),
             ],
             border: Border.all(
-              color: isOutlineMode ? effectiveBorderColor : Colors.white.withValues(alpha: 0.25),
-              width: isOutlineMode ? 2.5 : 1.2,
+              color: isOutlineMode ? effectiveBorderColor : Colors.white.withValues(alpha: 0.35),
+              width: isOutlineMode ? 2.0 : 1.2,
             ),
           ),
-          child: Stack(
-            children: [
-              // Glossy Reflection Highlight
-              Positioned(
-                top: 2,
-                left: 4,
-                right: 4,
-                height: size * 0.40,
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(size * 0.36),
-                      bottom: Radius.circular(size * 0.15),
-                    ),
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: isOutlineMode
-                          ? [
-                              effectiveBorderColor.withValues(alpha: 0.08),
-                              Colors.transparent,
-                            ]
-                          : [
-                              Colors.white.withValues(alpha: 0.28),
-                              Colors.white.withValues(alpha: 0.02),
-                            ],
+          alignment: Alignment.center,
+          child: emoji != null
+              ? Text(
+                  emoji!,
+                  style: TextStyle(
+                    fontSize: size * 0.52,
+                  ),
+                )
+              : Theme(
+                  data: Theme.of(context).copyWith(
+                    iconTheme: IconThemeData(
+                      color: isOutlineMode ? effectiveBorderColor : Colors.white,
+                      size: size * 0.54,
                     ),
                   ),
+                  child: icon!,
                 ),
-              ),
-              // Centered Icon or Emoji
-              Center(
-                child: emoji != null
-                    ? Text(
-                        emoji!,
-                        style: TextStyle(
-                          fontSize: size * 0.52,
-                          shadows: [
-                            Shadow(
-                              color: Colors.black.withValues(alpha: isOutlineMode ? 0.08 : 0.22),
-                              offset: const Offset(0, 1.5),
-                              blurRadius: 3,
-                            ),
-                          ],
-                        ),
-                      )
-                    : Theme(
-                        data: Theme.of(context).copyWith(
-                          iconTheme: IconThemeData(
-                            color: isOutlineMode ? effectiveBorderColor : Colors.white,
-                            size: size * 0.54,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black.withValues(alpha: isOutlineMode ? 0.10 : 0.25),
-                                offset: const Offset(0, 1.5),
-                                blurRadius: 3,
-                              ),
-                            ],
-                          ),
-                        ),
-                        child: icon!,
-                      ),
-              ),
-            ],
-          ),
         ),
 
-        // Optional Mini Accent Badge (e.g. ✨, 🌟, 🚀)
+        // Corner Mini Badge (des.zip style - e.g. 100, A1-C1)
         if (miniBadge != null)
           Positioned(
             top: -4,
             right: -6,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
               decoration: BoxDecoration(
-                color: miniBadgeColor ?? Colors.amber.shade300,
+                color: miniBadgeColor ?? const Color(0xFFFEF3C7),
                 borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: Colors.white, width: 1.2),
-                boxShadow: const [
+                border: Border.all(color: Colors.white, width: 1.5),
+                boxShadow: [
                   BoxShadow(
-                    color: Color(0x33000000),
+                    color: Colors.black.withValues(alpha: 0.08),
                     blurRadius: 4,
-                    offset: Offset(0, 2),
+                    offset: const Offset(0, 1),
                   ),
                 ],
               ),
@@ -231,7 +190,7 @@ class GelCandyBadge extends StatelessWidget {
                 miniBadge!,
                 style: GoogleFonts.baloo2(
                   fontSize: 10,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w800,
                   color: const Color(0xFF1E293B),
                 ),
               ),

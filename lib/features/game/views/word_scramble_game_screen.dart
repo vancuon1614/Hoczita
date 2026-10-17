@@ -1,49 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/services/supabase_service.dart';
+import '../../../core/services/tts_service.dart';
+import '../../../core/services/game_score_sync_service.dart';
 import '../../../core/widgets/mini_game_timer.dart';
 import '../../../core/widgets/game_sound_toggle_button.dart';
 import '../../../core/providers/game_interaction_provider.dart';
-import '../../../core/services/tts_service.dart';
+import '../../auth/providers/auth_provider.dart';
 import 'common/mini_game_rank_banner.dart';
-import '../services/eduword_service.dart';
-import '../models/eduword_model.dart';
-import '../../../core/widgets/pastel_toy_card.dart';
-import '../../learn/views/widgets/gel_candy_icon.dart';
-
-enum ScrambleDifficulty { easy, medium, hard }
-
-class ScrambleWord {
-  final String en;
-  final String hint;
-  final EduwordModel? model;
-  ScrambleWord(this.en, this.hint, {this.model});
-}
-
-class ScrambledTile {
-  final String char;
-  final int originalIndex;
-  bool isUsed;
-
-  ScrambledTile(this.char, this.originalIndex, {this.isUsed = false});
-}
-
-class ScrambleResult {
-  final ScrambleWord word;
-  final String userAnswer;
-  final bool isCorrect;
-  final bool isTimeout;
-
-  ScrambleResult({
-    required this.word,
-    required this.userAnswer,
-    required this.isCorrect,
-    required this.isTimeout,
-  });
-}
 
 class WordScrambleGameScreen extends ConsumerStatefulWidget {
   const WordScrambleGameScreen({super.key});
@@ -52,1263 +18,923 @@ class WordScrambleGameScreen extends ConsumerStatefulWidget {
   ConsumerState<WordScrambleGameScreen> createState() => _WordScrambleGameScreenState();
 }
 
-class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen> with TickerProviderStateMixin {
-  // Game Settings & State
-  ScrambleDifficulty? _difficulty;
-  List<ScrambleWord> _selectedWords = [];
-  int _currentWordIndex = 0;
-  int _correctCount = 0;
-  bool _isPlaying = false;
-  bool _isGameOver = false;
-  bool _isLoading = false;
-  int _score = 0;
-  int _stars = 0;
-  bool _isSavingScore = false;
-  final List<ScrambleResult> _results = [];
-  
-  int _easyStars = 0;
-  int _mediumStars = 0;
-  int _hardStars = 0;
-
-  // Word specific states
-  List<ScrambledTile> _scrambledTiles = [];
-  List<ScrambledTile?> _answerSlots = [];
-
-  // Animation controller for the 10-second timer
+class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen> with SingleTickerProviderStateMixin {
   late AnimationController _timerController;
+  late Stopwatch _stopwatch;
+  String get _elapsedTimeString => GameCountUpTimer.formatSeconds(_stopwatch.elapsed.inSeconds);
+
+  final List<bool> _questionResults = [];
+  final List<String> _userFormedAnswers = [];
+  
+  final List<Map<String, String>> _allWords = [
+    {'word': 'APPLE', 'hint': 'A sweet, crunchy fruit, usually red or green.'},
+    {'word': 'BANANA', 'hint': 'A long, yellow curved fruit that monkeys love.'},
+    {'word': 'ORANGE', 'hint': 'A round citrus fruit rich in Vitamin C.'},
+    {'word': 'SCHOOL', 'hint': 'A place where students go to learn and make friends.'},
+    {'word': 'TEACHER', 'hint': 'A person who helps students learn new things.'},
+    {'word': 'FRIEND', 'hint': 'A person you know well and like to play with.'},
+    {'word': 'FAMILY', 'hint': 'Parents and children living together in a home.'},
+    {'word': 'FLOWER', 'hint': 'The colorful blossom of a plant with sweet fragrance.'},
+    {'word': 'GARDEN', 'hint': 'An area of ground where plants and flowers grow.'},
+    {'word': 'SUMMER', 'hint': 'The warmest season of the year with sunny days.'},
+  ];
+
+  late String _currentWord;
+  late String _currentHint;
+  late List<String> _scrambledLetters;
+  late List<String> _userLetters;
+  
+  int _score = 0;
+  int _currentQuestionIndex = 0;
   int _secondsRemaining = 10;
-  Timer? _tickTimer;
+  bool _isGameOver = false;
+  bool _isSavingScore = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ref.read(isGameActiveProvider.notifier).state = true;
-      }
-    });
-    _loadHighestStars();
+    _stopwatch = Stopwatch()..start();
     _timerController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 10),
     );
+
+    _timerController.addListener(() {
+      setState(() {
+        _secondsRemaining = (10 - (_timerController.value * 10)).ceil();
+      });
+    });
+
     _timerController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
-        _submitCurrentWord(isTimeout: true);
+        _handleTimeout();
       }
     });
-  }
 
-  Future<void> _loadHighestStars() async {
-    final easy = await SupabaseService.instance.getHighestStarsForGame('word_scramble_easy');
-    final medium = await SupabaseService.instance.getHighestStarsForGame('word_scramble_medium');
-    final hard = await SupabaseService.instance.getHighestStarsForGame('word_scramble_hard');
-    if (mounted) {
-      setState(() {
-        _easyStars = easy;
-        _mediumStars = medium;
-        _hardStars = hard;
-      });
-    }
+    _setupGame();
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(isGameActiveProvider.notifier).state = true;
+    });
   }
 
   @override
   void dispose() {
     ref.read(isGameActiveProvider.notifier).state = false;
     _timerController.dispose();
-    _tickTimer?.cancel();
     TtsService.instance.stopAll();
     super.dispose();
   }
 
-  Future<void> _selectDifficulty(ScrambleDifficulty diff) async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    List<ScrambleWord> selectedWords = [];
-    int limitParam = 100;
+  void _setupGame() {
+    final wordData = _allWords[_currentQuestionIndex];
+    _currentWord = wordData['word']!;
+    _currentHint = wordData['hint']!;
     
-    try {
-      final eduwords = await EduwordService.fetchWords(limit: limitParam);
-      
-      if (diff == ScrambleDifficulty.hard) {
-        selectedWords = eduwords.where((e) => e.acf.level == 'C1' && e.title.isNotEmpty).map((e) {
-          final hint = e.acf.description.isNotEmpty ? e.acf.description : e.acf.viword;
-          return ScrambleWord(
-            e.title.toUpperCase(),
-            hint,
-            model: e,
-          );
-        }).take(10).toList();
-      } else if (diff == ScrambleDifficulty.medium) {
-        selectedWords = eduwords.where((e) => e.title.trim().length > 4 && e.title.trim().length <= 8 && e.acf.level != 'C1' && e.title.isNotEmpty).map((e) {
-          final hint = e.acf.description.isNotEmpty ? e.acf.description : e.acf.viword;
-          return ScrambleWord(
-            e.title.toUpperCase(),
-            hint,
-            model: e,
-          );
-        }).take(10).toList();
-      } else {
-        selectedWords = eduwords.where((e) => e.title.trim().length <= 4 && e.acf.level != 'C1' && e.title.isNotEmpty).map((e) {
-          final hint = e.acf.description.isNotEmpty ? e.acf.description : e.acf.viword;
-          return ScrambleWord(
-            e.title.toUpperCase(),
-            hint,
-            model: e,
-          );
-        }).take(10).toList();
-      }
-      
-      selectedWords.shuffle();
-    } catch (e) {
-      debugPrint('Failed to fetch from API: $e');
-    }
-
-    if (!mounted) return;
-
-    if (selectedWords.isNotEmpty) {
-      ref.read(isGameActiveProvider.notifier).state = true;
-      setState(() {
-        _isLoading = false;
-        _difficulty = diff;
-        _selectedWords = selectedWords;
-        _currentWordIndex = 0;
-        _correctCount = 0;
-        _results.clear();
-        _isPlaying = true;
-        _isGameOver = false;
-      });
-      _loadWord(_currentWordIndex);
-    } else {
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không đủ từ vựng cho độ khó này. Vui lòng thử lại!')),
-      );
-    }
-  }
-
-  void _loadWord(int index) {
-    if (index >= _selectedWords.length) {
-      _endGame();
-      return;
-    }
-
-    final word = _selectedWords[index];
-    final isHardMode = word.en.contains(' / ');
-    final originalChars = isHardMode ? word.en.toUpperCase().split(' / ') : word.en.toUpperCase().split('');
-    final List<String> shuffledChars = List<String>.from(originalChars);
-
-    // Shuffle characters and ensure it is not exactly equal to the original word
-    int shuffleTries = 0;
-    while (shuffleTries < 10) {
-      shuffledChars.shuffle();
-      final joinChar = isHardMode ? ' / ' : '';
-      if (shuffledChars.join(joinChar) != word.en.toUpperCase()) {
-        break;
-      }
-      shuffleTries++;
-    }
-
-    // Initialize tile objects
-    final tiles = <ScrambledTile>[];
-    for (int i = 0; i < shuffledChars.length; i++) {
-      tiles.add(ScrambledTile(shuffledChars[i], i));
-    }
-
-    final totalSeconds = _difficulty == ScrambleDifficulty.easy ? 10 : 15;
-    _timerController.duration = Duration(seconds: totalSeconds);
-
+    List<String> letters = _currentWord.split('');
+    do {
+      letters.shuffle();
+    } while (letters.join('') == _currentWord);
+    
     setState(() {
-      _currentWordIndex = index;
-      _scrambledTiles = tiles;
-      _answerSlots = List<ScrambledTile?>.filled(originalChars.length, null, growable: true);
-      _secondsRemaining = totalSeconds;
-    });
-
-    // Reset and start timer
-    _timerController.reset();
-    _timerController.forward();
-
-    _tickTimer?.cancel();
-    _tickTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        setState(() {
-          if (_secondsRemaining > 0) {
-            _secondsRemaining--;
-          }
-        });
-      }
-    });
-  }
-
-  void _selectTile(ScrambledTile tile) {
-    if (tile.isUsed) {
-      final slotIndex = _answerSlots.indexOf(tile);
-      if (slotIndex != -1) {
-        _removeLetter(slotIndex);
-      }
-      return;
-    }
-
-    // Find the first empty slot in answerSlots
-    final firstEmptyIdx = _answerSlots.indexOf(null);
-    if (firstEmptyIdx != -1) {
-      setState(() {
-        tile.isUsed = true;
-        _answerSlots[firstEmptyIdx] = tile;
-      });
-    }
-  }
-
-  void _removeLetter(int slotIndex) {
-    if (_answerSlots[slotIndex] == null) return;
-
-    setState(() {
-      final tile = _answerSlots[slotIndex]!;
-      tile.isUsed = false;
-      _answerSlots.removeAt(slotIndex);
-      _answerSlots.add(null); // Keep the length same by appending null
-    });
-  }
-
-  void _undoLastWord() {
-    // Find the last non-null index in _answerSlots
-    int lastNonNullIdx = -1;
-    for (int i = _answerSlots.length - 1; i >= 0; i--) {
-      if (_answerSlots[i] != null) {
-        lastNonNullIdx = i;
-        break;
-      }
-    }
-    if (lastNonNullIdx != -1) {
-      _removeLetter(lastNonNullIdx);
-    }
-  }
-
-  bool _isQuestionSentence(String sentence) {
-    final lower = sentence.toLowerCase().trim();
-    return lower.startsWith('what') ||
-        lower.startsWith('how') ||
-        lower.startsWith('who') ||
-        lower.startsWith('where') ||
-        lower.startsWith('why') ||
-        lower.startsWith('when') ||
-        lower.startsWith('is ') ||
-        lower.startsWith('are ') ||
-        lower.startsWith('can ') ||
-        lower.startsWith('do ') ||
-        lower.startsWith('does ') ||
-        lower.startsWith('could ') ||
-        lower.startsWith('would ') ||
-        lower.startsWith('should ');
-  }
-
-
-
-  void _submitCurrentWord({bool isTimeout = false}) {
-    _timerController.stop();
-    _tickTimer?.cancel();
-
-    final targetWord = _selectedWords[_currentWordIndex].en.toUpperCase();
-    final isHardMode = targetWord.contains(' / ');
-    final joinChar = isHardMode ? ' / ' : '';
-    final userAnswer = _answerSlots
-        .where((t) => t != null)
-        .map((t) => t!.char)
-        .join(joinChar)
-        .toUpperCase();
-
-    final normalizedUser = userAnswer.replaceAll(' / ', ' ').replaceAll('  ', ' ').trim().toUpperCase();
-    final normalizedTarget = targetWord.replaceAll(' / ', ' ').replaceAll('  ', ' ').trim().toUpperCase();
-    final isCorrect = normalizedUser == normalizedTarget;
-
-    setState(() {
-      _results.add(ScrambleResult(
-        word: _selectedWords[_currentWordIndex],
-        userAnswer: userAnswer,
-        isCorrect: isCorrect,
-        isTimeout: isTimeout,
-      ));
-      if (isCorrect) {
-        _correctCount++;
-        TtsService.instance.speakEnglish(normalizedTarget);
-      }
-    });
-
-    // Move directly to next word
-    if (_currentWordIndex < _selectedWords.length - 1) {
-      _loadWord(_currentWordIndex + 1);
-    } else {
-      _endGame();
-    }
-  }
-
-  void _endGame() {
-    _timerController.stop();
-    _tickTimer?.cancel();
-
-    int stars = 0;
-    if (_correctCount == 10) {
-      stars = 3;
-    } else if (_correctCount >= 7) {
-      stars = 2;
-    } else if (_correctCount >= 4) {
-      stars = 1;
-    }
-
-    final scorePoints = _correctCount * 10;
-
-    setState(() {
-      _stars = stars;
-      _score = scorePoints;
-      _isGameOver = true;
-    });
-
-    _saveGameScore(stars, scorePoints);
-  }
-
-  Future<void> _saveGameScore(int stars, int score) async {
-    setState(() {
-      _isSavingScore = true;
-    });
-    try {
-      final diffName = _difficulty?.name ?? 'easy';
-      await SupabaseService.instance.saveScore(
-        gameName: 'word_scramble_$diffName',
-        stars: stars,
-        score: score,
-      );
-      
-      // Update local highest stars so the difficulty screen reflects the new score immediately
-      _loadHighestStars();
-    } catch (e) {
-      debugPrint('Error saving Word Scramble score: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSavingScore = false;
-        });
-      }
-    }
-  }
-
-
-
-  void _exitToMenu() {
-    ref.read(isGameActiveProvider.notifier).state = false;
-    setState(() {
-      _isPlaying = false;
+      _scrambledLetters = letters;
+      _userLetters = [];
+      _secondsRemaining = 10;
       _isGameOver = false;
     });
+
+    _timerController.forward(from: 0.0);
+    _speakHint();
+  }
+
+  void _speakHint() {
+    TtsService.instance.speakEnglish(_currentHint);
+  }
+
+  void _onLetterTap(int index, bool fromScrambled) {
+    if (_isGameOver) return;
+
+    setState(() {
+      if (fromScrambled) {
+        if (_userLetters.length < _currentWord.length) {
+          _userLetters.add(_scrambledLetters[index]);
+          _scrambledLetters.removeAt(index);
+        }
+      } else {
+        _scrambledLetters.add(_userLetters[index]);
+        _userLetters.removeAt(index);
+      }
+    });
+  }
+
+  void _moveBack(int index) {
+    if (_isGameOver || index >= _userLetters.length) return;
+    setState(() {
+      _scrambledLetters.add(_userLetters[index]);
+      _userLetters.removeAt(index);
+    });
+  }
+
+  void _resetUserLetters() {
+    if (_isGameOver || _userLetters.isEmpty) return;
+    setState(() {
+      _scrambledLetters.addAll(_userLetters);
+      _userLetters.clear();
+    });
+  }
+
+  void _submitAnswer() {
+    if (_isGameOver) return;
+    _timerController.stop();
+
+    final userWord = _userLetters.join('');
+    final isCorrect = userWord == _currentWord;
+
+    _questionResults.add(isCorrect);
+    _userFormedAnswers.add(userWord);
+
+    if (isCorrect) {
+      _score += 20;
+    }
+
+    Future.delayed(const Duration(milliseconds: 250), _nextWord);
+  }
+
+  void _handleTimeout() {
+    if (_isGameOver) return;
+    _timerController.stop();
+
+    final userWord = _userLetters.join('');
+    final isCorrect = userWord == _currentWord;
+
+    _questionResults.add(isCorrect);
+    _userFormedAnswers.add(userWord);
+
+    if (isCorrect) {
+      _score += 20;
+    }
+
+    Future.delayed(const Duration(milliseconds: 250), _nextWord);
+  }
+
+  void _nextWord() {
+    if (_currentQuestionIndex < _allWords.length - 1) {
+      _currentQuestionIndex++;
+      _setupGame();
+    } else {
+      _endGame();
+    }
+  }
+
+  void _endGame() async {
+    _timerController.stop();
+    _stopwatch.stop();
+    setState(() {
+      _isGameOver = true;
+      _isSavingScore = true;
+    });
+
+    final authState = ref.read(authProvider);
+    final memberName = authState.username ?? 'Student';
+
+    final correctCount = _questionResults.where((r) => r).length;
+    final stars = correctCount >= 8 ? 3 : (correctCount >= 5 ? 2 : (correctCount >= 1 ? 1 : 0));
+
+    try {
+      await GameScoreSyncService.instance.saveScoreParallel(
+        gameCodeOrName: 'E05',
+        level: '1',
+        score: _score,
+        stars: stars,
+        memberName: memberName,
+      );
+    } catch (e) {
+      debugPrint('Error saving score: $e');
+    } finally {
+      if (mounted) setState(() => _isSavingScore = false);
+    }
+  }
+
+  void _showQuitConfirmation() {
+    _timerController.stop();
+    _stopwatch.stop();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Quit Game?'),
+        content: const Text('Your current game progress will not be saved.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              if (!_isGameOver) {
+                _timerController.forward();
+                _stopwatch.start();
+              }
+            },
+            child: const Text('Keep Playing'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pop(context);
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Quit'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_isPlaying) {
-      return _buildDifficultySelectionScreen();
-    }
+    if (_isGameOver && !_isSavingScore) return _buildSummaryScreen();
 
-    if (_isGameOver) {
-      return _buildResultScreen();
-    }
-
-    return _buildGameplayScreen();
-  }
-
-  // --- UI Screens ---
-
-  Widget _buildDifficultySelectionScreen() {
-    if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFF7F9FC),
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
+    final remaining = _allWords.length - _currentQuestionIndex;
+    final isNearEnd = remaining <= 3;
+    final isWarning = _secondsRemaining <= 3;
+    final timerColor = isWarning ? const Color(0xFFEF4444) : const Color(0xFF0284C7);
+    final timerBg = isWarning ? const Color(0xFFFEF2F2) : const Color(0xFFF0F9FF);
+    final timerBorder = isWarning ? const Color(0xFFFECACA) : const Color(0xFFBAE6FD);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FC),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
-        centerTitle: true,
         title: Text(
-          'Word Scramble',
+          'Word Scramble 🇬🇧',
           style: GoogleFonts.baloo2(
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
             fontSize: 20,
           ),
         ),
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+          onPressed: _showQuitConfirmation,
+        ),
         actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 8),
-            child: GameSoundToggleButton(),
-          ),
+          GameSoundToggleButton(),
+          SizedBox(width: 8),
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Hero Banner
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFEA580C), Color(0xFFFB923C)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+              // 1. Header Progress & Countdown Timer Row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isNearEnd ? const Color(0xFFFFFBEB) : const Color(0xFFE0F2FE),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isNearEnd ? const Color(0xFFFDE68A) : const Color(0xFFBAE6FD),
+                      ),
+                    ),
+                    child: isNearEnd
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.stars_rounded, color: Color(0xFFD97706), size: 15),
+                              const SizedBox(width: 5),
+                              Text(
+                                'Question ${_currentQuestionIndex + 1}/${_allWords.length} • Final Sprint',
+                                style: GoogleFonts.baloo2(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFFB45309),
+                                ),
+                              ),
+                            ],
+                          )
+                        : Text(
+                            'Question ${_currentQuestionIndex + 1}/${_allWords.length}',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF0284C7),
+                            ),
+                          ),
                   ),
-                  borderRadius: BorderRadius.circular(24),
+
+                  // Countdown Timer Pill (Format 00:00, cố định khung không thụt ra/vào)
+                  GameCountUpTimer(
+                    elapsedSeconds: _secondsRemaining,
+                    margin: EdgeInsets.zero,
+                    bgColor: timerBg,
+                    borderColor: timerBorder,
+                    textColor: timerColor,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // 2. Thẻ Bé Ong Hội Thoại (CHỈ XUẤT HIỆN KHI CÒN 3 CÂU CUỐI)
+              if (isNearEnd) ...[
+                _buildMascotCard(remaining),
+                const SizedBox(height: 10),
+              ],
+
+              // 3. Main Game Arena
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // Hint Card (Fixed height 112px)
+                    _buildHintCard(),
+
+                    // User Word Slots Area (Fixed height 52px)
+                    _buildUserArea(),
+
+                    // Scrambled Letter Pool (Fixed height 90px)
+                    _buildLetterPool(),
+
+                    // Action Buttons (Fixed height 44px)
+                    _buildActionButtons(),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHintCard() {
+    return Container(
+      width: double.infinity,
+      height: 112,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFCCE3F5), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF00629D).withValues(alpha: 0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'CLUE / HINT',
+                  style: GoogleFonts.baloo2(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF2563EB),
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: _speakHint,
+                child: Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFDBEAFE),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.volume_up_rounded, color: Color(0xFF1D4ED8), size: 18),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Expanded(
+            child: Center(
+              child: Text(
+                _currentHint,
+                textAlign: TextAlign.center,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.baloo2(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1E293B),
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUserArea() {
+    return SizedBox(
+      height: 52,
+      child: Center(
+        child: Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          alignment: WrapAlignment.center,
+          children: List.generate(_currentWord.length, (index) {
+            final hasLetter = index < _userLetters.length;
+            final letter = hasLetter ? _userLetters[index] : '';
+
+            return GestureDetector(
+              onTap: hasLetter ? () => _moveBack(index) : null,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: hasLetter ? const Color(0xFFE0F2FE) : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: hasLetter ? const Color(0xFF0284C7) : const Color(0xFFCBD5E1),
+                    width: 2,
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFEA580C).withValues(alpha: 0.25),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
+                      color: hasLetter
+                          ? const Color(0xFF0284C7).withValues(alpha: 0.18)
+                          : Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
-                child: Row(
+                alignment: Alignment.center,
+                child: Text(
+                  letter,
+                  style: GoogleFonts.baloo2(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF0369A1),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLetterPool() {
+    return SizedBox(
+      height: 90,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'AVAILABLE LETTERS',
+            style: GoogleFonts.baloo2(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF64748B),
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            alignment: WrapAlignment.center,
+            children: _scrambledLetters.asMap().entries.map((entry) {
+              return _buildLetterTile(entry.key, entry.value);
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLetterTile(int index, String letter) {
+    const tileColors = [
+      {'bg': Color(0xFFEFF6FF), 'border': Color(0xFF93C5FD), 'text': Color(0xFF1D4ED8), 'shadow': Color(0xFFBFDBFE)},
+      {'bg': Color(0xFFFEF3C7), 'border': Color(0xFFFCD34D), 'text': Color(0xFFB45309), 'shadow': Color(0xFFFDE68A)},
+      {'bg': Color(0xFFF0FDF4), 'border': Color(0xFF86EFAC), 'text': Color(0xFF15803D), 'shadow': Color(0xFFBBF7D0)},
+      {'bg': Color(0xFFFDF2F8), 'border': Color(0xFFF9A8D4), 'text': Color(0xFFBE185D), 'shadow': Color(0xFFFBCFE8)},
+    ];
+    final color = tileColors[index % tileColors.length];
+
+    return GestureDetector(
+      onTap: () => _onLetterTap(index, true),
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: color['bg'],
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color['border']!, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: color['shadow']!.withValues(alpha: 0.6),
+              blurRadius: 3,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          letter,
+          style: GoogleFonts.baloo2(
+            fontSize: 21,
+            fontWeight: FontWeight.w800,
+            color: color['text'],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        OutlinedButton.icon(
+          onPressed: _userLetters.isEmpty ? null : _resetUserLetters,
+          icon: const Icon(Icons.refresh_rounded, size: 18),
+          label: Text(
+            'Reset',
+            style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFF64748B),
+            side: const BorderSide(color: Color(0xFFCBD5E1)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          ),
+        ),
+        const SizedBox(width: 16),
+        ElevatedButton.icon(
+          onPressed: _userLetters.isNotEmpty ? _submitAnswer : null,
+          icon: const Icon(Icons.check_rounded, size: 18),
+          label: Text(
+            'Submit',
+            style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF0284C7),
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: const Color(0xFFE2E8F0),
+            disabledForegroundColor: const Color(0xFF94A3B8),
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _getMascotDialogue(int remaining) {
+    if (remaining == 1) {
+      return 'Only 1 question left! Let\'s bring sweet honey home, little bee! 🐝';
+    } else if (remaining == 2) {
+      return 'Only 2 questions left! Let\'s bring sweet honey home, little bee! 🐝';
+    } else if (remaining == 3) {
+      return 'Only 3 questions left! Let\'s bring sweet honey home, little bee! 🐝';
+    }
+    return 'Unscramble the letters to make the right word! 🐝';
+  }
+
+  Widget _buildMascotCard(int remaining) {
+    final total = _allWords.length;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Avatar Bé Ong với huy hiệu ngôi sao xanh
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFFFDE68A), width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFD97706).withValues(alpha: 0.15),
+                          blurRadius: 5,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: const Text('🐝', style: TextStyle(fontSize: 22)),
+                  ),
+                  Positioned(
+                    top: -1,
+                    right: -1,
+                    child: Container(
+                      width: 15,
+                      height: 15,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF16A34A),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 1.5),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.star_rounded, size: 9, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 10),
+
+              // Tên Mascot + Số câu + Câu thoại
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              'NGOẠI NGỮ TIẾNG ANH',
-                              style: GoogleFonts.baloo2(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFFFFEDD5),
-                                letterSpacing: 1.0,
-                              ),
-                            ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Smart Bee',
+                          style: GoogleFonts.baloo2(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF92400E),
                           ),
-                          const SizedBox(height: 8),
+                        ),
+                        Text(
+                          'Question ${_currentQuestionIndex + 1} / $total',
+                          style: GoogleFonts.baloo2(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      _getMascotDialogue(remaining),
+                      style: GoogleFonts.baloo2(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF334155),
+                        height: 1.25,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 9),
+
+          // Thanh tiến trình phân đoạn
+          Row(
+            children: List.generate(total, (i) {
+              final isDone = i < _currentQuestionIndex;
+              final isCurrent = i == _currentQuestionIndex;
+              Color segColor = const Color(0xFFE2E8F0);
+              if (isDone) {
+                segColor = const Color(0xFF16A34A);
+              } else if (isCurrent) {
+                segColor = const Color(0xFFF59E0B);
+              }
+              return Expanded(
+                child: Container(
+                  height: 5,
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  decoration: BoxDecoration(
+                    color: segColor,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryScreen() {
+    final correctCount = _questionResults.where((r) => r).length;
+    final totalQuestions = _allWords.length;
+    final stars = correctCount >= 8 ? 3 : (correctCount >= 5 ? 2 : (correctCount >= 1 ? 1 : 0));
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F9FC),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 12),
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: stars > 0 ? const Color(0xFFFFF9E6) : AppColors.primaryLight,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    stars > 0 ? Icons.emoji_events_rounded : Icons.sentiment_dissatisfied_rounded,
+                    color: stars > 0 ? Colors.amber : AppColors.primary,
+                    size: 64,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              Text(
+                stars > 0 ? 'Awesome! 🎉' : 'Keep Trying! 💪',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.baloo2(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 6),
+
+              Text(
+                'You solved $correctCount/$totalQuestions words correctly in $_elapsedTimeString!',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.baloo2(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Animated Star Row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(3, (index) {
+                  final filled = index < stars;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Icon(
+                      filled ? Icons.star_rounded : Icons.star_outline_rounded,
+                      size: 38,
+                      color: filled ? Colors.amber : Colors.grey.shade300,
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 20),
+
+              // Time & Score Cards
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Column(
+                        children: [
                           Text(
-                            'Xáo Trộn Chữ Cái',
-                            style: GoogleFonts.baloo2(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              height: 1.2,
-                            ),
+                            'Time',
+                            style: GoogleFonts.baloo2(fontSize: 11, color: AppColors.primary),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Sắp xếp các chữ cái bị đảo lộn thành từ vựng tiếng Anh hoàn chỉnh trong vòng 10 giây!',
+                            _elapsedTimeString,
                             style: GoogleFonts.baloo2(
-                              fontSize: 13,
-                              color: const Color(0xFFFFEDD5),
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(18),
-                        child: Image.asset(
-                          'ImageFolder/wordscramble.webp',
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => const Center(
-                            child: Text(
-                              '🔤',
-                              style: TextStyle(fontSize: 34),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Chọn Chế Độ Thử Thách
-              Text(
-                'CHỌN CHẾ ĐỘ THỬ THÁCH',
-                style: GoogleFonts.baloo2(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textSecondary,
-                  letterSpacing: 1.0,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Mode 1: Cấp Độ Dễ
-              PastelModeCard(
-                title: 'Cấp Độ Dễ',
-                subtitle: 'Từ vựng ngắn 3–5 chữ cái rèn phản xạ',
-                tagText: '3 - 5 Ký Tự',
-                chipText: '10s / từ ⏱️',
-                icon: GelCandyBadge.green(emoji: '🔤', size: 48),
-                colorConfig: PastelToyCardColor.green,
-                stars: _easyStars,
-                onTap: () => _selectDifficulty(ScrambleDifficulty.easy),
-              ),
-
-              const SizedBox(height: 14),
-
-              // Mode 2: Cấp Độ Vừa
-              PastelModeCard(
-                title: 'Cấp Độ Vừa',
-                subtitle: 'Từ vựng thông dụng 6–10 chữ cái',
-                tagText: '6 - 10 Ký Tự',
-                chipText: '10s / từ ⏱️',
-                icon: GelCandyBadge.orange(emoji: '🧩', size: 48),
-                colorConfig: PastelToyCardColor.orange,
-                stars: _mediumStars,
-                onTap: () => _selectDifficulty(ScrambleDifficulty.medium),
-              ),
-
-              const SizedBox(height: 14),
-
-              // Mode 3: Cấp Độ Khó
-              PastelModeCard(
-                title: 'Cấp Độ Khó',
-                subtitle: 'Từ vựng nâng cao C1 trên 10 chữ cái',
-                tagText: 'C1 Nâng Cao ⭐',
-                chipText: '> 10 ký tự ⏱️',
-                icon: GelCandyBadge.blue(emoji: '🎯', size: 48),
-                colorConfig: PastelToyCardColor.blue,
-                stars: _hardStars,
-                onTap: () => _selectDifficulty(ScrambleDifficulty.hard),
-              ),
-
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGameplayScreen() {
-    final word = _selectedWords[_currentWordIndex];
-    final wordLength = word.en.length;
-
-    // Calculate dynamic tile sizes to fit screen width (accounting for tile margins)
-    final screenWidth = MediaQuery.of(context).size.width;
-    final double maxTileWidth = (screenWidth - 64 - (wordLength * 8)) / wordLength;
-    final double tileSize = maxTileWidth.clamp(24.0, 52.0);
-
-    // Deep bold red timer for prominent visibility
-    const Color timerColor = Color(0xFFDC2626);
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: Text(
-          'Từ ${_currentWordIndex + 1}/10',
-          style: GoogleFonts.baloo2(fontWeight: FontWeight.bold),
-        ),
-        leading: IconButton(
-          icon: Icon(Icons.close_rounded),
-          onPressed: () {
-            _timerController.stop();
-            _tickTimer?.cancel();
-            showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: Text('Thoát Trò Chơi?'),
-                content: Text('Bạn có thực sự muốn thoát trò chơi hiện tại không? Điểm số sẽ không được ghi nhận.'),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _timerController.forward();
-                      _loadWord(_currentWordIndex);
-                    },
-                    child: Text('Chơi tiếp'),
                   ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context); // Close dialog
-                      _exitToMenu();
-                    },
-                    child: Text('Thoát'),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-        actions: [
-          const GameSoundToggleButton(),
-          // Countdown Timer chuẩn Flashcard Speedrun
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: Center(
-              child: AnimatedBuilder(
-                animation: _timerController,
-                builder: (context, child) => GameCountdownTimer(
-                  progress: 1.0 - _timerController.value,
-                  remainingSeconds: _secondsRemaining,
-                  totalSeconds: 10,
-                  size: 38,
-                  customColor: timerColor,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Smooth Timer progress indicator
-          AnimatedBuilder(
-            animation: _timerController,
-            builder: (context, child) {
-              return LinearProgressIndicator(
-                value: 1.0 - _timerController.value,
-                backgroundColor: const Color(0xFFFEE2E2),
-                valueColor: const AlwaysStoppedAnimation<Color>(timerColor),
-                minHeight: 6,
-              );
-            },
-          ),
-
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-
-
-                  // Hint Box
-                  if (word.hint.isNotEmpty) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.border),
+                        color: const Color(0xFFE8F8F5),
+                        borderRadius: BorderRadius.circular(18),
                       ),
                       child: Column(
                         children: [
                           Text(
-                            'DESCRIPTION',
-                            style: GoogleFonts.baloo2(
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textSecondary,
-                              letterSpacing: 1.2,
-                            ),
+                            'Score Earned',
+                            style: GoogleFonts.baloo2(fontSize: 11, color: AppColors.success),
                           ),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 4),
                           Text(
-                            word.hint,
-                            textAlign: TextAlign.center,
+                            '+$_score',
                             style: GoogleFonts.baloo2(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.success,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    SizedBox(height: 48),
-                  ],
-
-                  // Answer slots & scrambled pool & controls
-                  if (word.en.contains(' / ')) ...[
-                    // --- HARD MODE VIEW (Sentence Scramble) ---
-                    // 1. Scrambled Words Pool (Capsules displayed above the textbox, hidden when used but maintains size/space)
-                    Wrap(
-                      alignment: WrapAlignment.start,
-                      spacing: 10,
-                      runSpacing: 14, // Increased spacing/pacing
-                      children: _scrambledTiles.map((tile) {
-                        return Visibility(
-                          visible: !tile.isUsed,
-                          maintainSize: true,
-                          maintainState: true,
-                          maintainAnimation: true,
-                          child: GestureDetector(
-                            onTap: () => _selectTile(tile),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF0D1B78), // Dark blue
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                tile.char,
-                                style: GoogleFonts.baloo2(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    SizedBox(height: 28), // Increased vertical spacing/pacing
-
-                    // 2. Question Input Row: "01 - [ Textbox ] ?"
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          '${(_currentWordIndex + 1).toString().padLeft(2, '0')} - ',
-                          style: GoogleFonts.baloo2(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                        Expanded(
-                          child: Container(
-                            constraints: const BoxConstraints(minHeight: 46),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.black, width: 1.5),
-                            ),
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              _answerSlots
-                                  .where((t) => t != null)
-                                  .map((t) => t!.char)
-                                  .join(' '), // plain text sentence
-                              style: GoogleFonts.baloo2(
-                                fontSize: 14,
-                                fontWeight: FontWeight.normal,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Text(
-                          _isQuestionSentence(word.en) ? ' ?' : ' .',
-                          style: GoogleFonts.baloo2(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 24), // Increased vertical spacing/pacing
-
-                    // 3. Action Buttons Row: Undo and Check (Check appears only when all slots are filled)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 42),
-                        GestureDetector(
-                          onTap: _undoLastWord,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFD4E6F1), // Light blue background
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFF2980B9), width: 1.2), // Blue border
-                            ),
-                            child: Text(
-                              'Undo',
-                              style: GoogleFonts.baloo2(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF2980B9),
-                              ),
-                            ),
-                          ),
-                        ),
-                        if (!_answerSlots.contains(null)) ...[
-                          SizedBox(width: 12),
-                          GestureDetector(
-                            onTap: () => _submitCurrentWord(isTimeout: false),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFD4E6F1), // Light blue background
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: const Color(0xFF2980B9), width: 1.2), // Blue border
-                              ),
-                              child: Text(
-                                'Confirm',
-                                style: GoogleFonts.baloo2(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF2980B9),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ] else ...[
-                    // --- EASY/MEDIUM VIEW ---
-                    // Reverted back to not using a surrounding text box wrapper
-                    Wrap(
-                      alignment: WrapAlignment.center, // Centered
-                      spacing: 6,
-                      runSpacing: 8,
-                      children: List.generate(_answerSlots.length, (idx) {
-                        final tile = _answerSlots[idx];
-                        return GestureDetector(
-                          onTap: () => _removeLetter(idx),
-                          behavior: HitTestBehavior.opaque,
-                          child: Container(
-                            width: tileSize,
-                            height: tileSize,
-                            decoration: BoxDecoration(
-                              color: tile != null ? AppColors.primary : Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: tile != null ? AppColors.primary : AppColors.border,
-                                width: 1.5,
-                              ),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              tile?.char ?? '',
-                              style: GoogleFonts.baloo2(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
-                    SizedBox(height: 48),
-
-                    // Scrambled letters pool
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _scrambledTiles.map((tile) {
-                        return Opacity(
-                          opacity: tile.isUsed ? 0.3 : 1.0,
-                          child: GestureDetector(
-                            onTap: () => _selectTile(tile),
-                            child: Container(
-                              width: 50,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                color: tile.isUsed ? AppColors.border : Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: tile.isUsed ? AppColors.border : AppColors.primary,
-                                  width: 2,
-                                ),
-                                boxShadow: tile.isUsed
-                                    ? null
-                                    : [
-                                        BoxShadow(
-                                          color: AppColors.primary.withValues(alpha: 0.1),
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2),
-                                        )
-                                      ],
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                tile.char,
-                                style: GoogleFonts.baloo2(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: tile.isUsed ? AppColors.textSecondary : AppColors.primary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    SizedBox(height: 48),
-
-                    // Control Buttons: Confirm only
-                    if (!_answerSlots.contains(null))
-                      Center(
-                        child: GestureDetector(
-                          onTap: () => _submitCurrentWord(isTimeout: false),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFD4E6F1), // Light blue background
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFF2980B9), width: 1.2), // Blue border
-                            ),
-                            child: Text(
-                              'Confirm',
-                              style: GoogleFonts.baloo2(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF2980B9),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
+                  ),
                 ],
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  void _showResultDetailsDialog(ScrambleResult res, int index) {
-    final isHardMode = res.word.en.contains(' / ');
-    final model = res.word.model;
+              const SizedBox(height: 16),
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Icon(
-              res.isCorrect ? Icons.check_circle_rounded : Icons.cancel_rounded,
-              color: res.isCorrect ? AppColors.success : AppColors.error,
-            ),
-            SizedBox(width: 8),
-            Text('Câu hỏi số ${index + 1}', style: GoogleFonts.baloo2(fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (isHardMode) ...[
-              // --- HARD MODE VIEW ---
-              if (!res.isCorrect) ...[
-                Text(
-                  'Nội dung đã xếp:',
-                  style: GoogleFonts.baloo2(fontSize: 10, color: AppColors.textSecondary),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  res.userAnswer.replaceAll(' / ', ' ').trim(), // clean user sentence
-                  style: GoogleFonts.baloo2(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black, // Black color for user answer
-                  ),
-                ),
-                SizedBox(height: 16),
-              ],
-              Text(
-                'Đáp án chính xác:',
-                style: GoogleFonts.baloo2(fontSize: 10, color: AppColors.textSecondary),
+              MiniGameRankBanner(
+                gameName: 'word_scramble',
+                gameTitle: 'Word Scramble',
+                currentScore: _score,
+                isEnglish: true,
               ),
-              SizedBox(height: 4),
+
+              const SizedBox(height: 24),
               Text(
-                res.word.en.replaceAll(' / ', ' ').toUpperCase().trim(), // clean target sentence
+                'Result Details 📊',
                 style: GoogleFonts.baloo2(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.success, // Green color for correct answer
+                  color: AppColors.textPrimary,
                 ),
               ),
-            ] else ...[
-              // --- EASY/MEDIUM MODE VIEW ---
-              Text(
-                'Gợi ý:',
-                style: GoogleFonts.baloo2(fontSize: 10, color: AppColors.textSecondary),
-              ),
-              Text(
-                res.word.hint,
-                style: GoogleFonts.baloo2(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-              ),
-              SizedBox(height: 16),
-              if (!res.isCorrect) ...[
-                Text(
-                  'Nội dung đã chọn:',
-                  style: GoogleFonts.baloo2(fontSize: 10, color: AppColors.textSecondary),
-                ),
-                Text(
-                  res.userAnswer,
-                  style: GoogleFonts.baloo2(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
-                ),
-                SizedBox(height: 16),
-              ],
-              Text(
-                'Đáp án chính xác:',
-                style: GoogleFonts.baloo2(fontSize: 10, color: AppColors.textSecondary),
-              ),
-              Text(
-                res.word.en,
-                style: GoogleFonts.baloo2(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.success,
-                  letterSpacing: 1.5,
-                ),
-              ),
-            ],
-            if (res.isTimeout && !res.isCorrect) ...[
-              SizedBox(height: 12),
-              Text(
-                '* Đã hết thời gian làm câu này.',
-                style: GoogleFonts.baloo2(fontSize: 9, color: AppColors.error, fontStyle: FontStyle.italic),
-              ),
-            ],
-            if (model != null) ...[
-              SizedBox(height: 16),
-              Divider(),
-              SizedBox(height: 8),
-              Text('Từ vựng: ${model.title}', style: GoogleFonts.baloo2(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary)),
-              if (model.acf.transcription.isNotEmpty)
-                Text('Phiên âm: ${model.acf.transcription}', style: GoogleFonts.baloo2(fontSize: 12, color: AppColors.textSecondary)),
-              if (model.acf.viword.isNotEmpty)
-                Text('Nghĩa: ${model.acf.viword}', style: GoogleFonts.baloo2(fontSize: 12, color: AppColors.textPrimary)),
-              if (model.acf.description.isNotEmpty)
-                Text('Định nghĩa: ${model.acf.description}', style: GoogleFonts.baloo2(fontSize: 12, color: AppColors.textPrimary)),
-              if (model.acf.videscription.isNotEmpty)
-                Text('Giải nghĩa VN: ${model.acf.videscription}', style: GoogleFonts.baloo2(fontSize: 12, color: AppColors.textPrimary)),
-              if (model.acf.example.isNotEmpty)
-                Text('Ví dụ: ${model.acf.example}', style: GoogleFonts.baloo2(fontSize: 12, fontStyle: FontStyle.italic, color: AppColors.textPrimary)),
-              if (model.acf.level.isNotEmpty)
-                Text('Trình độ: ${model.acf.level}', style: GoogleFonts.baloo2(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange)),
-            ]
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Đóng', style: GoogleFonts.baloo2(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
+              const SizedBox(height: 12),
+              _buildResultsTable(),
+              const SizedBox(height: 28),
 
-  Widget _buildResultScreen() {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SizedBox(height: 16),
-                Text(
-                  'KẾT QUẢ',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.baloo2(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textSecondary,
-                    letterSpacing: 2,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Sắp Xếp Từ Vựng',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.baloo2(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                SizedBox(height: 24),
-
-                // Animated Star rating
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(3, (index) {
-                    final active = index < _stars;
-                    return AnimatedScale(
-                      scale: active ? 1.2 : 1.0,
-                      duration: Duration(milliseconds: 300 + index * 100),
-                      curve: Curves.easeOutBack,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 6.0),
-                        child: Icon(
-                          Icons.star_rounded,
-                          size: 56,
-                          color: active ? Colors.amber : AppColors.border,
-                        ),
+              // End game action button
+              Center(
+                child: SizedBox(
+                  width: 220,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: _isSavingScore ? null : () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
                       ),
-                    );
-                  }),
-                ),
-                SizedBox(height: 24),
-
-                // Cards with score & result details
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryLight.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        _stars == 3
-                            ? 'Xuất sắc quá! Bạn đã ghép đúng cả 10 câu rồi! Bạn thật tuyệt vời! 🏆'
-                            : (_stars == 2
-                                ? 'Tuyệt vời! Bạn đã đúng $_correctCount câu rồi. Cố lên một chút nữa là được 3 sao rồi nhé! 🌟'
-                                : (_stars == 1
-                                    ? 'Khá tốt! Bạn đã đúng $_correctCount câu rồi. Hãy tiếp tục cố gắng ở lượt chơi sau nhé! 👍'
-                                    : (_correctCount == 0
-                                        ? 'Bạn chưa ghi được điểm nào lần này. Đừng nản lòng nhé! 💔'
-                                        : 'Bạn đã đúng $_correctCount câu rồi. Hơi tiếc nhỉ, cố lên. Hãy cố gắng để đạt thêm điểm và 3 sao nhé! 💔'))),
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.baloo2(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                          height: 1.4,
-                        ),
-                      ),
-                      SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          Column(
-                            children: [
-                              Text(
-                                'Đúng',
-                                style: GoogleFonts.baloo2(fontSize: 10, color: AppColors.textSecondary),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                '$_correctCount/10',
-                                style: GoogleFonts.baloo2(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Container(
-                            width: 1,
-                            height: 24,
-                            color: AppColors.border,
-                          ),
-                          Column(
-                            children: [
-                              Text(
-                                'Điểm cộng',
-                                style: GoogleFonts.baloo2(fontSize: 10, color: AppColors.textSecondary),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                '+$_score',
-                                style: GoogleFonts.baloo2(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.success,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                MiniGameRankBanner(
-                  gameName: 'word_scramble_${_difficulty?.name ?? 'easy'}',
-                  gameTitle: 'Word Scramble',
-                  currentScore: _score,
-                ),
-                const SizedBox(height: 24),
-
-                // Table showing results of all 10 questions
-                Text(
-                  'Chi Tiết Kết Quả 📊',
-                  style: GoogleFonts.baloo2(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                SizedBox(height: 12),
-
-                _buildResultsTable(),
-                SizedBox(height: 28),
-
-                // Action Button
-                Center(
-                  child: SizedBox(
-                    width: 220,
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: _isSavingScore
-                          ? null
-                          : () {
-                              Navigator.pop(context); // Go back to GameTab
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                      ),
-                      child: _isSavingScore
-                          ? SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                            )
-                          : Text(
-                              'Quay lại danh mục',
-                              style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, fontSize: 14),
-                            ),
                     ),
+                    child: _isSavingScore
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : Text(
+                            'Back to Menu',
+                            style: GoogleFonts.baloo2(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              height: 1.2,
+                            ),
+                          ),
                   ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 16),
+            ],
           ),
         ),
       ),
@@ -1328,26 +954,22 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
             mainAxisSpacing: 8,
             childAspectRatio: 1.0,
           ),
-          itemCount: _results.length,
+          itemCount: _allWords.length,
           itemBuilder: (context, index) {
-            final res = _results[index];
-            final color = res.isCorrect ? AppColors.success : AppColors.error;
+            final isAnswered = index < _questionResults.length;
+            final isCorrect = isAnswered && _questionResults[index];
+            final Color color = isAnswered
+                ? (isCorrect ? AppColors.success : AppColors.error)
+                : Colors.grey.shade400;
 
             return InkWell(
-              onTap: () => _showResultDetailsDialog(res, index),
+              onTap: () => _showQuestionDetailDialog(index),
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: color, width: 2.0),
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.05),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
                 ),
                 alignment: Alignment.center,
                 child: Text(
@@ -1363,6 +985,157 @@ class _WordScrambleGameScreenState extends ConsumerState<WordScrambleGameScreen>
           },
         ),
       ),
+    );
+  }
+
+  void _showQuestionDetailDialog(int index) {
+    if (index >= _allWords.length) return;
+    final item = _allWords[index];
+    final isAnswered = index < _questionResults.length;
+    final isCorrect = isAnswered && _questionResults[index];
+    final userAnswer = index < _userFormedAnswers.length ? _userFormedAnswers[index] : null;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 400),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Word ${index + 1}',
+                      style: GoogleFonts.baloo2(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            item['word'] ?? '',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.baloo2(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                              letterSpacing: 2.0,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.volume_up_rounded, color: AppColors.primary, size: 22),
+                            onPressed: () => TtsService.instance.speakEnglish(item['word'] ?? ''),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        item['hint'] ?? '',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (isCorrect)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'Correct! 🎉',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.success,
+                            ),
+                          ),
+                        )
+                      else ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            (userAnswer != null && userAnswer.isNotEmpty)
+                                ? 'Your answer: $userAnswer'
+                                : 'Time ran out! ⏳',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.error,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Center(
+                  child: SizedBox(
+                    width: 140,
+                    height: 44,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Close',
+                          style: GoogleFonts.baloo2(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            height: 1.2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

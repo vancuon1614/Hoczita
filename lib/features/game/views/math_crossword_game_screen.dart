@@ -5,13 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/services/game_score_sync_service.dart';
 import '../../../core/widgets/mini_game_timer.dart';
 import '../../../core/widgets/game_sound_toggle_button.dart';
 import '../../../core/providers/game_interaction_provider.dart';
 import 'common/mini_game_rank_banner.dart';
 import '../utils/math_crossword_generator.dart' as gen;
-import '../../../core/widgets/pastel_toy_card.dart';
-import '../../learn/views/widgets/gel_candy_icon.dart';
 
 enum CellType { empty, number, operator, equals }
 
@@ -98,7 +97,6 @@ class _MathCrosswordGameScreenState extends ConsumerState<MathCrosswordGameScree
   int _secondsElapsed = 0;
   String _elapsedTimeString = '00:00';
   int _score = 0;
-  int _stars = 0;
   
   int _easyStars = 0;
   int _mediumStars = 0;
@@ -356,18 +354,19 @@ class _MathCrosswordGameScreenState extends ConsumerState<MathCrosswordGameScree
 
     ref.read(isGameActiveProvider.notifier).state = false;
     setState(() {
-      _stars = starRating;
       _score = finalScore;
       _isGameOver = true;
       _isSavingScore = true;
     });
 
     try {
-      final diffName = _selectedDifficulty == 5 ? 'easy' : (_selectedDifficulty == 10 ? 'medium' : 'hard');
-      await SupabaseService.instance.saveScore(
-        gameName: 'math_crossword_$diffName',
-        stars: _stars,
+      final levelStr = _selectedDifficulty == 5 ? '1' : (_selectedDifficulty == 10 ? '2' : '3');
+      await GameScoreSyncService.instance.saveScoreParallel(
+        gameCodeOrName: 'M04',
+        level: levelStr,
         score: _score,
+        stars: 0,
+        durationSeconds: _secondsElapsed,
       );
       _loadHighestStars();
     } catch (e) {
@@ -410,6 +409,12 @@ class _MathCrosswordGameScreenState extends ConsumerState<MathCrosswordGameScree
     );
   }
 
+  String get _difficultyLabel {
+    if (_selectedDifficulty == 5) return 'Cấp độ: Dễ';
+    if (_selectedDifficulty == 10) return 'Cấp độ: Vừa';
+    return 'Cấp độ: Khó';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_isPlaying) {
@@ -425,17 +430,16 @@ class _MathCrosswordGameScreenState extends ConsumerState<MathCrosswordGameScree
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Math Crossword 🔢',
+          'Ô Chữ Toán Học 🔢',
           style: GoogleFonts.baloo2(fontWeight: FontWeight.bold),
         ),
         leading: IconButton(
-          icon: Icon(Icons.close_rounded),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
           onPressed: _showQuitConfirmation,
         ),
-        actions: [
-          const GameSoundToggleButton(),
-          GameCountUpTimer(elapsedSeconds: _secondsElapsed),
-          const SizedBox(width: 8),
+        actions: const [
+          GameSoundToggleButton(),
+          SizedBox(width: 8),
         ],
       ),
       body: GestureDetector(
@@ -447,44 +451,67 @@ class _MathCrosswordGameScreenState extends ConsumerState<MathCrosswordGameScree
         },
         behavior: HitTestBehavior.opaque,
         child: SafeArea(
-          child: isLandscape
-              ? Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: Column(
+            children: [
+              // 1. Subheader Row: Level/Progress on Left, Timer Pill on Right (Standard Math layout)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Left side: Instruction + Grid
-                    Expanded(
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                            child: Text(
-                              'Điền các chữ số còn thiếu sao cho các phép tính hàng ngang và hàng dọc đều đúng nhé!',
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.baloo2(fontSize: 11, color: AppColors.textSecondary),
-                            ),
-                          ),
-                          Expanded(child: _buildGridContainer()),
-                        ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE0F2FE),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFBAE6FD)),
                       ),
-                    ),
-                    // Right side: Keyboard
-                    if (showKeypad) _buildInlineKeypadColumn(),
-                  ],
-                )
-              : Column(
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                       child: Text(
-                        'Điền các chữ số còn thiếu sao cho các phép tính hàng ngang và hàng dọc đều đúng nhé!',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.baloo2(fontSize: 12, color: AppColors.textSecondary),
+                        _difficultyLabel,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF0284C7),
+                        ),
                       ),
                     ),
-                    Expanded(child: _buildGridContainer()),
-                    if (showKeypad) _buildInlineKeypadColumn(),
+                    GameCountUpTimer(
+                      elapsedSeconds: _secondsElapsed,
+                      margin: EdgeInsets.zero,
+                    ),
                   ],
                 ),
+              ),
+
+              // 2. Instruction Banner
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                child: Text(
+                  'Điền các chữ số còn thiếu sao cho các phép tính hàng ngang và hàng dọc đều đúng nhé!',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.baloo2(fontSize: 12, color: AppColors.textSecondary),
+                ),
+              ),
+
+              // 3. Grid + Keypad Area
+              Expanded(
+                child: isLandscape
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(child: _buildGridContainer()),
+                          if (showKeypad) _buildInlineKeypadColumn(),
+                        ],
+                      )
+                    : Column(
+                        children: [
+                          Expanded(child: _buildGridContainer()),
+                          if (showKeypad) _buildInlineKeypadColumn(),
+                        ],
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -644,7 +671,7 @@ class _MathCrosswordGameScreenState extends ConsumerState<MathCrosswordGameScree
         actions: const [
           Padding(
             padding: EdgeInsets.only(right: 8),
-            child: GameSoundToggleButton(),
+            child: GameSoundToggleButton(isPlayScreen: false),
           ),
         ],
       ),
@@ -748,65 +775,589 @@ class _MathCrosswordGameScreenState extends ConsumerState<MathCrosswordGameScree
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
-              // Chọn Chế Độ Thử Thách
-              Text(
-                'CHỌN CHẾ ĐỘ THỬ THÁCH',
-                style: GoogleFonts.baloo2(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textSecondary,
-                  letterSpacing: 1.0,
+              // Header: BẢN ĐỒ VƯỢT ẢI + Nút Thưởng Giao Điểm Info
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'BẢN ĐỒ VƯỢT ẢI',
+                    style: GoogleFonts.baloo2(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textSecondary,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () => _showBonusExplanationDialog(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.info_outline_rounded, size: 13, color: Color(0xFF1D4ED8)),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Thưởng Giao Điểm',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1D4ED8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // TẦNG 3: BỨT PHÁ (Đỉnh Cao Ô Số - Tím Tinh Anh)
+              Padding(
+                padding: const EdgeInsets.only(right: 18),
+                child: _buildTowerTierCard(
+                  tierNumber: 3,
+                  tierLabel: 'CHẶNG 3 • BỨT PHÁ',
+                  tagText: 'Lưới Đa Phép Tính',
+                  title: 'Đỉnh Cao Ô Số',
+                  subtitle: 'Phối hợp nhịp nhàng cả 4 phép tính tại các giao điểm hóc búa',
+                  emoji: '🏆',
+                  primaryColor: const Color(0xFF7C3AED),
+                  lightBgColor: const Color(0xFFF5F3FF),
+                  borderColor: const Color(0xFFDDD6FE),
+                  gradientColors: const [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
+                  difficultyText: 'Khó',
+                  stars: _hardStars,
+                  onTap: () => _selectDifficulty(20),
                 ),
               ),
-              const SizedBox(height: 12),
 
-              // Mode 1: Khởi Động
-              PastelModeCard(
-                title: 'Khởi Động',
-                subtitle: 'Làm quen nhẹ nhàng với 5 bài tập',
-                tagText: 'Phép Tính Cơ Bản',
-                chipText: '5 Bài Tập 🔢',
-                icon: GelCandyBadge.green(emoji: '🟢', size: 48),
-                colorConfig: PastelToyCardColor.green,
-                stars: _easyStars,
-                onTap: () => _selectDifficulty(5),
+              _buildCurvedPathConnector(curveToRight: true),
+
+              // TẦNG 2: SUY LUẬN (Mê Cung Phép Tính - Cam Ấm)
+              Padding(
+                padding: const EdgeInsets.only(left: 18),
+                child: _buildTowerTierCard(
+                  tierNumber: 2,
+                  tierLabel: 'CHẶNG 2 • SUY LUẬN',
+                  tagText: 'Lưới 6–8 phép tính',
+                  title: 'Mê Cung Phép Tính',
+                  subtitle: 'Tính toán 2 chiều để số điền khớp hoàn hảo cả hàng và cột',
+                  emoji: '🧩',
+                  primaryColor: const Color(0xFFD97706),
+                  lightBgColor: const Color(0xFFFFF7ED),
+                  borderColor: const Color(0xFFFED7AA),
+                  gradientColors: const [Color(0xFFF59E0B), Color(0xFFD97706)],
+                  difficultyText: 'Trung bình',
+                  stars: _mediumStars,
+                  onTap: () => _selectDifficulty(10),
+                ),
+              ),
+
+              _buildCurvedPathConnector(curveToRight: false),
+
+              // TẦNG 1: KHỞI ĐỘNG (Giao Điểm Đầu Tiên - Xanh Ngọc)
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: _buildTowerTierCard(
+                  tierNumber: 1,
+                  tierLabel: 'CHẶNG 1 • KHỞI ĐỘNG',
+                  tagText: 'Lưới 3–4 phép tính',
+                  title: 'Giao Điểm Đầu Tiên',
+                  subtitle: 'Làm quen điền số với các phép cộng, trừ đơn giản trên lưới',
+                  emoji: '🌱',
+                  primaryColor: const Color(0xFF059669),
+                  lightBgColor: const Color(0xFFF0FDF4),
+                  borderColor: const Color(0xFFA7F3D0),
+                  gradientColors: const [Color(0xFF10B981), Color(0xFF059669)],
+                  difficultyText: 'Dễ',
+                  stars: _easyStars,
+                  onTap: () => _selectDifficulty(5),
+                ),
+              ),
+
+              const SizedBox(height: 28),
+
+              // Footer Card quy chuẩn & phần thưởng
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0x06000000),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Text('🎯', style: TextStyle(fontSize: 18)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'QUY CHUẨN VÒNG CHƠI',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                          ),
+                          Text(
+                            'Giải trọn vẹn toàn bộ lưới',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF334155),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(width: 1, height: 26, color: const Color(0xFFE2E8F0)),
+                    const SizedBox(width: 12),
+                    const Text('⚡', style: TextStyle(fontSize: 18)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'HỆ SỐ PHẦN THƯỞNG',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                          ),
+                          Text(
+                            'Thưởng Giao Điểm Kép',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF7C3AED),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
               const SizedBox(height: 14),
-
-              // Mode 2: Tập Trung
-              PastelModeCard(
-                title: 'Tập Trung',
-                subtitle: 'Tăng cường thử thách với 10 bài tập',
-                tagText: 'Tính Nhẩm Nhanh',
-                chipText: '10 Bài Tập 🧩',
-                icon: GelCandyBadge.orange(emoji: '🟡', size: 48),
-                colorConfig: PastelToyCardColor.orange,
-                stars: _mediumStars,
-                onTap: () => _selectDifficulty(10),
-              ),
-
-              const SizedBox(height: 14),
-
-              // Mode 3: Thử Thách
-              PastelModeCard(
-                title: 'Thử Thách',
-                subtitle: 'Dành cho người chơi nâng cao với 20 bài tập',
-                tagText: 'Toán Nâng Cao ⭐',
-                chipText: '20 Bài Tập 🏆',
-                icon: GelCandyBadge.blue(emoji: '💡', size: 48),
-                colorConfig: PastelToyCardColor.blue,
-                stars: _hardStars,
-                onTap: () => _selectDifficulty(20),
-              ),
-
-              const SizedBox(height: 24),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCurvedPathConnector({
+    required bool curveToRight,
+  }) {
+    return SizedBox(
+      height: 38,
+      child: CustomPaint(
+        painter: _CurvedDashedPathPainter(curveToRight: curveToRight),
+      ),
+    );
+  }
+
+  Widget _buildTowerTierCard({
+    required int tierNumber,
+    required String tierLabel,
+    required String tagText,
+    required String title,
+    required String subtitle,
+    required String emoji,
+    required Color primaryColor,
+    required Color lightBgColor,
+    required Color borderColor,
+    required List<Color> gradientColors,
+    required String difficultyText,
+    required int stars,
+    required VoidCallback onTap,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 1. Sub-badge hàng trên: Số tầng + Tên chặng + Tag
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: primaryColor,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: primaryColor.withValues(alpha: 0.3),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '$tierNumber',
+                      style: GoogleFonts.baloo2(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    tierLabel,
+                    style: GoogleFonts.baloo2(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: primaryColor,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: lightBgColor,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: borderColor.withValues(alpha: 0.6)),
+                ),
+                child: Text(
+                  tagText,
+                  style: GoogleFonts.baloo2(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: primaryColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
+
+        // 2. Thẻ Pastel Toy Card tương tác
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: borderColor, width: 1.4),
+            boxShadow: [
+              BoxShadow(
+                color: primaryColor.withValues(alpha: 0.08),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+              BoxShadow(
+                color: const Color(0x06000000),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(22),
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                child: Row(
+                  children: [
+                    // Squircle Pastel Toy Icon (Màu nhạt mềm mại như hình mẫu)
+                    Container(
+                      width: 58,
+                      height: 58,
+                      decoration: BoxDecoration(
+                        color: lightBgColor,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: borderColor.withValues(alpha: 0.7),
+                          width: 1.2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: primaryColor.withValues(alpha: 0.08),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        emoji,
+                        style: const TextStyle(fontSize: 28),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+
+                    // Tiêu đề, mô tả và vạch tiến độ 3 nấc
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: GoogleFonts.baloo2(
+                              fontSize: 16.5,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1E293B),
+                              height: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle,
+                            style: GoogleFonts.baloo2(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF64748B),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              for (int i = 1; i <= 3; i++) ...[
+                                Container(
+                                  width: 14,
+                                  height: 4.5,
+                                  decoration: BoxDecoration(
+                                    color: i <= tierNumber ? primaryColor : const Color(0xFFE2E8F0),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                ),
+                                if (i < 3) const SizedBox(width: 3),
+                              ],
+                              const SizedBox(width: 6),
+                              Text(
+                                difficultyText,
+                                style: GoogleFonts.baloo2(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: primaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+
+                    // Mũi tên điều hướng
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: lightBgColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: borderColor.withValues(alpha: 0.8)),
+                      ),
+                      child: Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 13,
+                        color: primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showBonusExplanationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        backgroundColor: Colors.white,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF1D4ED8).withValues(alpha: 0.25),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.bolt_rounded, size: 24, color: Colors.white),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Cơ Chế Thưởng Điểm',
+                          style: GoogleFonts.baloo2(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF1E293B),
+                          ),
+                        ),
+                        Text(
+                          'Bí kíp chinh phục Ô Chữ Toán Học',
+                          style: GoogleFonts.baloo2(
+                            fontSize: 12.5,
+                            color: const Color(0xFF64748B),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  children: [
+                    _buildBonusInfoRow(
+                      icon: '🎯',
+                      title: 'Giao Điểm Kép',
+                      desc: 'Điền 1 con số hoàn thành chính xác cả hàng ngang lẫn cột dọc để nhận thêm điểm thưởng!',
+                    ),
+                    const Divider(height: 18, thickness: 0.8, color: Color(0xFFE2E8F0)),
+                    _buildBonusInfoRow(
+                      icon: '⏱️',
+                      title: 'Thời Gian Vàng',
+                      desc: 'Giải xong lưới càng nhanh (dưới 30s/60s/90s) sẽ nhận trọn vẹn 3 Sao vàng và điểm nhân theo cấp độ.',
+                    ),
+                    const Divider(height: 18, thickness: 0.8, color: Color(0xFFE2E8F0)),
+                    _buildBonusInfoRow(
+                      icon: '✨',
+                      title: 'Tư Duy Chuẩn Xác',
+                      desc: 'Điền liền mạch không cần xóa sửa để giữ vững phong độ điểm tối đa của ván đấu.',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF7C3AED),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Đã hiểu, thử thách ngay!',
+                      style: GoogleFonts.baloo2(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBonusInfoRow({
+    required String icon,
+    required String title,
+    required String desc,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(icon, style: const TextStyle(fontSize: 18)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.baloo2(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1E293B),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                desc,
+                style: GoogleFonts.baloo2(
+                  fontSize: 12,
+                  color: const Color(0xFF64748B),
+                  height: 1.25,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -1011,29 +1562,7 @@ class _MathCrosswordGameScreenState extends ConsumerState<MathCrosswordGameScree
                   color: AppColors.textSecondary,
                 ),
               ),
-              SizedBox(height: 32),
-
-              // Stars Display
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(3, (index) {
-                  final active = index < _stars;
-                  return AnimatedScale(
-                    scale: active ? 1.3 : 1.0,
-                    duration: Duration(milliseconds: 300 + (index * 150)),
-                    curve: Curves.elasticOut,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Icon(
-                        Icons.star_rounded,
-                        size: 48,
-                        color: active ? Colors.amber : AppColors.border,
-                      ),
-                    ),
-                  );
-                }),
-              ),
-              SizedBox(height: 40),
+              const SizedBox(height: 32),
 
               // Time & Score Cards
               Row(
@@ -1088,7 +1617,7 @@ class _MathCrosswordGameScreenState extends ConsumerState<MathCrosswordGameScree
               const SizedBox(height: 24),
               MiniGameRankBanner(
                 gameName: 'math_crossword_${_selectedDifficulty == 5 ? 'easy' : (_selectedDifficulty == 10 ? 'medium' : 'hard')}',
-                gameTitle: 'Math Crossword',
+                gameTitle: 'Ô Chữ Toán Học',
                 currentScore: _score,
               ),
               const Spacer(),
@@ -1108,6 +1637,7 @@ class _MathCrosswordGameScreenState extends ConsumerState<MathCrosswordGameScree
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       elevation: 0,
+                      padding: EdgeInsets.zero,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(24),
                       ),
@@ -1120,7 +1650,11 @@ class _MathCrosswordGameScreenState extends ConsumerState<MathCrosswordGameScree
                           )
                         : Text(
                             'Quay lại danh mục',
-                            style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, fontSize: 14),
+                            style: GoogleFonts.baloo2(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              height: 1.2,
+                            ),
                           ),
                   ),
                 ),
@@ -1131,4 +1665,62 @@ class _MathCrosswordGameScreenState extends ConsumerState<MathCrosswordGameScree
       ),
     );
   }
+}
+
+class _CurvedDashedPathPainter extends CustomPainter {
+  final bool curveToRight;
+
+  const _CurvedDashedPathPainter({required this.curveToRight});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFCBD5E1)
+      ..strokeWidth = 3.0
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path();
+    if (curveToRight) {
+      // From top-left to bottom-right (Chặng 3 xuống Chặng 2)
+      path.moveTo(size.width * 0.32, 0);
+      path.cubicTo(
+        size.width * 0.32,
+        size.height * 0.55,
+        size.width * 0.68,
+        size.height * 0.45,
+        size.width * 0.68,
+        size.height,
+      );
+    } else {
+      // From top-right to bottom-left (Chặng 2 xuống Chặng 1)
+      path.moveTo(size.width * 0.68, 0);
+      path.cubicTo(
+        size.width * 0.68,
+        size.height * 0.55,
+        size.width * 0.32,
+        size.height * 0.45,
+        size.width * 0.32,
+        size.height,
+      );
+    }
+
+    // Vẽ nét đứt mềm mại
+    for (final metric in path.computeMetrics()) {
+      double distance = 0.0;
+      const dashLength = 6.0;
+      const spaceLength = 5.0;
+      while (distance < metric.length) {
+        final len = (distance + dashLength < metric.length)
+            ? dashLength
+            : metric.length - distance;
+        canvas.drawPath(metric.extractPath(distance, distance + len), paint);
+        distance += dashLength + spaceLength;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _CurvedDashedPathPainter oldDelegate) =>
+      oldDelegate.curveToRight != curveToRight;
 }

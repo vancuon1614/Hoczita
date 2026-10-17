@@ -20,7 +20,7 @@ class FlashcardTopicItem {
   });
 }
 
-class TopicSelectionSheet extends StatelessWidget {
+class TopicSelectionSheet extends StatefulWidget {
   const TopicSelectionSheet({super.key});
 
   static const List<FlashcardTopicItem> topics = [
@@ -130,14 +130,22 @@ class TopicSelectionSheet extends StatelessWidget {
     ),
   ];
 
-  static void show(BuildContext context) {
-    showModalBottomSheet(
+  static Future<void> show(BuildContext context) {
+    return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => const TopicSelectionSheet(),
     );
   }
+
+  @override
+  State<TopicSelectionSheet> createState() => _TopicSelectionSheetState();
+}
+
+class _TopicSelectionSheetState extends State<TopicSelectionSheet> {
+  int? _selectedTopicIndex;
+  bool _isNavigating = false;
 
   @override
   Widget build(BuildContext context) {
@@ -213,91 +221,149 @@ class TopicSelectionSheet extends StatelessWidget {
                 crossAxisCount: 2,
                 crossAxisSpacing: 14,
                 mainAxisSpacing: 14,
-                childAspectRatio: 1.6,
+                childAspectRatio: 1.52,
               ),
-              itemCount: topics.length,
-              itemBuilder: (context, index) {
-                final item = topics[index];
+              itemCount: TopicSelectionSheet.topics.length,
+              itemBuilder: (_, index) {
+                final item = TopicSelectionSheet.topics[index];
                 final bool isAll = item.category == null;
+                final bool isSelected = _selectedTopicIndex == index;
+                final bool hasSelection = _selectedTopicIndex != null;
+                final bool isOther = hasSelection && !isSelected;
 
-                return Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(20),
-                    onTap: () {
-                      Navigator.pop(context); // close sheet
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => RandomFlashcardScreen(
-                            selectedCategory: item.category,
-                            topicTitle: item.title,
-                          ),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: isAll ? const Color(0xFFFFFBEB) : const Color(0xFFF8FAFC),
+                return AnimatedOpacity(
+                  duration: const Duration(milliseconds: 220),
+                  opacity: isOther ? 0.40 : 1.0,
+                  child: AnimatedScale(
+                    scale: isSelected ? 1.05 : 1.0,
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutBack,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
                         borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          // Biểu tượng chủ thể không khung viền, tự do và sắc nét 100%
-                          SizedBox(
-                            width: 44,
-                            height: 44,
-                            child: Center(
-                              child: Text(
-                                item.emoji,
-                                style: const TextStyle(fontSize: 32),
+                        onTap: () async {
+                          if (_isNavigating) return;
+                          Feedback.forTap(this.context);
+
+                          setState(() {
+                            _selectedTopicIndex = index;
+                            _isNavigating = true;
+                          });
+
+                          // Giữ hiệu ứng phát sáng trong 380ms để người dùng thấy rõ chủ đề đã chọn trước khi chuyển màn hình
+                          await Future.delayed(const Duration(milliseconds: 380));
+                          if (!mounted) return;
+
+                          Navigator.pop(this.context); // close sheet
+                          Navigator.push(
+                            this.context,
+                            MaterialPageRoute(
+                              builder: (context) => RandomFlashcardScreen(
+                                selectedCategory: item.category,
+                                topicTitle: item.title,
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item.title,
-                                  style: GoogleFonts.baloo2(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF1E293B),
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                          );
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOutCubic,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? Colors.white
+                                : (isAll ? const Color(0xFFFFFBEB) : const Color(0xFFF8FAFC)),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isSelected
+                                  ? item.primaryColor
+                                  : (isAll ? const Color(0xFFFDE68A) : const Color(0xFFE2E8F0)),
+                              width: isSelected ? 2.5 : 1.2,
+                            ),
+                            boxShadow: [
+                              if (isSelected) ...[
+                                // Hiệu ứng phát sáng rực rỡ (Luminous Glow) khi ấn chọn
+                                BoxShadow(
+                                  color: item.primaryColor.withValues(alpha: 0.55),
+                                  blurRadius: 18,
+                                  spreadRadius: 2.5,
+                                  offset: const Offset(0, 4),
                                 ),
-                                Container(
-                                  margin: const EdgeInsets.only(top: 2),
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                  decoration: BoxDecoration(
-                                    color: item.primaryColor.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    '${item.count} thẻ',
-                                    style: GoogleFonts.baloo2(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: item.primaryColor,
-                                    ),
-                                  ),
+                                BoxShadow(
+                                  color: item.primaryColor.withValues(alpha: 0.30),
+                                  blurRadius: 6,
+                                  spreadRadius: 1,
+                                ),
+                              ] else ...[
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
                                 ),
                               ],
-                            ),
+                            ],
                           ),
-                        ],
+                          child: Row(
+                            children: [
+                              // Biểu tượng chủ thể không khung viền, tự do và sắc nét 100% như Hình 1
+                              SizedBox(
+                                width: 44,
+                                height: 44,
+                                child: Center(
+                                  child: Text(
+                                    item.emoji,
+                                    style: const TextStyle(fontSize: 32),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.title,
+                                      style: GoogleFonts.baloo2(
+                                        fontSize: 14.5,
+                                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.bold,
+                                        color: isSelected ? item.primaryColor : const Color(0xFF1E293B),
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    AnimatedContainer(
+                                      duration: const Duration(milliseconds: 200),
+                                      margin: const EdgeInsets.only(top: 2),
+                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1.5),
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? item.primaryColor
+                                            : item.primaryColor.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        '${item.count} thẻ',
+                                        style: GoogleFonts.baloo2(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: isSelected ? Colors.white : item.primaryColor,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (isSelected)
+                                Icon(
+                                  Icons.check_circle_rounded,
+                                  color: item.primaryColor,
+                                  size: 20,
+                                ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),

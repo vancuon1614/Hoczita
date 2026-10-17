@@ -241,7 +241,7 @@ class _CropAvatarScreenState extends State<CropAvatarScreen> {
           style: GoogleFonts.baloo2(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         centerTitle: true,

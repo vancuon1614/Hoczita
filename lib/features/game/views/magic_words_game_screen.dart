@@ -11,6 +11,7 @@ import 'dart:math';
 import 'dart:async';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/services/game_score_sync_service.dart';
 import '../models/word_completion_entry.dart';
 import '../utils/wend_puzzle_generator.dart';
 import '../../../core/widgets/mini_game_timer.dart';
@@ -229,13 +230,13 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
             const Icon(Icons.timer_off_rounded, color: AppColors.error, size: 28),
             const SizedBox(width: 8),
             Text(
-              'Hết thời gian!',
+              'Time\'s Up!',
               style: GoogleFonts.baloo2(fontWeight: FontWeight.bold),
             ),
           ],
         ),
         content: Text(
-          'Đã hết thời gian cho thử thách ${_selectedDifficulty?.label ?? ''}. Bạn có muốn thử lại không?',
+          'Time ran out for the ${_selectedDifficulty?.label ?? ''} challenge. Would you like to try again?',
           style: GoogleFonts.baloo2(fontSize: 15),
         ),
         actions: [
@@ -248,7 +249,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
               _loadHighestStars();
             },
             child: Text(
-              'Chọn cấp độ',
+              'Choose Level',
               style: GoogleFonts.baloo2(fontWeight: FontWeight.w600, color: AppColors.textSecondary),
             ),
           ),
@@ -263,7 +264,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             child: Text(
-              'Chơi lại',
+              'Try Again',
               style: GoogleFonts.baloo2(fontWeight: FontWeight.bold),
             ),
           ),
@@ -278,18 +279,18 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          'Thoát trò chơi?',
+          'Quit Game?',
           style: GoogleFonts.baloo2(fontWeight: FontWeight.bold),
         ),
         content: Text(
-          'Bạn có chắc muốn quay lại màn hình chọn cấp độ không? Tiến trình hiện tại sẽ không được lưu.',
+          'Are you sure you want to return to level selection? Current progress will not be saved.',
           style: GoogleFonts.baloo2(fontSize: 15),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
-              'Chơi tiếp',
+              'Keep Playing',
               style: GoogleFonts.baloo2(fontWeight: FontWeight.w600),
             ),
           ),
@@ -305,7 +306,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
             child: Text(
-              'Thoát',
+              'Quit',
               style: GoogleFonts.baloo2(fontWeight: FontWeight.bold),
             ),
           ),
@@ -677,6 +678,72 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
           child: Column(
             children: [
               _buildAppBar(),
+              // Subheader Row: Level/Badge + Reset on Left, Timer Pill on Right (Standard Layout)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_selectedDifficulty != null) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE0F2FE),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFFBAE6FD)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('🎯', style: TextStyle(fontSize: 12)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _selectedDifficulty!.label,
+                                  style: GoogleFonts.baloo2(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF0284C7),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        TextButton.icon(
+                          onPressed: _resetPuzzle,
+                          icon: const Icon(
+                            Icons.refresh_rounded,
+                            size: 15,
+                            color: AppColors.textPrimary,
+                          ),
+                          label: Text(
+                            GameStrings.reset,
+                            style: GoogleFonts.baloo2(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            backgroundColor: Colors.grey.shade200,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    _buildTimerWidget(),
+                  ],
+                ),
+              ),
               Expanded(
                 child: SingleChildScrollView(
                   physics: _isGridDragging
@@ -729,176 +796,700 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
         actions: const [
           Padding(
             padding: EdgeInsets.only(right: 8),
-            child: GameSoundToggleButton(),
+            child: GameSoundToggleButton(isPlayScreen: false),
           ),
         ],
       ),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Center(
-                  child: Image.asset(
-                    'ImageFolder/magic_word.gif',
-                    height: 110,
-                    errorBuilder: (context, error, stackTrace) => const Icon(
-                      Icons.auto_stories_rounded,
-                      size: 80,
-                      color: AppColors.primary,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Hero Banner
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF0891B2), Color(0xFF4F46E5)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0891B2).withValues(alpha: 0.25),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              'ENGLISH VOCABULARY',
+                              style: GoogleFonts.baloo2(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFFCFFAFE),
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Magic Words',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              height: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Find and trace hidden words inside the magical letter grid!',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 13,
+                              color: const Color(0xFFCFFAFE),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(18),
+                        child: Image.asset(
+                          'ImageFolder/magic_word.gif',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => const Center(
+                            child: Icon(
+                              Icons.auto_stories_rounded,
+                              size: 34,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Header: QUEST MAP + Magic Bonus Info
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'QUEST MAP',
+                    style: GoogleFonts.baloo2(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textSecondary,
+                      letterSpacing: 0.8,
                     ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Select Difficulty',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.baloo2(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF2C3E50),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () => _showBonusExplanationDialog(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.info_outline_rounded, size: 13, color: Color(0xFF1D4ED8)),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Magic Bonus',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1D4ED8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                _buildDifficultyButton(
-                  title: 'Easy',
-                  subtitle: '4x4, Untimed',
-                  difficulty: MagicWordsDifficulty.easy,
-                  backgroundColor: const Color(0xFFE4F3E4),
-                  iconColor: const Color(0xFF4CAF50),
-                  stars: _easyStars,
-                ),
-                _buildDifficultyButton(
-                  title: 'Medium',
-                  subtitle: '6x6, 5 minutes',
-                  difficulty: MagicWordsDifficulty.medium,
-                  backgroundColor: const Color(0xFFFDEBCE),
-                  iconColor: const Color(0xFFF59E0B),
-                  stars: _mediumStars,
-                ),
-                _buildDifficultyButton(
-                  title: 'Hard',
-                  subtitle: '8x8, 10 minutes',
-                  difficulty: MagicWordsDifficulty.hard,
-                  backgroundColor: const Color(0xFFFFE5E5),
-                  iconColor: const Color(0xFFEF4444),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // STAGE 3: EAGLE SIGHT (Eagle Vision - Mystic Fuchsia)
+              Padding(
+                padding: const EdgeInsets.only(right: 18),
+                child: _buildTowerTierCard(
+                  tierNumber: 3,
+                  tierLabel: 'STAGE 3 • EAGLE SIGHT',
+                  tagText: '8x8 Grid • 10 Mins',
+                  title: 'Eagle Vision',
+                  subtitle: 'Uncover words hidden in all directions: horizontal, vertical & diagonal',
+                  emoji: '🦅',
+                  primaryColor: const Color(0xFFC026D3),
+                  lightBgColor: const Color(0xFFFDF4FF),
+                  borderColor: const Color(0xFFF5D0FE),
+                  gradientColors: const [Color(0xFFD946EF), Color(0xFFC026D3)],
+                  difficultyText: 'Hard',
                   stars: _hardStars,
+                  onTap: () => _selectDifficulty(MagicWordsDifficulty.hard),
                 ),
-              ],
-            ),
+              ),
+
+              _buildCurvedPathConnector(curveToRight: true),
+
+              // STAGE 2: SHARP FOCUS (Word Hunter - Electric Indigo)
+              Padding(
+                padding: const EdgeInsets.only(left: 18),
+                child: _buildTowerTierCard(
+                  tierNumber: 2,
+                  tierLabel: 'STAGE 2 • SHARP FOCUS',
+                  tagText: '6x6 Grid • 5 Mins',
+                  title: 'Word Hunter',
+                  subtitle: 'Trace horizontal and vertical hidden words swiftly',
+                  emoji: '🧭',
+                  primaryColor: const Color(0xFF4F46E5),
+                  lightBgColor: const Color(0xFFEEF2FF),
+                  borderColor: const Color(0xFFC7D2FE),
+                  gradientColors: const [Color(0xFF6366F1), Color(0xFF4F46E5)],
+                  difficultyText: 'Medium',
+                  stars: _mediumStars,
+                  onTap: () => _selectDifficulty(MagicWordsDifficulty.medium),
+                ),
+              ),
+
+              _buildCurvedPathConnector(curveToRight: false),
+
+              // STAGE 1: OBSERVATION (Sharp Eye - Cyan Aqua)
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: _buildTowerTierCard(
+                  tierNumber: 1,
+                  tierLabel: 'STAGE 1 • OBSERVATION',
+                  tagText: '4x4 Grid • Untimed',
+                  title: 'Sharp Eye',
+                  subtitle: 'Scan and spot hidden words in a cozy starter grid',
+                  emoji: '👁️',
+                  primaryColor: const Color(0xFF0891B2),
+                  lightBgColor: const Color(0xFFECFEFF),
+                  borderColor: const Color(0xFFA5F3FC),
+                  gradientColors: const [Color(0xFF06B6D4), Color(0xFF0891B2)],
+                  difficultyText: 'Easy',
+                  stars: _easyStars,
+                  onTap: () => _selectDifficulty(MagicWordsDifficulty.easy),
+                ),
+              ),
+
+              const SizedBox(height: 28),
+
+              // Footer Card: Round Standard & Reward Multiplier
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0x06000000),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Text('🎯', style: TextStyle(fontSize: 18)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'ROUND STANDARD',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                          ),
+                          Text(
+                            'Find all hidden target words',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF334155),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(width: 1, height: 26, color: const Color(0xFFE2E8F0)),
+                    const SizedBox(width: 12),
+                    const Text('⚡', style: TextStyle(fontSize: 18)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'REWARD MULTIPLIER',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                          ),
+                          Text(
+                            'Zero-Penalty & Time Bonus',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFFC026D3),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 14),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildDifficultyButton({
+  Widget _buildCurvedPathConnector({
+    required bool curveToRight,
+  }) {
+    return SizedBox(
+      height: 38,
+      child: CustomPaint(
+        painter: _CurvedDashedPathPainter(curveToRight: curveToRight),
+      ),
+    );
+  }
+
+  Widget _buildTowerTierCard({
+    required int tierNumber,
+    required String tierLabel,
+    required String tagText,
     required String title,
     required String subtitle,
-    String? bonusInfo,
-    required MagicWordsDifficulty difficulty,
-    required Color backgroundColor,
-    required Color iconColor,
+    required String emoji,
+    required Color primaryColor,
+    required Color lightBgColor,
+    required Color borderColor,
+    required List<Color> gradientColors,
+    required String difficultyText,
     required int stars,
+    required VoidCallback onTap,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _selectDifficulty(difficulty),
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: iconColor,
-                    shape: BoxShape.circle,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 1. Sub-badge top row: Stage number + Stage label + Tag pill
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: primaryColor,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: primaryColor.withValues(alpha: 0.3),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '$tierNumber',
+                      style: GoogleFonts.baloo2(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.auto_stories_rounded,
-                    color: Colors.white,
-                    size: 24,
+                  const SizedBox(width: 8),
+                  Text(
+                    tierLabel,
+                    style: GoogleFonts.baloo2(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: primaryColor,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: lightBgColor,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: borderColor.withValues(alpha: 0.6)),
+                ),
+                child: Text(
+                  tagText,
+                  style: GoogleFonts.baloo2(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: primaryColor,
                   ),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: GoogleFonts.baloo2(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
+
+        // 2. Interactive Card
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: borderColor, width: 1.4),
+            boxShadow: [
+              BoxShadow(
+                color: primaryColor.withValues(alpha: 0.08),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+              BoxShadow(
+                color: const Color(0x06000000),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(22),
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                child: Row(
+                  children: [
+                    // Squircle Pastel Toy Icon (Màu nhạt mềm mại như hình mẫu)
+                    Container(
+                      width: 58,
+                      height: 58,
+                      decoration: BoxDecoration(
+                        color: lightBgColor,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: borderColor.withValues(alpha: 0.7),
+                          width: 1.2,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: primaryColor.withValues(alpha: 0.08),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: GoogleFonts.baloo2(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
+                      alignment: Alignment.center,
+                      child: Text(
+                        emoji,
+                        style: const TextStyle(fontSize: 28),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+
+                    // Title, Subtitle and 3-step Difficulty Bar
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: GoogleFonts.baloo2(
+                              fontSize: 16.5,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1E293B),
+                              height: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle,
+                            style: GoogleFonts.baloo2(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF64748B),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              for (int i = 1; i <= 3; i++) ...[
+                                Container(
+                                  width: 14,
+                                  height: 4.5,
+                                  decoration: BoxDecoration(
+                                    color: i <= tierNumber ? primaryColor : const Color(0xFFE2E8F0),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                ),
+                                if (i < 3) const SizedBox(width: 3),
+                              ],
+                              const SizedBox(width: 6),
+                              Text(
+                                difficultyText,
+                                style: GoogleFonts.baloo2(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: primaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+
+                    // Arrow Icon
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: lightBgColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: borderColor.withValues(alpha: 0.8)),
+                      ),
+                      child: Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 13,
+                        color: primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showBonusExplanationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        backgroundColor: Colors.white,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFD946EF), Color(0xFFC026D3)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFC026D3).withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
                         ),
-                      ),
-                      if (bonusInfo != null && bonusInfo.isNotEmpty) ...[
-                        const SizedBox(height: 2),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: const Text('⚡', style: TextStyle(fontSize: 22)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          bonusInfo,
+                          'Score & Bonus Rules',
                           style: GoogleFonts.baloo2(
-                            fontSize: 12,
-                            color: iconColor,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF1E293B),
+                          ),
+                        ),
+                        Text(
+                          'Magic Words Mastery',
+                          style: GoogleFonts.baloo2(
+                            fontSize: 12.5,
+                            color: const Color(0xFF64748B),
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
-                    ],
+                    ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: List.generate(
-                    3,
-                    (index) => Padding(
-                      padding: const EdgeInsets.only(left: 2),
-                      child: Icon(
-                        Icons.star_rounded,
-                        color: index < stars ? iconColor.withValues(alpha: 0.8) : Colors.black12,
-                        size: 22,
+                child: Column(
+                  children: [
+                    _buildBonusInfoRow(
+                      icon: '🦅',
+                      title: 'Eagle Eye (Zero Penalty)',
+                      desc: 'Trace words accurately without wrong swipes to keep full base points without deductions.',
+                    ),
+                    const Divider(height: 18, thickness: 0.8, color: Color(0xFFE2E8F0)),
+                    _buildBonusInfoRow(
+                      icon: '⏱️',
+                      title: 'Time Left Bonus',
+                      desc: 'In Medium and Hard modes, remaining time on the countdown clock converts directly into bonus points!',
+                    ),
+                    const Divider(height: 18, thickness: 0.8, color: Color(0xFFE2E8F0)),
+                    _buildBonusInfoRow(
+                      icon: '🌟',
+                      title: 'Zero-Hint Mastery',
+                      desc: 'Find all words without requesting hints to earn the ultimate bonus score on the stage map.',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFC026D3),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Got it, start adventure!',
+                      style: GoogleFonts.baloo2(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        height: 1.2,
                       ),
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildBonusInfoRow({
+    required String icon,
+    required String title,
+    required String desc,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(icon, style: const TextStyle(fontSize: 18)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.baloo2(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1E293B),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                desc,
+                style: GoogleFonts.baloo2(
+                  fontSize: 12,
+                  color: const Color(0xFF64748B),
+                  height: 1.25,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildAppBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 6.0),
+      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
       child: Row(
         children: [
           IconButton(
@@ -908,49 +1499,20 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
             ),
             onPressed: _showQuitConfirmation,
           ),
-          TextButton.icon(
-            onPressed: _resetPuzzle,
-            icon: const Icon(
-              Icons.refresh_rounded,
-              size: 16,
-              color: AppColors.textPrimary,
-            ),
-            label: Text(
-              GameStrings.reset,
-              style: GoogleFonts.baloo2(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              backgroundColor: Colors.grey.shade200,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-          ),
           Expanded(
             child: Center(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  'Magic Words',
-                  style: GoogleFonts.baloo2(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
+              child: Text(
+                'Magic Words 🔠',
+                style: GoogleFonts.baloo2(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
                 ),
               ),
             ),
           ),
           const GameSoundToggleButton(),
-          _buildTimerWidget(),
-          const SizedBox(width: 4),
+          const SizedBox(width: 8),
         ],
       ),
     );
@@ -968,8 +1530,10 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
     final displayStr = GameCountUpTimer.formatSeconds(_secondsRemaining);
 
     return Container(
+      width: 76,
+      alignment: Alignment.center,
       margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 5),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(20),
@@ -989,14 +1553,17 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
             color: textColor,
           ),
           const SizedBox(width: 4),
-          Text(
-            displayStr,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.baloo2(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: textColor,
-              fontFeatures: const [FontFeature.tabularFigures()],
+          SizedBox(
+            width: 38,
+            child: Text(
+              displayStr,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.baloo2(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
           ),
         ],
@@ -1513,40 +2080,14 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
         _isGameOver = true;
       });
 
-      int stars = 1;
-      if (diff == MagicWordsDifficulty.easy) {
-        if (duration <= 45 && _hintCount == 0) {
-          stars = 3;
-        } else if (duration <= 90) {
-          stars = 2;
-        }
-      } else if (diff == MagicWordsDifficulty.medium) {
-        if (duration <= 120 && _hintCount <= 1) {
-          stars = 3;
-        } else if (duration <= 220) {
-          stars = 2;
-        }
-      } else {
-        // hard
-        if (duration <= 240 && _hintCount <= 1) {
-          stars = 3;
-        } else if (duration <= 380) {
-          stars = 2;
-        }
-      }
-
+      // Tạm thời không tính sao cho mini-games có chế độ
       try {
-        await SupabaseService.instance.saveScore(
-          gameName: diff.storageKey,
-          stars: stars,
+        final levelStr = diff == MagicWordsDifficulty.easy ? '1' : (diff == MagicWordsDifficulty.medium ? '2' : '3');
+        await GameScoreSyncService.instance.saveScoreParallel(
+          gameCodeOrName: 'E06',
+          level: levelStr,
           score: score,
-          durationSeconds: duration,
-          completionLog: _completionLog.map((e) => e.toJson()).toList(),
-        );
-        await SupabaseService.instance.saveScore(
-          gameName: 'magic_words',
-          stars: stars,
-          score: score,
+          stars: 0,
           durationSeconds: duration,
           completionLog: _completionLog.map((e) => e.toJson()).toList(),
         );
@@ -1838,7 +2379,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
             });
           },
           title: Text(
-            'Cách chơi',
+            'How to Play',
             style: GoogleFonts.baloo2(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -1855,7 +2396,7 @@ class _MagicWordsGameScreenState extends ConsumerState<MagicWordsGameScreen> {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Tìm tất cả các từ ẩn. Dùng mỗi ô chữ đúng một lần để phủ kín toàn bộ bảng!',
+                  'Find all hidden words. Use each letter tile to cover the entire board!',
                   style: GoogleFonts.baloo2(
                     fontSize: 15,
                     color: AppColors.textSecondary,
@@ -1999,4 +2540,62 @@ class WendPathPainter extends CustomPainter {
         oldDelegate.isLocked != isLocked ||
         oldDelegate.isSolved != isSolved;
   }
+}
+
+class _CurvedDashedPathPainter extends CustomPainter {
+  final bool curveToRight;
+
+  const _CurvedDashedPathPainter({required this.curveToRight});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFCBD5E1)
+      ..strokeWidth = 3.0
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path();
+    if (curveToRight) {
+      // From top-left to bottom-right (Chặng 3 xuống Chặng 2)
+      path.moveTo(size.width * 0.32, 0);
+      path.cubicTo(
+        size.width * 0.32,
+        size.height * 0.55,
+        size.width * 0.68,
+        size.height * 0.45,
+        size.width * 0.68,
+        size.height,
+      );
+    } else {
+      // From top-right to bottom-left (Chặng 2 xuống Chặng 1)
+      path.moveTo(size.width * 0.68, 0);
+      path.cubicTo(
+        size.width * 0.68,
+        size.height * 0.55,
+        size.width * 0.32,
+        size.height * 0.45,
+        size.width * 0.32,
+        size.height,
+      );
+    }
+
+    // Vẽ nét đứt mềm mại
+    for (final metric in path.computeMetrics()) {
+      double distance = 0.0;
+      const dashLength = 6.0;
+      const spaceLength = 5.0;
+      while (distance < metric.length) {
+        final len = (distance + dashLength < metric.length)
+            ? dashLength
+            : metric.length - distance;
+        canvas.drawPath(metric.extractPath(distance, distance + len), paint);
+        distance += dashLength + spaceLength;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _CurvedDashedPathPainter oldDelegate) =>
+      oldDelegate.curveToRight != curveToRight;
 }

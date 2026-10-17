@@ -41,11 +41,11 @@ class _MagicWordsReportSheetState extends State<MagicWordsReportSheet> {
     final secondsPerLetter = timeForThisWord / entry.word.length;
     final isLast = index == widget.completionLog.length - 1;
 
-    if (isLast) return 'Về đích ${timeForThisWord}s';
-    if (secondsPerLetter <= 3) return 'Siêu nhanh ${timeForThisWord}s';
-    if (secondsPerLetter <= 5) return 'Bứt phá ${timeForThisWord}s';
-    if (secondsPerLetter <= 8) return 'Đạt chuẩn ${timeForThisWord}s';
-    return 'Tăng tốc ${timeForThisWord}s';
+    if (isLast) return 'Finish ${timeForThisWord}s';
+    if (secondsPerLetter <= 3) return 'Super fast ${timeForThisWord}s';
+    if (secondsPerLetter <= 5) return 'Breakthrough ${timeForThisWord}s';
+    if (secondsPerLetter <= 8) return 'Great pace ${timeForThisWord}s';
+    return 'Accelerate ${timeForThisWord}s';
   }
 
   static const List<Color> _nodeColors = [
@@ -135,7 +135,7 @@ class _MagicWordsReportSheetState extends State<MagicWordsReportSheet> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Kỷ Lục Mới!',
+                      'New Record!',
                       style: GoogleFonts.baloo2(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
@@ -159,7 +159,7 @@ class _MagicWordsReportSheetState extends State<MagicWordsReportSheet> {
                   ),
                 ),
                 Text(
-                  'Bạn đã chinh phục thử thách với tốc độ đáng kinh ngạc!',
+                  'You conquered the word matrix with incredible speed!',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.baloo2(
                     fontSize: 14,
@@ -232,7 +232,7 @@ class _MagicWordsReportSheetState extends State<MagicWordsReportSheet> {
                                       Row(
                                         children: [
                                           Text(
-                                            'Trạm ${index + 1}: ${word.toUpperCase()}',
+                                            'Station ${index + 1}: ${word.toUpperCase()}',
                                             style: GoogleFonts.baloo2(
                                               fontSize: 15,
                                               fontWeight: FontWeight.bold,
@@ -316,7 +316,7 @@ class _MagicWordsReportSheetState extends State<MagicWordsReportSheet> {
                 Column(
                   children: [
                     Text(
-                      'Thời gian hoàn thành: ${_formatDuration(widget.secondsElapsed)}',
+                      'Completion Time: ${_formatDuration(widget.secondsElapsed)}',
                       style: GoogleFonts.baloo2(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
@@ -346,15 +346,19 @@ class _MagicWordsReportSheetState extends State<MagicWordsReportSheet> {
                       backgroundColor: const Color(0xFF0284C7),
                       foregroundColor: Colors.white,
                       elevation: 0,
+                      padding: EdgeInsets.zero,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    child: Text(
-                      'Chơi Lại',
-                      style: GoogleFonts.baloo2(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                    child: Center(
+                      child: Text(
+                        'Play Again',
+                        style: GoogleFonts.baloo2(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          height: 1.2,
+                        ),
                       ),
                     ),
                   ),
@@ -363,7 +367,7 @@ class _MagicWordsReportSheetState extends State<MagicWordsReportSheet> {
                 TextButton(
                   onPressed: widget.onGoHome,
                   child: Text(
-                    'Về Trang Chủ',
+                    'Main Menu',
                     style: GoogleFonts.baloo2(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,

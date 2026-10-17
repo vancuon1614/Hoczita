@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/game_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/services/game_score_sync_service.dart';
 import '../../../core/services/tts_service.dart';
 import '../../../core/widgets/mini_game_timer.dart';
 import '../../../core/widgets/game_sound_toggle_button.dart';
@@ -15,8 +16,6 @@ import 'common/mini_game_rank_banner.dart';
 import '../models/english_crossword_level.dart';
 import '../utils/english_crossword_generator.dart';
 import 'common/game_video_demo_dialog.dart';
-import '../../../core/widgets/pastel_toy_card.dart';
-import '../../learn/views/widgets/gel_candy_icon.dart';
 
 class EnglishCrosswordCell {
   final int row;
@@ -66,7 +65,6 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
   int _secondsElapsed = 0;
   String _elapsedTimeString = '00:00';
   int _score = 0;
-  int _stars = 0;
 
   final Set<EnglishCrosswordWord> _correctWords = {};
   final Set<String> _hintCells = {};
@@ -342,41 +340,33 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
 
     final elapsedSeconds = _secondsElapsed;
     
-    // Scale stars based on difficulty & completion time
+    // Base score based on completion time
     final diff = _selectedDifficulty ?? CrosswordDifficulty.easy;
+    int baseScore = 10;
     if (diff == CrosswordDifficulty.easy) {
       if (elapsedSeconds <= 40) {
-        _stars = 3;
+        baseScore = 30;
       } else if (elapsedSeconds <= 80) {
-        _stars = 2;
+        baseScore = 20;
       } else {
-        _stars = 1;
+        baseScore = 10;
       }
     } else if (diff == CrosswordDifficulty.medium) {
       if (elapsedSeconds <= 80) {
-        _stars = 3;
+        baseScore = 30;
       } else if (elapsedSeconds <= 150) {
-        _stars = 2;
+        baseScore = 20;
       } else {
-        _stars = 1;
+        baseScore = 10;
       }
     } else {
       if (elapsedSeconds <= 120) {
-        _stars = 3;
+        baseScore = 30;
       } else if (elapsedSeconds <= 240) {
-        _stars = 2;
+        baseScore = 20;
       } else {
-        _stars = 1;
+        baseScore = 10;
       }
-    }
-
-    int baseScore = 0;
-    if (_stars == 3) {
-      baseScore = 30;
-    } else if (_stars == 2) {
-      baseScore = 20;
-    } else if (_stars == 1) {
-      baseScore = 10;
     }
 
     // Multiply score based on difficulty tier
@@ -390,10 +380,13 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
 
     try {
       final diffName = _selectedDifficulty?.name ?? 'easy';
-      await _db.saveScore(
-        gameName: 'english_crossword_$diffName',
-        stars: _stars,
+      final levelStr = diffName == 'easy' ? '1' : (diffName == 'medium' ? '2' : '3');
+      await GameScoreSyncService.instance.saveScoreParallel(
+        gameCodeOrName: 'E04',
+        level: levelStr,
         score: _score,
+        stars: 0,
+        durationSeconds: _secondsElapsed,
       );
       _loadHighestStars();
     } catch (e) {
@@ -411,12 +404,12 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Thoát trò chơi?'),
-        content: Text('Bạn có chắc muốn thoát không? Điểm số lượt chơi này sẽ không được lưu lại đâu nhé.'),
+        title: const Text('Quit Game?'),
+        content: const Text('Are you sure you want to quit? Current game progress and score will not be saved.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Chơi tiếp'),
+            child: const Text('Keep Playing'),
           ),
           TextButton(
             onPressed: () {
@@ -425,7 +418,7 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
               Navigator.pop(context); // quit game screen
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: Text('Thoát'),
+            child: const Text('Quit'),
           ),
         ],
       ),
@@ -490,9 +483,22 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
     });
   }
 
+  String get _difficultyLabel {
+    switch (_selectedDifficulty) {
+      case CrosswordDifficulty.easy:
+        return 'Easy';
+      case CrosswordDifficulty.medium:
+        return 'Medium';
+      case CrosswordDifficulty.hard:
+        return 'Hard';
+      default:
+        return 'Crossword';
+    }
+  }
+
   Widget _buildTopBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 6.0),
+      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
       child: Row(
         children: [
           IconButton(
@@ -502,49 +508,20 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
             ),
             onPressed: _showQuitConfirmation,
           ),
-          TextButton.icon(
-            onPressed: _resetCrossword,
-            icon: const Icon(
-              Icons.refresh_rounded,
-              size: 16,
-              color: AppColors.textPrimary,
-            ),
-            label: Text(
-              GameStrings.reset,
-              style: GoogleFonts.baloo2(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              backgroundColor: Colors.grey.shade200,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-          ),
           Expanded(
             child: Center(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  'English Crossword',
-                  style: GoogleFonts.baloo2(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
+              child: Text(
+                'English Crossword 🇬🇧',
+                style: GoogleFonts.baloo2(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
                 ),
               ),
             ),
           ),
           const GameSoundToggleButton(),
-          GameCountUpTimer(elapsedSeconds: _secondsElapsed),
-          const SizedBox(width: 4),
+          const SizedBox(width: 8),
         ],
       ),
     );
@@ -577,6 +554,66 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
             child: Column(
               children: [
                 _buildTopBar(),
+                // Subheader Row: Level/Badge + Reset on Left, Timer Pill on Right (Standard Layout)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE0F2FE),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFFBAE6FD)),
+                            ),
+                            child: Text(
+                              _difficultyLabel,
+                              style: GoogleFonts.baloo2(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF0284C7),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          TextButton.icon(
+                            onPressed: _resetCrossword,
+                            icon: const Icon(
+                              Icons.refresh_rounded,
+                              size: 15,
+                              color: AppColors.textPrimary,
+                            ),
+                            label: Text(
+                              GameStrings.reset,
+                              style: GoogleFonts.baloo2(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              backgroundColor: Colors.grey.shade200,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      GameCountUpTimer(
+                        elapsedSeconds: _secondsElapsed,
+                        margin: EdgeInsets.zero,
+                      ),
+                    ],
+                  ),
+                ),
                 Expanded(
                   child: GestureDetector(
                     onTap: () {
@@ -627,11 +664,11 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
   Widget _buildClueBar() {
     final word = _selectedWord;
     final level = _activeLevel;
-    String clueText = 'Bấm chọn một ô chữ để bắt đầu!';
+    String clueText = 'Tap a crossword cell to start!';
 
     if (word != null && level != null) {
       final index = _wordNumbers[word] ?? 1;
-      final dir = word.isAcross ? 'Ngang' : 'Dọc';
+      final dir = word.isAcross ? 'Across' : 'Down';
       clueText = '$index. $dir: ${word.clue}';
     }
 
@@ -913,9 +950,9 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
                   ),
                 ),
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
               Text(
-                'Xuất Sắc! 🎉',
+                'Awesome! 🎉',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.baloo2(
                   fontSize: 26,
@@ -923,36 +960,16 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
                   color: AppColors.textPrimary,
                 ),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text(
-                'Chúc mừng! Bạn đã giải thành công toàn bộ ô chữ Tiếng Anh trong $_elapsedTimeString!',
+                'Congratulations! You solved all crossword clues in $_elapsedTimeString!',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.baloo2(
                   fontSize: 14,
                   color: AppColors.textSecondary,
                 ),
               ),
-              SizedBox(height: 32),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(3, (index) {
-                  final active = index < _stars;
-                  return AnimatedScale(
-                    scale: active ? 1.3 : 1.0,
-                    duration: Duration(milliseconds: 300 + (index * 150)),
-                    curve: Curves.elasticOut,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Icon(
-                        Icons.star_rounded,
-                        size: 48,
-                        color: active ? Colors.amber : AppColors.border,
-                      ),
-                    ),
-                  );
-                }),
-              ),
-              SizedBox(height: 40),
+              const SizedBox(height: 32),
               Row(
                 children: [
                   Expanded(
@@ -965,10 +982,10 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
                       child: Column(
                         children: [
                           Text(
-                            'Thời gian',
+                            'Time',
                             style: GoogleFonts.baloo2(fontSize: 11, color: AppColors.primary),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text(
                             _elapsedTimeString,
                             style: GoogleFonts.baloo2(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
@@ -977,7 +994,7 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
                       ),
                     ),
                   ),
-                  SizedBox(width: 16),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -988,10 +1005,10 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
                       child: Column(
                         children: [
                           Text(
-                            'Điểm cộng',
+                            'Score Earned',
                             style: GoogleFonts.baloo2(fontSize: 11, color: AppColors.success),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text(
                             '+$_score',
                             style: GoogleFonts.baloo2(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.success),
@@ -1007,6 +1024,7 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
                 gameName: 'english_crossword_${_selectedDifficulty?.name ?? 'easy'}',
                 gameTitle: 'English Crossword',
                 currentScore: _score,
+                isEnglish: true,
               ),
               const SizedBox(height: 32),
               Center(
@@ -1023,19 +1041,24 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       elevation: 0,
+                      padding: EdgeInsets.zero,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(24),
                       ),
                     ),
                     child: _isSavingScore
-                        ? SizedBox(
+                        ? const SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                           )
                         : Text(
-                            'Quay lại danh mục',
-                            style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, fontSize: 14),
+                            'Back to Menu',
+                            style: GoogleFonts.baloo2(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              height: 1.2,
+                            ),
                           ),
                   ),
                 ),
@@ -1088,7 +1111,7 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        'HÀNG NGANG (ACROSS)',
+                        'ACROSS',
                         style: GoogleFonts.baloo2(
                           fontWeight: FontWeight.bold,
                           fontSize: 11,
@@ -1114,7 +1137,7 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        'HÀNG DỌC (DOWN)',
+                        'DOWN',
                         style: GoogleFonts.baloo2(
                           fontWeight: FontWeight.bold,
                           fontSize: 11,
@@ -1222,15 +1245,15 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
           ),
         ),
         actions: [
-          const GameSoundToggleButton(),
+          const GameSoundToggleButton(isPlayScreen: false),
           IconButton(
-            tooltip: 'Xem video demo',
+            tooltip: 'Watch demo video',
             icon: const Icon(Icons.ondemand_video_rounded, color: AppColors.primary, size: 26),
             onPressed: () {
               GameVideoDemoDialog.show(
                 context,
                 assetPath: 'ImageFolder/demo_crossword.webm',
-                title: 'Demo Hướng Dẫn - English Crossword',
+                title: 'How to Play - English Crossword',
               );
             },
           ),
@@ -1248,14 +1271,14 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFFBE185D), Color(0xFFEC4899)],
+                    colors: [Color(0xFF0D9488), Color(0xFF2563EB)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFBE185D).withValues(alpha: 0.25),
+                      color: const Color(0xFF0D9488).withValues(alpha: 0.25),
                       blurRadius: 16,
                       offset: const Offset(0, 6),
                     ),
@@ -1274,18 +1297,18 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              'NGOẠI NGỮ TIẾNG ANH',
+                              'ENGLISH VOCABULARY',
                               style: GoogleFonts.baloo2(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
-                                color: const Color(0xFFFCE7F3),
+                                color: const Color(0xFFCCFBF1),
                                 letterSpacing: 1.0,
                               ),
                             ),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Ô Chữ Tiếng Anh',
+                            'Crossword Quest',
                             style: GoogleFonts.baloo2(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
@@ -1295,10 +1318,10 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Giải ô chữ bằng từ vựng tiếng Anh theo các gợi ý tiếng Việt sinh động!',
+                            'Solve English crossword puzzles with picture clues and word hints!',
                             style: GoogleFonts.baloo2(
                               fontSize: 13,
-                              color: const Color(0xFFFCE7F3),
+                              color: const Color(0xFFCCFBF1),
                             ),
                           ),
                         ],
@@ -1339,14 +1362,14 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
 
               const SizedBox(height: 12),
 
-              // Nút xem video demo
+              // Watch Demo Tutorial Button
               Center(
                 child: InkWell(
                   onTap: () {
                     GameVideoDemoDialog.show(
                       context,
                       assetPath: 'ImageFolder/demo_crossword.webm',
-                      title: 'Demo Hướng Dẫn - English Crossword',
+                      title: 'Demo Tutorial - English Crossword',
                     );
                   },
                   borderRadius: BorderRadius.circular(20),
@@ -1369,12 +1392,12 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
                       children: [
                         const Icon(
                           Icons.play_circle_fill_rounded,
-                          color: Color(0xFF00B460),
+                          color: Color(0xFF0D9488),
                           size: 16,
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'Bấm xem video hướng dẫn demo',
+                          'Watch demo tutorial',
                           style: GoogleFonts.baloo2(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -1389,63 +1412,587 @@ class _EnglishCrosswordGameScreenState extends ConsumerState<EnglishCrosswordGam
 
               const SizedBox(height: 20),
 
-              // Chọn Chế Độ Thử Thách
-              Text(
-                'CHỌN CHẾ ĐỘ THỬ THÁCH',
-                style: GoogleFonts.baloo2(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textSecondary,
-                  letterSpacing: 1.0,
+              // Header: QUEST MAP + Word Streak Info
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'QUEST MAP',
+                    style: GoogleFonts.baloo2(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textSecondary,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () => _showBonusExplanationDialog(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.info_outline_rounded, size: 13, color: Color(0xFF1D4ED8)),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Word Streak',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1D4ED8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // STAGE 3: MASTERY (Master Linguist - Deep Amethyst)
+              Padding(
+                padding: const EdgeInsets.only(right: 18),
+                child: _buildTowerTierCard(
+                  tierNumber: 3,
+                  tierLabel: 'STAGE 3 • MASTERY',
+                  tagText: '9x9 Grid • 14 Words',
+                  title: 'Master Linguist',
+                  subtitle: 'Conquer large grid challenges with your entire vocabulary',
+                  emoji: '🎓',
+                  primaryColor: const Color(0xFF6D28D9),
+                  lightBgColor: const Color(0xFFF5F3FF),
+                  borderColor: const Color(0xFFDDD6FE),
+                  gradientColors: const [Color(0xFF7C3AED), Color(0xFF6D28D9)],
+                  difficultyText: 'Hard',
+                  stars: _hardStars,
+                  onTap: () => _selectDifficulty(CrosswordDifficulty.hard),
                 ),
               ),
-              const SizedBox(height: 12),
 
-              // Mode 1: Cấp Độ Dễ
-              PastelModeCard(
-                title: 'Cấp Độ Dễ',
-                subtitle: 'Lưới ô chữ 5 từ vựng, dễ nhìn dễ đoán',
-                tagText: '5 Từ Vựng',
-                chipText: 'Lưới 5x5 🔠',
-                icon: GelCandyBadge.green(emoji: '🟢', size: 48),
-                colorConfig: PastelToyCardColor.green,
-                stars: _easyStars,
-                onTap: () => _selectDifficulty(CrosswordDifficulty.easy),
+              _buildCurvedPathConnector(curveToRight: true),
+
+              // STAGE 2: EXPANSION (Crossword Detective - Royal Cobalt)
+              Padding(
+                padding: const EdgeInsets.only(left: 18),
+                child: _buildTowerTierCard(
+                  tierNumber: 2,
+                  tierLabel: 'STAGE 2 • EXPANSION',
+                  tagText: '7x7 Grid • 9 Words',
+                  title: 'Crossword Detective',
+                  subtitle: 'Connect intersecting letters to unlock tricky words',
+                  emoji: '🔍',
+                  primaryColor: const Color(0xFF2563EB),
+                  lightBgColor: const Color(0xFFEFF6FF),
+                  borderColor: const Color(0xFFBFDBFE),
+                  gradientColors: const [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                  difficultyText: 'Medium',
+                  stars: _mediumStars,
+                  onTap: () => _selectDifficulty(CrosswordDifficulty.medium),
+                ),
+              ),
+
+              _buildCurvedPathConnector(curveToRight: false),
+
+              // STAGE 1: DISCOVERY (Word Explorer - Ocean Teal)
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: _buildTowerTierCard(
+                  tierNumber: 1,
+                  tierLabel: 'STAGE 1 • DISCOVERY',
+                  tagText: '5x5 Grid • 5 Words',
+                  title: 'Word Explorer',
+                  subtitle: 'Solve easy crosswords with familiar picture clues',
+                  emoji: '🔤',
+                  primaryColor: const Color(0xFF0D9488),
+                  lightBgColor: const Color(0xFFE6FFFA),
+                  borderColor: const Color(0xFF99F6E4),
+                  gradientColors: const [Color(0xFF14B8A6), Color(0xFF0D9488)],
+                  difficultyText: 'Easy',
+                  stars: _easyStars,
+                  onTap: () => _selectDifficulty(CrosswordDifficulty.easy),
+                ),
+              ),
+
+              const SizedBox(height: 28),
+
+              // Footer Card: Round Standard & Reward Multiplier
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0x06000000),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Text('🎯', style: TextStyle(fontSize: 18)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'ROUND STANDARD',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                          ),
+                          Text(
+                            'Clear all intersecting words',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF334155),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(width: 1, height: 26, color: const Color(0xFFE2E8F0)),
+                    const SizedBox(width: 12),
+                    const Text('⚡', style: TextStyle(fontSize: 18)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'REWARD MULTIPLIER',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                          ),
+                          Text(
+                            'Zero-Hint & Speed Bonus',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF6D28D9),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
               const SizedBox(height: 14),
-
-              // Mode 2: Cấp Độ Vừa
-              PastelModeCard(
-                title: 'Cấp Độ Vừa',
-                subtitle: 'Lưới ô chữ 9 từ vựng đan xen nhau',
-                tagText: '9 Từ Vựng',
-                chipText: 'Lưới 7x7 🧩',
-                icon: GelCandyBadge.orange(emoji: '🟡', size: 48),
-                colorConfig: PastelToyCardColor.orange,
-                stars: _mediumStars,
-                onTap: () => _selectDifficulty(CrosswordDifficulty.medium),
-              ),
-
-              const SizedBox(height: 14),
-
-              // Mode 3: Cấp Độ Khó
-              PastelModeCard(
-                title: 'Cấp Độ Khó',
-                subtitle: 'Lưới ô chữ 14 từ vựng đầy thử thách',
-                tagText: '14 Từ Vựng ⭐',
-                chipText: 'Lưới 9x9 🏆',
-                icon: GelCandyBadge.blue(emoji: '💡', size: 48),
-                colorConfig: PastelToyCardColor.blue,
-                stars: _hardStars,
-                onTap: () => _selectDifficulty(CrosswordDifficulty.hard),
-              ),
-
-              const SizedBox(height: 24),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCurvedPathConnector({
+    required bool curveToRight,
+  }) {
+    return SizedBox(
+      height: 38,
+      child: CustomPaint(
+        painter: _CurvedDashedPathPainter(curveToRight: curveToRight),
+      ),
+    );
+  }
+
+  Widget _buildTowerTierCard({
+    required int tierNumber,
+    required String tierLabel,
+    required String tagText,
+    required String title,
+    required String subtitle,
+    required String emoji,
+    required Color primaryColor,
+    required Color lightBgColor,
+    required Color borderColor,
+    required List<Color> gradientColors,
+    required String difficultyText,
+    required int stars,
+    required VoidCallback onTap,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 1. Sub-badge top row: Stage number + Stage label + Tag pill
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: primaryColor,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: primaryColor.withValues(alpha: 0.3),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '$tierNumber',
+                      style: GoogleFonts.baloo2(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    tierLabel,
+                    style: GoogleFonts.baloo2(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: primaryColor,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: lightBgColor,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: borderColor.withValues(alpha: 0.6)),
+                ),
+                child: Text(
+                  tagText,
+                  style: GoogleFonts.baloo2(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: primaryColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
+
+        // 2. Interactive Card
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: borderColor, width: 1.4),
+            boxShadow: [
+              BoxShadow(
+                color: primaryColor.withValues(alpha: 0.08),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+              BoxShadow(
+                color: const Color(0x06000000),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(22),
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                child: Row(
+                  children: [
+                    // Squircle Pastel Toy Icon (Màu nhạt mềm mại như hình mẫu)
+                    Container(
+                      width: 58,
+                      height: 58,
+                      decoration: BoxDecoration(
+                        color: lightBgColor,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: borderColor.withValues(alpha: 0.7),
+                          width: 1.2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: primaryColor.withValues(alpha: 0.08),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        emoji,
+                        style: const TextStyle(fontSize: 28),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+
+                    // Title, Subtitle and 3-step Difficulty Bar
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: GoogleFonts.baloo2(
+                              fontSize: 16.5,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1E293B),
+                              height: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle,
+                            style: GoogleFonts.baloo2(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF64748B),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              for (int i = 1; i <= 3; i++) ...[
+                                Container(
+                                  width: 14,
+                                  height: 4.5,
+                                  decoration: BoxDecoration(
+                                    color: i <= tierNumber ? primaryColor : const Color(0xFFE2E8F0),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                ),
+                                if (i < 3) const SizedBox(width: 3),
+                              ],
+                              const SizedBox(width: 6),
+                              Text(
+                                difficultyText,
+                                style: GoogleFonts.baloo2(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: primaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+
+                    // Arrow Icon
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: lightBgColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: borderColor.withValues(alpha: 0.8)),
+                      ),
+                      child: Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 13,
+                        color: primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showBonusExplanationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        backgroundColor: Colors.white,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF6D28D9).withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: const Text('⚡', style: TextStyle(fontSize: 22)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Score & Speed Rules',
+                          style: GoogleFonts.baloo2(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF1E293B),
+                          ),
+                        ),
+                        Text(
+                          'Mastering English Crosswords',
+                          style: GoogleFonts.baloo2(
+                            fontSize: 12.5,
+                            color: const Color(0xFF64748B),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  children: [
+                    _buildBonusInfoRow(
+                      icon: '💡',
+                      title: 'Zero-Hint Bonus',
+                      desc: 'Complete the entire crossword without using letter hints to unlock maximum reward points!',
+                    ),
+                    const Divider(height: 18, thickness: 0.8, color: Color(0xFFE2E8F0)),
+                    _buildBonusInfoRow(
+                      icon: '⏱️',
+                      title: 'Speed Clearance',
+                      desc: 'Clear the board under the target time limit (40s / 80s / 120s) to earn maximum reward points.',
+                    ),
+                    const Divider(height: 18, thickness: 0.8, color: Color(0xFFE2E8F0)),
+                    _buildBonusInfoRow(
+                      icon: '🔗',
+                      title: 'Word Chain',
+                      desc: 'Solve intersecting words back-to-back accurately to demonstrate true vocabulary mastery.',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6D28D9),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Got it, let\'s play!',
+                      style: GoogleFonts.baloo2(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBonusInfoRow({
+    required String icon,
+    required String title,
+    required String desc,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(icon, style: const TextStyle(fontSize: 18)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.baloo2(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1E293B),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                desc,
+                style: GoogleFonts.baloo2(
+                  fontSize: 12,
+                  color: const Color(0xFF64748B),
+                  height: 1.25,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -1665,4 +2212,62 @@ class WordClue {
   final String word;
   final String clue;
   const WordClue(this.word, this.clue);
+}
+
+class _CurvedDashedPathPainter extends CustomPainter {
+  final bool curveToRight;
+
+  const _CurvedDashedPathPainter({required this.curveToRight});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFCBD5E1)
+      ..strokeWidth = 3.0
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path();
+    if (curveToRight) {
+      // From top-left to bottom-right (Chặng 3 xuống Chặng 2)
+      path.moveTo(size.width * 0.32, 0);
+      path.cubicTo(
+        size.width * 0.32,
+        size.height * 0.55,
+        size.width * 0.68,
+        size.height * 0.45,
+        size.width * 0.68,
+        size.height,
+      );
+    } else {
+      // From top-right to bottom-left (Chặng 2 xuống Chặng 1)
+      path.moveTo(size.width * 0.68, 0);
+      path.cubicTo(
+        size.width * 0.68,
+        size.height * 0.55,
+        size.width * 0.32,
+        size.height * 0.45,
+        size.width * 0.32,
+        size.height,
+      );
+    }
+
+    // Vẽ nét đứt mềm mại
+    for (final metric in path.computeMetrics()) {
+      double distance = 0.0;
+      const dashLength = 6.0;
+      const spaceLength = 5.0;
+      while (distance < metric.length) {
+        final len = (distance + dashLength < metric.length)
+            ? dashLength
+            : metric.length - distance;
+        canvas.drawPath(metric.extractPath(distance, distance + len), paint);
+        distance += dashLength + spaceLength;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _CurvedDashedPathPainter oldDelegate) =>
+      oldDelegate.curveToRight != curveToRight;
 }

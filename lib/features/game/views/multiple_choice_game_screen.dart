@@ -4,15 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/services/supabase_service.dart';
-import '../../../core/services/scrmai_api_service.dart';
 import '../../../core/services/tts_service.dart';
-import '../../../core/widgets/mini_game_timer.dart';
 import '../../../core/widgets/game_sound_toggle_button.dart';
+import '../../../core/widgets/mini_game_timer.dart';
 import '../../../core/widgets/pastel_toy_card.dart';
 import '../../../core/providers/game_interaction_provider.dart';
+import '../../../core/constants/game_code_registry.dart';
+import '../../../core/services/game_score_sync_service.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../learn/views/widgets/gel_candy_icon.dart';
 import '../models/game_question.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'common/mini_game_rank_banner.dart';
@@ -22,6 +21,7 @@ class MultipleChoiceGameScreen extends ConsumerStatefulWidget {
   final String gameTitle;
   final List<GameQuestion> questions;
   final int timeLimitInSeconds;
+  final String level;
 
   const MultipleChoiceGameScreen({
     super.key,
@@ -29,6 +29,7 @@ class MultipleChoiceGameScreen extends ConsumerStatefulWidget {
     required this.gameTitle,
     required this.questions,
     this.timeLimitInSeconds = 6,
+    this.level = '1',
   });
 
   @override
@@ -52,6 +53,13 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
   late List<String?> _userAnswers;
   late List<bool?> _questionResults;
 
+  bool get _isEnglishGame {
+    final cleanCode = GameCodeRegistry.getCodeFromInternalName(widget.gameName);
+    return GameCodeRegistry.isEnglishGame(cleanCode) ||
+        GameCodeRegistry.isEnglishGame(widget.gameName) ||
+        cleanCode.startsWith('E');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -72,8 +80,9 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
 
     _timerController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
-        // Timeout (user did not answer in timeLimitInSeconds)
-        _handleAnswer(-1, '');
+        if (!_hasAnswered && !_isGameOver && mounted) {
+          _handleAnswer(-1, '');
+        }
       }
     });
 
@@ -82,7 +91,21 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(isGameActiveProvider.notifier).state = true;
+      _precacheImages();
     });
+  }
+
+  void _precacheImages() {
+    for (final q in widget.questions) {
+      final asset = q.visualAsset;
+      if (asset != null && mounted) {
+        if (asset.startsWith('http://') || asset.startsWith('https://')) {
+          precacheImage(CachedNetworkImageProvider(asset), context);
+        } else if (asset.startsWith('assets/') || asset.startsWith('ImageFolder/')) {
+          precacheImage(AssetImage(asset), context);
+        }
+      }
+    }
   }
 
   @override
@@ -125,8 +148,8 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
       }
     });
 
-    // Pause for 700ms in comparison, 600ms for others to show visual PastelToyCard feedback
-    final delayMs = widget.gameName == 'comparison' ? 700 : 600;
+    // Giảm thời gian chờ chuyển câu: 450ms cho comparison, 380ms cho các game khác
+    final delayMs = widget.gameName == 'comparison' ? 450 : 380;
     Future.delayed(Duration(milliseconds: delayMs), () {
       if (!mounted) return;
       if (_currentQuestionIndex < widget.questions.length - 1) {
@@ -167,29 +190,23 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
     // Mỗi câu trả lời đúng được cộng 3 điểm để khích lệ bé học tập
     _score = _correctAnswersCount * 3;
 
-    // Ưu tiên 1: NKS SCRMAI API
+    final cleanGameCode = GameCodeRegistry.getCodeFromInternalName(widget.gameName);
+    final cleanLevel = GameCodeRegistry.resolveLevel(widget.level);
+
     final authState = ref.read(authProvider);
     final memberName = authState.username ?? 'Học sinh';
-    try {
-      await ScrmaiApiService.instance.submitScore(
-        member: memberName,
-        game: widget.gameName,
-        level: '1',
-        score: _score,
-      );
-    } catch (e) {
-      debugPrint('Error syncing score to NKS SCRMAI: $e');
-    }
 
-    // Ưu tiên 2: Supabase
     try {
-      await SupabaseService.instance.saveScore(
-        gameName: widget.gameName,
-        stars: _stars,
+      await GameScoreSyncService.instance.saveScoreParallel(
+        gameCodeOrName: cleanGameCode,
+        level: cleanLevel,
         score: _score,
+        stars: _stars,
+        durationSeconds: totalElapsedSeconds.round(),
+        memberName: memberName,
       );
     } catch (e) {
-      debugPrint('Error saving score to Supabase: $e');
+      debugPrint('Error saving score in MultipleChoiceGameScreen: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -207,17 +224,28 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
 
     final currentQuestion = widget.questions[_currentQuestionIndex];
     final progress = (_currentQuestionIndex + 1) / widget.questions.length;
+    final remaining = widget.questions.length - _currentQuestionIndex;
+    final isNearEnd = remaining <= 3;
     
-    // Deep bold red timer for prominent visibility
-    final timerColor = Color.lerp(
-      const Color(0xFFDC2626), 
-      const Color(0xFF991B1B), 
-      _timerController.value
-    ) ?? const Color(0xFFDC2626);
+    final remainingSeconds = (widget.timeLimitInSeconds - (_timerController.value * widget.timeLimitInSeconds)).ceil().clamp(0, widget.timeLimitInSeconds);
+    // 7s: 4s đầu màu xanh (7, 6, 5, 4s), mấy giây sau màu đỏ (3, 2, 1, 0s)
+    final bool isWarning = remainingSeconds <= (widget.timeLimitInSeconds <= 6 ? 2 : 3);
+    final timerColor = isWarning ? const Color(0xFFDC2626) : const Color(0xFF0284C7);
+    final timerBg = isWarning ? const Color(0xFFFEF2F2) : Colors.white;
+    final timerBorder = isWarning ? const Color(0xFFFECACA) : const Color(0xFFBAE6FD);
 
     // Cách 1: Chạm trực tiếp vào hộp cho game So Sánh Trái Phải
     if (widget.gameName == 'comparison') {
-      return _buildComparisonGameLayout(currentQuestion, progress, timerColor);
+      return _buildComparisonGameLayout(
+        currentQuestion,
+        progress,
+        timerColor,
+        isNearEnd: isNearEnd,
+        remaining: remaining,
+        remainingSeconds: remainingSeconds,
+        timerBg: timerBg,
+        timerBorder: timerBorder,
+      );
     }
 
     return Scaffold(
@@ -234,35 +262,27 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
             fontSize: 20,
           ),
         ),
-        leading: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 6,
-                ),
-              ],
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.close_rounded, color: AppColors.textPrimary, size: 20),
-              onPressed: () => _showQuitConfirmation(),
-            ),
-          ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+          onPressed: () => _showQuitConfirmation(),
         ),
-        actions: const [
+        actions: [
           Padding(
-            padding: EdgeInsets.only(right: 8),
-            child: GameSoundToggleButton(),
+            padding: const EdgeInsets.only(right: 12),
+            child: GameSoundToggleButton(
+              padding: EdgeInsets.zero,
+              onToggled: (enabled) {
+                if (enabled) {
+                  TtsService.instance.speakVietnamese(currentQuestion.prompt, forced: true);
+                }
+              },
+            ),
           ),
         ],
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -273,155 +293,142 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE0F2FE),
+                      color: isNearEnd ? const Color(0xFFFFFBEB) : const Color(0xFFE0F2FE),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFBAE6FD)),
+                      border: Border.all(
+                        color: isNearEnd ? const Color(0xFFFDE68A) : const Color(0xFFBAE6FD),
+                      ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('🎯', style: TextStyle(fontSize: 13)),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Câu hỏi ${_currentQuestionIndex + 1}/${widget.questions.length}',
-                          style: GoogleFonts.baloo2(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF0284C7),
+                    child: isNearEnd
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.stars_rounded, color: Color(0xFFD97706), size: 15),
+                              const SizedBox(width: 5),
+                              Text(
+                                _isEnglishGame
+                                    ? 'Question ${_currentQuestionIndex + 1}/${widget.questions.length} • Final Sprint'
+                                    : 'Câu ${_currentQuestionIndex + 1}/${widget.questions.length} • Về đích',
+                                style: GoogleFonts.baloo2(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFFB45309),
+                                ),
+                              ),
+                            ],
+                          )
+                        : Text(
+                            _isEnglishGame
+                                ? 'Question ${_currentQuestionIndex + 1}/${widget.questions.length}'
+                                : 'Câu ${_currentQuestionIndex + 1}/${widget.questions.length}',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF0284C7),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
                   ),
 
-                  // Animated Countdown Timer Pill with Gel Candy feel
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: timerColor.withValues(alpha: 0.15),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                      border: Border.all(color: timerColor.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        GameCountdownTimer(
-                          progress: 1.0 - _timerController.value,
-                          remainingSeconds: (widget.timeLimitInSeconds - (_timerController.value * widget.timeLimitInSeconds).floor()),
-                          totalSeconds: widget.timeLimitInSeconds,
-                          customColor: timerColor,
-                          size: 26,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          '${(widget.timeLimitInSeconds - (_timerController.value * widget.timeLimitInSeconds).floor())}s',
-                          style: GoogleFonts.baloo2(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w800,
-                            color: timerColor,
-                          ),
-                        ),
-                      ],
-                    ),
+                  // Animated Countdown Timer Pill (Format 00:00, cố định khung không thụt ra/vào)
+                  GameCountUpTimer(
+                    elapsedSeconds: remainingSeconds,
+                    margin: EdgeInsets.zero,
+                    bgColor: timerBg,
+                    borderColor: timerBorder,
+                    textColor: timerColor,
                   ),
                 ],
               ),
               const SizedBox(height: 10),
 
-              // Linear Progress Bar
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  backgroundColor: const Color(0xFFE2E8F0),
-                  color: const Color(0xFF00629D),
-                  minHeight: 6,
-                ),
-              ),
-              const SizedBox(height: 14),
+              // 2. Thẻ Bé Ong Hội Thoại & Thanh Tiến Trình (LUÔN HIỆN XUYÊN SUỐT GAME)
+              _buildMascotCard(remaining),
+              const SizedBox(height: 10),
 
-              // 2. Question/Prompt Arena (Pastel Toy Card Style)
+              // 3. Question/Prompt Arena (Card-in-Card Style as in screentinhnhanh)
               Expanded(
                 flex: 4,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(26),
+                    borderRadius: BorderRadius.circular(24),
                     border: Border.all(color: const Color(0xFFCCE3F5), width: 1.5),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF00629D).withValues(alpha: 0.06),
+                        color: const Color(0xFF00629D).withValues(alpha: 0.05),
                         blurRadius: 14,
                         offset: const Offset(0, 4),
                       ),
                     ],
                   ),
-                  child: Stack(
+                  child: Column(
                     children: [
-                      // Glossy pill reflection
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        child: Transform.rotate(
-                          angle: -0.26,
-                          child: Container(
-                            width: 24,
-                            height: 7,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF00629D).withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
+                      // Tag Thử thách về đích (kèm icon 📢 duy nhất ở 3 câu cuối)
+                      if (isNearEnd) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4.5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('📢', style: TextStyle(fontSize: 12)),
+                              const SizedBox(width: 6),
+                              Text(
+                                _isEnglishGame
+                                    ? 'Final Sprint Challenge with Bee'
+                                    : 'Thử thách về đích cùng Bé Ong',
+                                style: GoogleFonts.baloo2(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF475569),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-
-                      // Audio Button using Gel Candy 3D at top right
-                      Positioned(
-                        top: 0,
-                        right: 0,
-                        child: GestureDetector(
-                          onTap: () {
-                            TtsService.instance.speakVietnamese(currentQuestion.prompt, forced: true);
-                          },
-                          child: GelCandyBadge.blue(
-                            icon: const Icon(Icons.volume_up_rounded, color: Colors.white),
-                            size: 42,
+                        const SizedBox(height: 8),
+                      ],
+                      // Khung câu hỏi phụ bên trong (Card-in-Card nền xanh nhạt Color(0xFFF0F5FA))
+                      Expanded(
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF0F5FA),
+                            borderRadius: BorderRadius.circular(20),
                           ),
-                        ),
-                      ),
-
-                      // Question content
-                      Center(
-                        child: SingleChildScrollView(
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 36.0),
-                                  child: Text(
+                          alignment: Alignment.center,
+                          child: Center(
+                            child: SingleChildScrollView(
+                              physics: const BouncingScrollPhysics(),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
                                     currentQuestion.prompt,
                                     textAlign: TextAlign.center,
                                     style: GoogleFonts.baloo2(
-                                      fontSize: 18,
+                                      fontSize: currentQuestion.prompt.length > 60
+                                          ? 17.5
+                                          : (currentQuestion.prompt.length > 30 ? 20.5 : 24.0),
                                       fontWeight: FontWeight.w800,
-                                      color: const Color(0xFF00375A),
-                                      height: 1.3,
+                                      color: const Color(0xFF00588A),
+                                      height: 1.35,
                                     ),
                                   ),
-                                ),
-                                const SizedBox(height: 16),
-                                _buildQuestionPrompt(currentQuestion),
-                              ],
+                                  if (currentQuestion.comparisonLeft != null ||
+                                      (currentQuestion.visualAsset != null &&
+                                          currentQuestion.visualAsset!.isNotEmpty)) ...[
+                                    const SizedBox(height: 10),
+                                    _buildQuestionPrompt(currentQuestion),
+                                  ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -430,18 +437,16 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
-              // 3. Answer options Grid (Pastel Toy Card Style)
+              // 4. Answer options Grid (Pastel Toy Card Style)
               Expanded(
                 flex: 3,
                 child: _buildChoicesGrid(currentQuestion),
               ),
 
-              const SizedBox(height: 12),
-
-              // 4. Bottom Mascot & Question Progress Dots
-              _buildBottomProgressDots(),
+              // Lược bỏ hoàn toàn thanh tiến trình đáy cũ
+              const SizedBox(height: 4),
             ],
           ),
         ),
@@ -449,33 +454,101 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
     );
   }
 
-  Widget _buildVisualAsset(String asset, {double height = 120.0, double fontSize = 54.0}) {
+  Widget _buildVisualAsset(
+    String asset, {
+    double? size,
+    double? height,
+    double? width,
+    double fontSize = 54.0,
+    double borderRadius = 20.0,
+  }) {
+    final double targetWidth = size ?? width ?? height ?? 136.0;
+    final double targetHeight = size ?? height ?? width ?? 136.0;
+
     if (asset.startsWith('http://') || asset.startsWith('https://')) {
-      return CachedNetworkImage(
-        imageUrl: asset,
-        height: height,
-        fit: BoxFit.contain,
-        placeholder: (context, url) => SizedBox(
-          height: height,
-          child: Center(
-            child: CircularProgressIndicator(strokeWidth: 2.5),
-          ),
+      return Container(
+        width: targetWidth,
+        height: targetHeight,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(borderRadius),
         ),
-        errorWidget: (context, url, error) => Icon(
-          Icons.broken_image_rounded,
-          color: AppColors.error,
-          size: 48,
+        clipBehavior: Clip.antiAlias,
+        child: CachedNetworkImage(
+          imageUrl: asset,
+          width: targetWidth,
+          height: targetHeight,
+          fit: BoxFit.cover,
+          fadeInDuration: const Duration(milliseconds: 150),
+          fadeOutDuration: const Duration(milliseconds: 150),
+          memCacheWidth: 400,
+          memCacheHeight: 400,
+          imageBuilder: (context, imageProvider) => Container(
+            width: targetWidth,
+            height: targetHeight,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(borderRadius),
+              image: DecorationImage(
+                image: imageProvider,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          placeholder: (context, url) => Container(
+            width: targetWidth,
+            height: targetHeight,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(borderRadius),
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+          ),
+          errorWidget: (context, url, error) => Container(
+            width: targetWidth,
+            height: targetHeight,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(borderRadius),
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.broken_image_rounded,
+                color: AppColors.error,
+                size: 40,
+              ),
+            ),
+          ),
         ),
       );
     } else if (asset.startsWith('assets/') || asset.startsWith('ImageFolder/')) {
-      return Image.asset(
-        asset,
-        height: height,
-        fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) => Icon(
-          Icons.broken_image_rounded,
-          color: AppColors.error,
-          size: 48,
+      return Container(
+        width: targetWidth,
+        height: targetHeight,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(borderRadius),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Image.asset(
+          asset,
+          width: targetWidth,
+          height: targetHeight,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Container(
+            width: targetWidth,
+            height: targetHeight,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(borderRadius),
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.broken_image_rounded,
+                color: AppColors.error,
+                size: 40,
+              ),
+            ),
+          ),
         ),
       );
     } else {
@@ -513,10 +586,10 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                     border: Border.all(color: AppColors.border),
                   ),
                   alignment: Alignment.center,
-                  child: _buildVisualAsset(question.comparisonLeft!, height: 100.0, fontSize: 46),
+                  child: _buildVisualAsset(question.comparisonLeft!, size: 100.0, fontSize: 46),
                 ),
               ),
-              SizedBox(width: 16),
+              const SizedBox(width: 16),
               // Right panel
               Expanded(
                 child: Container(
@@ -527,7 +600,7 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                     border: Border.all(color: AppColors.border),
                   ),
                   alignment: Alignment.center,
-                  child: _buildVisualAsset(question.comparisonRight!, height: 100.0, fontSize: 46),
+                  child: _buildVisualAsset(question.comparisonRight!, size: 100.0, fontSize: 46),
                 ),
               ),
             ],
@@ -536,11 +609,26 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
       );
     }
 
-    // Default question type (image/emoji)
+    // Default question type (image/emoji/math formula)
+    if (question.visualAsset == null) return const SizedBox.shrink();
+
+    final asset = question.visualAsset!;
+    final bool isImage = asset.startsWith('http://') ||
+        asset.startsWith('https://') ||
+        asset.startsWith('assets/') ||
+        asset.startsWith('ImageFolder/');
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        if (question.visualAsset != null) ...[
+        if (isImage)
+          // Thống nhất hình vuông góc bo tròn (140x140, borderRadius 20), không dùng khung
+          _buildVisualAsset(
+            asset,
+            size: 140.0,
+            borderRadius: 20.0,
+          )
+        else
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
             decoration: BoxDecoration(
@@ -548,28 +636,53 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
-            child: _buildVisualAsset(question.visualAsset!, height: 120.0, fontSize: 50),
+            child: _buildVisualAsset(asset, size: 120.0, fontSize: 50),
           ),
-        ],
       ],
     );
   }
 
+  double _calculateUniformChoiceFontSize(List<String> choices) {
+    if (choices.isEmpty) return 22.0;
+    final maxLen = choices.fold<int>(0, (max, c) => c.length > max ? c.length : max);
+    if (maxLen > 18) {
+      return 16.5;
+    } else if (maxLen > 14) {
+      return 18.0;
+    } else if (maxLen > 10) {
+      return 19.5;
+    } else if (maxLen > 5) {
+      return 22.0;
+    } else if (maxLen > 2) {
+      return 24.0;
+    } else {
+      return 28.0;
+    }
+  }
+
   Widget _buildChoicesGrid(GameQuestion question) {
+    final List<String> allChoices;
     if (widget.gameName == 'comparison') {
-      final choices = ['Bên trái', 'Bên phải', 'Bằng nhau'];
+      allChoices = const ['Bên trái', 'Bên phải', 'Bằng nhau'];
+    } else {
+      allChoices = question.choices;
+    }
+    final uniformFontSize = _calculateUniformChoiceFontSize(allChoices);
+
+    if (widget.gameName == 'comparison') {
+      final choices = allChoices;
       return Column(
         children: [
           Expanded(
             child: Row(
               children: [
-                Expanded(child: _buildChoiceButton(0, question, choices[0])),
-                SizedBox(width: 16),
-                Expanded(child: _buildChoiceButton(1, question, choices[1])),
+                Expanded(child: _buildChoiceButton(0, question, customValue: choices[0], fontSize: uniformFontSize)),
+                const SizedBox(width: 16),
+                Expanded(child: _buildChoiceButton(1, question, customValue: choices[1], fontSize: uniformFontSize)),
               ],
             ),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           Expanded(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -577,9 +690,9 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                 Expanded(
                   child: Row(
                     children: [
-                      Spacer(),
-                      Expanded(flex: 2, child: _buildChoiceButton(2, question, choices[2])),
-                      Spacer(),
+                      const Spacer(),
+                      Expanded(flex: 2, child: _buildChoiceButton(2, question, customValue: choices[2], fontSize: uniformFontSize)),
+                      const Spacer(),
                     ],
                   ),
                 ),
@@ -597,19 +710,19 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
           Expanded(
             child: Row(
               children: [
-                Expanded(child: _buildChoiceButton(0, question)),
-                SizedBox(width: 16),
-                Expanded(child: _buildChoiceButton(1, question)),
+                Expanded(child: _buildChoiceButton(0, question, fontSize: uniformFontSize)),
+                const SizedBox(width: 16),
+                Expanded(child: _buildChoiceButton(1, question, fontSize: uniformFontSize)),
               ],
             ),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           Expanded(
             child: Row(
               children: [
-                Expanded(child: _buildChoiceButton(2, question)),
-                SizedBox(width: 16),
-                Expanded(child: _buildChoiceButton(3, question)),
+                Expanded(child: _buildChoiceButton(2, question, fontSize: uniformFontSize)),
+                const SizedBox(width: 16),
+                Expanded(child: _buildChoiceButton(3, question, fontSize: uniformFontSize)),
               ],
             ),
           ),
@@ -621,13 +734,13 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
           Expanded(
             child: Row(
               children: [
-                Expanded(child: _buildChoiceButton(0, question)),
-                SizedBox(width: 16),
-                Expanded(child: _buildChoiceButton(1, question)),
+                Expanded(child: _buildChoiceButton(0, question, fontSize: uniformFontSize)),
+                const SizedBox(width: 16),
+                Expanded(child: _buildChoiceButton(1, question, fontSize: uniformFontSize)),
               ],
             ),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           Expanded(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -635,9 +748,9 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                 Expanded(
                   child: Row(
                     children: [
-                      Spacer(),
-                      Expanded(flex: 2, child: _buildChoiceButton(2, question)),
-                      Spacer(),
+                      const Spacer(),
+                      Expanded(flex: 2, child: _buildChoiceButton(2, question, fontSize: uniformFontSize)),
+                      const Spacer(),
                     ],
                   ),
                 ),
@@ -649,9 +762,9 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
     } else if (choicesCount == 2) {
       return Row(
         children: [
-          Expanded(child: _buildChoiceButton(0, question)),
-          SizedBox(width: 16),
-          Expanded(child: _buildChoiceButton(1, question)),
+          Expanded(child: _buildChoiceButton(0, question, fontSize: uniformFontSize)),
+          const SizedBox(width: 16),
+          Expanded(child: _buildChoiceButton(1, question, fontSize: uniformFontSize)),
         ],
       );
     } else {
@@ -663,7 +776,7 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
               padding: const EdgeInsets.only(bottom: 12.0),
               child: Row(
                 children: [
-                  Expanded(child: _buildChoiceButton(index, question)),
+                  Expanded(child: _buildChoiceButton(index, question, fontSize: uniformFontSize)),
                 ],
               ),
             ),
@@ -673,84 +786,183 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
     }
   }
 
-  Widget _buildChoiceButton(int index, GameQuestion question, [String? customValue]) {
+  Widget _buildChoiceButton(
+    int index,
+    GameQuestion question, {
+    String? customValue,
+    double? fontSize,
+  }) {
     final choiceValue = customValue ?? question.choices[index];
     final isSelected = (_selectedChoiceIndex == index);
-    final isCorrectOption = (choiceValue == question.correctAnswer);
 
-    bool? isCorrectResult;
-    if (_hasAnswered) {
-      if (isSelected) {
-        isCorrectResult = isCorrectOption;
-      } else if (isCorrectOption) {
-        isCorrectResult = true; // Nổi bật đáp án đúng khi người dùng chọn sai
-      }
-    }
-
-    final labels = ['LỰA CHỌN A', 'LỰA CHỌN B', 'LỰA CHỌN C', 'LỰA CHỌN D'];
+    final labels = ['(A)', '(B)', '(C)', '(D)'];
     final colors = PastelToyCardColor.standardFour;
 
     return PastelToyCard(
       label: labels[index % 4],
       title: choiceValue,
+      fontSize: fontSize,
       colorConfig: colors[index % 4],
       isSelected: isSelected,
-      isCorrect: isCorrectResult,
+      isCorrect: null, // Tắt tự động chọn/tiết lộ đáp án khi chơi, xem ở report cuối cùng
       height: double.infinity,
       onTap: _hasAnswered ? null : () => _handleAnswer(index, choiceValue),
     );
   }
 
-  Widget _buildBottomProgressDots() {
+  String _getMascotDialogue(int remaining) {
+    if (_isEnglishGame) {
+      if (remaining == 1) {
+        return 'Keep going! Only 1 question left! 🐝';
+      } else if (remaining == 2) {
+        return 'Keep going! Only 2 questions left! 🐝';
+      } else if (remaining == 3) {
+        return 'Keep going! Only 3 questions left! 🐝';
+      }
+      return 'Let\'s solve fast with Bee and bring sweet honey home!';
+    }
+
+    if (remaining == 1) {
+      return 'Cố lên! Chỉ còn 1 câu nữa thôi bé ơi! 🐝';
+    } else if (remaining == 2) {
+      return 'Cố lên! Còn 2 câu nữa thôi bé ơi! 🐝';
+    } else if (remaining == 3) {
+      return 'Cố lên! Còn 3 câu nữa thôi bé ơi! 🐝';
+    }
+    return 'Cùng Bé Ong tính thật nhanh để mang mật ngọt về tổ nào!';
+  }
+
+  Widget _buildMascotCard(int remaining) {
+    final total = widget.questions.length;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Color(0xFFFEF3C7),
-            ),
-            child: const Center(
-              child: Text('🐝', style: TextStyle(fontSize: 16)),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Row(
-              children: List.generate(widget.questions.length, (i) {
-                final res = (i < _questionResults.length) ? _questionResults[i] : null;
-                Color barColor = const Color(0xFFE2E8F0);
-                if (res != null) {
-                  barColor = res ? const Color(0xFF00B460) : const Color(0xFFBA1A1A);
-                } else if (i == _currentQuestionIndex) {
-                  barColor = const Color(0xFFFE9D00);
-                }
-                return Expanded(
-                  child: Container(
-                    height: 5,
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Avatar Bé Ong (huy hiệu ngôi sao xanh chỉ xuất hiện khi còn 3 câu cuối)
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
                     decoration: BoxDecoration(
-                      color: barColor,
-                      borderRadius: BorderRadius.circular(3),
+                      color: const Color(0xFFFEF3C7),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFFFDE68A), width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFD97706).withValues(alpha: 0.15),
+                          blurRadius: 5,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
+                    alignment: Alignment.center,
+                    child: const Text('🐝', style: TextStyle(fontSize: 22)),
                   ),
-                );
-              }),
-            ),
+                  if (remaining <= 3)
+                    Positioned(
+                      top: -1,
+                      right: -1,
+                      child: Container(
+                        width: 15,
+                        height: 15,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF16A34A),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1.5),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(Icons.star_rounded, size: 9, color: Colors.white),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(width: 10),
+
+              // Tên Mascot + Số câu + Câu thoại
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _isEnglishGame ? 'Smart Bee' : 'Bé Ong Học Đi',
+                          style: GoogleFonts.baloo2(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF92400E),
+                          ),
+                        ),
+                        Text(
+                          _isEnglishGame
+                              ? 'Question ${_currentQuestionIndex + 1} / $total'
+                              : 'Câu ${_currentQuestionIndex + 1} / $total',
+                          style: GoogleFonts.baloo2(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      _getMascotDialogue(remaining),
+                      style: GoogleFonts.baloo2(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF334155),
+                        height: 1.25,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 9),
+
+          // Thanh tiến trình phân đoạn
+          Row(
+            children: List.generate(total, (i) {
+              final isDone = i < _currentQuestionIndex;
+              final isCurrent = i == _currentQuestionIndex;
+              Color segColor = const Color(0xFFFDE68A);
+              if (isDone) {
+                segColor = const Color(0xFF047857); // xanh lá đậm như hình screentinhnhanh
+              } else if (isCurrent) {
+                segColor = const Color(0xFFF59E0B); // vàng amber câu hiện tại
+              }
+              return Expanded(
+                child: Container(
+                  height: 6,
+                  margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                  decoration: BoxDecoration(
+                    color: segColor,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              );
+            }),
           ),
         ],
       ),
@@ -759,18 +971,21 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
 
   void _showQuitConfirmation() {
     _timerController.stop();
+    final isEng = _isEnglishGame;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Thoát Trò Chơi?'),
-        content: Text('Tiến trình chơi và điểm số của lượt này sẽ không được lưu lại.'),
+        title: Text(isEng ? 'Quit Game?' : 'Thoát Trò Chơi?'),
+        content: Text(isEng
+            ? 'Your current game progress and score will not be saved.'
+            : 'Tiến trình chơi và điểm số của lượt này sẽ không được lưu lại.'),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.pop(context); // Đóng dialog
               _timerController.forward(); // Tiếp tục đếm ngược
             },
-            child: Text('Chơi tiếp'),
+            child: Text(isEng ? 'Keep Playing' : 'Chơi tiếp'),
           ),
           TextButton(
             onPressed: () {
@@ -778,7 +993,7 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
               Navigator.pop(context); // Thoát game
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: Text('Thoát'),
+            child: Text(isEng ? 'Quit' : 'Thoát'),
           ),
         ],
       ),
@@ -787,6 +1002,7 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
 
   Widget _buildSummaryView() {
     final stars = _stars;
+    final isEng = _isEnglishGame;
 
     return Scaffold(
       body: SafeArea(
@@ -811,10 +1027,12 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                   ),
                 ),
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               
               Text(
-                stars > 0 ? 'Tuyệt Vời! 🎉' : 'Lần Sau Cố Gắng Hơn Nhé!',
+                stars > 0
+                    ? (isEng ? 'Awesome! 🎉' : 'Tuyệt Vời! 🎉')
+                    : (isEng ? 'Keep Trying! 💪' : 'Lần Sau Cố Gắng Hơn Nhé!'),
                 textAlign: TextAlign.center,
                 style: GoogleFonts.baloo2(
                   fontSize: 20,
@@ -822,17 +1040,19 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                   color: AppColors.textPrimary,
                 ),
               ),
-              SizedBox(height: 4),
+              const SizedBox(height: 4),
               
               Text(
-                'Bạn đã trả lời đúng $_correctAnswersCount/${widget.questions.length} câu đố trong $_elapsedTimeString.',
+                isEng
+                    ? 'You answered $_correctAnswersCount/${widget.questions.length} questions correctly in $_elapsedTimeString.'
+                    : 'Bạn đã trả lời đúng $_correctAnswersCount/${widget.questions.length} câu đố trong $_elapsedTimeString.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.baloo2(
                   fontSize: 12,
                   color: AppColors.textSecondary,
                 ),
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
 
               // Animated Star Rating
               Row(
@@ -854,7 +1074,7 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                   );
                 }),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               // Time & Score Cards
               Row(
@@ -869,10 +1089,10 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                       child: Column(
                         children: [
                           Text(
-                            'Thời gian',
+                            isEng ? 'Time' : 'Thời gian',
                             style: GoogleFonts.baloo2(fontSize: 10, color: AppColors.primary),
                           ),
-                          SizedBox(height: 2),
+                          const SizedBox(height: 2),
                           Text(
                             _elapsedTimeString,
                             style: GoogleFonts.baloo2(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
@@ -881,7 +1101,7 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                       ),
                     ),
                   ),
-                  SizedBox(width: 16),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -892,10 +1112,10 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                       child: Column(
                         children: [
                           Text(
-                            'Điểm cộng',
+                            isEng ? 'Score Earned' : 'Điểm cộng',
                             style: GoogleFonts.baloo2(fontSize: 10, color: AppColors.success),
                           ),
-                          SizedBox(height: 2),
+                          const SizedBox(height: 2),
                           Text(
                             '+$_score',
                             style: GoogleFonts.baloo2(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.success),
@@ -911,23 +1131,24 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
 
               MiniGameRankBanner(
                 gameName: widget.gameName,
-                gameTitle: widget.gameTitle,
+                gameTitle: isEng ? GameCodeRegistry.getEnglishDisplayName(widget.gameName) : widget.gameTitle,
                 currentScore: _score,
+                isEnglish: isEng,
               ),
 
               // Detailed results table
               const SizedBox(height: 24),
               Text(
-                'Chi Tiết Kết Quả 📊',
+                isEng ? 'Result Details 📊' : 'Chi Tiết Kết Quả 📊',
                 style: GoogleFonts.baloo2(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
                 ),
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               _buildResultsTable(),
-              SizedBox(height: 28),
+              const SizedBox(height: 28),
               
               // End game action button
               Center(
@@ -944,19 +1165,24 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       elevation: 0,
+                      padding: EdgeInsets.zero,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(24),
                       ),
                     ),
                     child: _isSavingScore
-                        ? SizedBox(
+                        ? const SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                           )
                         : Text(
-                            'Quay lại danh mục',
-                            style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, fontSize: 14),
+                            isEng ? 'Back to Menu' : 'Quay lại danh mục',
+                            style: GoogleFonts.baloo2(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              height: 1.2,
+                            ),
                           ),
                   ),
                 ),
@@ -1030,6 +1256,8 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
         ? ['Bên trái', 'Bên phải', 'Bằng nhau']
         : question.choices;
 
+    final isEng = _isEnglishGame;
+
     showDialog(
       context: context,
       builder: (context) {
@@ -1046,7 +1274,7 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Câu hỏi ${index + 1}',
+                      isEng ? 'Question ${index + 1}' : 'Câu hỏi ${index + 1}',
                       style: GoogleFonts.baloo2(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -1054,12 +1282,12 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                       ),
                     ),
                     IconButton(
-                      icon: Icon(Icons.close_rounded),
+                      icon: const Icon(Icons.close_rounded),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ],
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -1071,7 +1299,7 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                     children: [
                       if (question.visualAsset != null) ...[
                         _buildVisualAsset(question.visualAsset!, height: 80.0, fontSize: 34),
-                        SizedBox(height: 12),
+                        const SizedBox(height: 12),
                       ],
                       if (question.comparisonLeft != null && question.comparisonRight != null) ...[
                         Row(
@@ -1088,7 +1316,7 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                                 child: _buildVisualAsset(question.comparisonLeft!, height: 60.0, fontSize: 30),
                               ),
                             ),
-                            SizedBox(width: 12),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Container(
                                 height: 80,
@@ -1103,7 +1331,7 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                             ),
                           ],
                         ),
-                        SizedBox(height: 12),
+                        const SizedBox(height: 12),
                       ],
                       Text(
                         question.prompt,
@@ -1117,16 +1345,16 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                     ],
                   ),
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 Text(
-                  'Các đáp án:',
+                  isEng ? 'Options:' : 'Các đáp án:',
                   style: GoogleFonts.baloo2(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textSecondary,
                   ),
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Column(
                   children: choices.map((choice) {
                     final isCorrectAnswer = choice == question.correctAnswer;
@@ -1141,12 +1369,12 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                       itemBgColor = AppColors.success.withValues(alpha: 0.12);
                       itemBorderColor = AppColors.success;
                       itemTextColor = AppColors.success;
-                      suffixIcon = Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20);
+                      suffixIcon = const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20);
                     } else if (isUserSelection) {
                       itemBgColor = AppColors.error.withValues(alpha: 0.12);
                       itemBorderColor = AppColors.error;
                       itemTextColor = AppColors.error;
-                      suffixIcon = Icon(Icons.cancel_rounded, color: AppColors.error, size: 20);
+                      suffixIcon = const Icon(Icons.cancel_rounded, color: AppColors.error, size: 20);
                     }
 
                     return Container(
@@ -1178,7 +1406,7 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                   }).toList(),
                 ),
                 if (userAnswer == null) ...[
-                  SizedBox(height: 12),
+                  const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
@@ -1189,10 +1417,10 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.timer_outlined, color: Colors.orange, size: 16),
-                        SizedBox(width: 8),
+                        const Icon(Icons.timer_outlined, color: Colors.orange, size: 16),
+                        const SizedBox(width: 8),
                         Text(
-                          'Đã hết thời gian chọn đáp án! ⏳',
+                          isEng ? 'Time ran out! ⏳' : 'Đã hết thời gian chọn đáp án! ⏳',
                           style: GoogleFonts.baloo2(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
@@ -1218,8 +1446,13 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
   Widget _buildComparisonGameLayout(
     GameQuestion question,
     double progress,
-    Color timerColor,
-  ) {
+    Color timerColor, {
+    required bool isNearEnd,
+    required int remaining,
+    required int remainingSeconds,
+    required Color timerBg,
+    required Color timerBorder,
+  }) {
     final leftItems = question.comparisonLeft != null
         ? question.comparisonLeft!.characters.toList()
         : <String>[];
@@ -1250,13 +1483,13 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.close_rounded, color: AppColors.textPrimary),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
           onPressed: () => _showQuitConfirmation(),
         ),
         actions: const [
           Padding(
-            padding: EdgeInsets.only(right: 8),
-            child: GameSoundToggleButton(),
+            padding: EdgeInsets.only(right: 12),
+            child: GameSoundToggleButton(padding: EdgeInsets.zero),
           ),
         ],
       ),
@@ -1270,37 +1503,59 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Câu hỏi ${_currentQuestionIndex + 1}/${widget.questions.length}',
-                    style: GoogleFonts.baloo2(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textSecondary,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isNearEnd ? const Color(0xFFFFFBEB) : const Color(0xFFE0F2FE),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isNearEnd ? const Color(0xFFFDE68A) : const Color(0xFFBAE6FD),
+                      ),
                     ),
+                    child: isNearEnd
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.stars_rounded, color: Color(0xFFD97706), size: 15),
+                              const SizedBox(width: 5),
+                              Text(
+                                _isEnglishGame
+                                    ? 'Question ${_currentQuestionIndex + 1}/${widget.questions.length} • Final Sprint'
+                                    : 'Câu ${_currentQuestionIndex + 1}/${widget.questions.length} • Về đích',
+                                style: GoogleFonts.baloo2(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFFB45309),
+                                ),
+                              ),
+                            ],
+                          )
+                        : Text(
+                            _isEnglishGame
+                                ? 'Question ${_currentQuestionIndex + 1}/${widget.questions.length}'
+                                : 'Câu ${_currentQuestionIndex + 1}/${widget.questions.length}',
+                            style: GoogleFonts.baloo2(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF0284C7),
+                            ),
+                          ),
                   ),
-                  GameCountdownTimer(
-                    progress: 1.0 - _timerController.value,
-                    remainingSeconds: (widget.timeLimitInSeconds -
-                            (_timerController.value * widget.timeLimitInSeconds).floor())
-                        .clamp(0, widget.timeLimitInSeconds),
-                    totalSeconds: widget.timeLimitInSeconds,
-                    customColor: timerColor,
-                    size: 42,
+                  GameCountUpTimer(
+                    elapsedSeconds: remainingSeconds,
+                    margin: EdgeInsets.zero,
+                    bgColor: timerBg,
+                    borderColor: timerBorder,
+                    textColor: timerColor,
                   ),
                 ],
               ),
               const SizedBox(height: 10),
 
-              // 2. Linear progress bar
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  backgroundColor: AppColors.border,
-                  color: AppColors.primary,
-                  minHeight: 7,
-                ),
-              ),
+              // 2. Thẻ Bé Ong Hội Thoại & Thanh Tiến Trình (LUÔN HIỆN XUYÊN SUỐT GAME)
+              _buildMascotCard(remaining),
+              const SizedBox(height: 10),
+              const SizedBox(height: 14),
 
               // 3. Main Centered Interactive Area (Prompt + Comparison Boxes + Bottom Hint)
               // Đưa toàn bộ vào khối căn giữa để khoảng cách trên (từ progress bar) và khoảng cách dưới (đáy màn hình) cân đối tuyệt đối
@@ -1313,41 +1568,61 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Hộp câu hỏi: căn chỉnh icon và text cân đối đều trên dưới
+                          // Tag Thử thách về đích chỉ xuất hiện khi còn 3 câu cuối
+                          if (isNearEnd) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4.5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text('📢', style: TextStyle(fontSize: 12)),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    _isEnglishGame
+                                        ? 'Final Sprint Challenge with Bee'
+                                        : 'Thử thách về đích cùng Bé Ong',
+                                    style: GoogleFonts.baloo2(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF475569),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+
+                          // Khung câu hỏi dạng Card-in-Card nền Color(0xFFF0F5FA), chữ in đậm #00588A
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
                             decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(color: AppColors.border),
+                              color: const Color(0xFFF0F5FA),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFFCCE3F5), width: 1.2),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.03),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
+                                  color: const Color(0xFF00629D).withValues(alpha: 0.04),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
                                 ),
                               ],
                             ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.touch_app_rounded, color: AppColors.primary, size: 22),
-                                const SizedBox(width: 8),
-                                Flexible(
-                                  child: Text(
-                                    question.prompt,
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.baloo2(
-                                      fontSize: 16.5,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.textPrimary,
-                                      height: 1.25,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              question.prompt,
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.baloo2(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                color: const Color(0xFF00588A),
+                                height: 1.3,
+                              ),
                             ),
                           ),
 
@@ -1434,24 +1709,10 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
     required Color defaultBorderColor,
     required Color themeColor,
   }) {
-    Widget? statusBadge;
-
-    if (_hasAnswered) {
-      if (isSelected) {
-        if (isCorrectChoice) {
-          statusBadge = const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 24);
-        } else {
-          statusBadge = const Icon(Icons.cancel_rounded, color: AppColors.error, size: 24);
-        }
-      } else if (isCorrectChoice) {
-        // Gợi ý đáp án đúng nếu bé chọn sai
-        statusBadge = const Icon(Icons.check_circle_outline_rounded, color: AppColors.success, size: 22);
-      }
-    }
-
+    // Tắt tự động hiển thị đáp án đúng/sai trong lúc chơi, chỉ hiển thị ở report cuối cùng
     return _GlowingTouchBox(
       isSelected: isSelected,
-      isCorrectChoice: isCorrectChoice,
+      isCorrectChoice: false,
       hasAnswered: _hasAnswered,
       defaultBgColor: defaultBgColor,
       defaultBorderColor: defaultBorderColor,
@@ -1463,7 +1724,7 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
         child: Column(
           mainAxisSize: MainAxisSize.min, // Tự động co giãn theo nội dung
           children: [
-            // Top tag: label + status icon
+            // Top tag: label
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -1483,10 +1744,7 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
                     ),
                   ),
                 ),
-                if (statusBadge != null)
-                  statusBadge
-                else
-                  const SizedBox(width: 22, height: 22),
+                const SizedBox(width: 22, height: 22),
               ],
             ),
             const SizedBox(height: 12),
@@ -1558,31 +1816,14 @@ class _MultipleChoiceGameScreenState extends ConsumerState<MultipleChoiceGameScr
     required bool isSelected,
     required bool isCorrectChoice,
   }) {
-    Color btnColor = Colors.white;
-    Color borderColor = const Color(0xFFE2E8F0);
-    Color iconColor = const Color(0xFF475569);
-
-    if (_hasAnswered) {
-      if (isSelected) {
-        if (isCorrectChoice) {
-          btnColor = const Color(0xFFECFDF5);
-          borderColor = AppColors.success;
-          iconColor = AppColors.success;
-        } else {
-          btnColor = const Color(0xFFFFF1F2);
-          borderColor = AppColors.error;
-          iconColor = AppColors.error;
-        }
-      } else if (isCorrectChoice) {
-        borderColor = AppColors.success;
-        iconColor = AppColors.success;
-      }
-    }
+    Color btnColor = isSelected ? const Color(0xFFEFF6FF) : Colors.white;
+    Color borderColor = isSelected ? AppColors.primary : const Color(0xFFE2E8F0);
+    Color iconColor = isSelected ? AppColors.primary : const Color(0xFF475569);
 
     return Center(
       child: _GlowingTouchBox(
         isSelected: isSelected,
-        isCorrectChoice: isCorrectChoice,
+        isCorrectChoice: false,
         hasAnswered: _hasAnswered,
         defaultBgColor: btnColor,
         defaultBorderColor: borderColor,
@@ -1690,21 +1931,9 @@ class _GlowingTouchBoxState extends State<_GlowingTouchBox>
     Color activeGlowColor = widget.themeColor;
     Color staticBorderColor = widget.defaultBorderColor;
 
-    if (widget.hasAnswered) {
-      if (widget.isSelected) {
-        if (widget.isCorrectChoice) {
-          bgColor = const Color(0xFFECFDF5);
-          activeGlowColor = AppColors.success;
-          staticBorderColor = AppColors.success;
-        } else {
-          bgColor = const Color(0xFFFFF1F2);
-          activeGlowColor = AppColors.error;
-          staticBorderColor = AppColors.error;
-        }
-      } else if (widget.isCorrectChoice) {
-        staticBorderColor = AppColors.success;
-        activeGlowColor = AppColors.success;
-      }
+    if (widget.hasAnswered && widget.isSelected) {
+      activeGlowColor = widget.themeColor;
+      staticBorderColor = widget.themeColor;
     }
 
     final isGlowActive = _isHovered || widget.isSelected;
@@ -1743,7 +1972,7 @@ class _GlowingTouchBoxState extends State<_GlowingTouchBox>
                       ? null // Vẽ bằng CustomPaint viền sáng chạy
                       : Border.all(
                           color: staticBorderColor,
-                          width: widget.hasAnswered && widget.isCorrectChoice ? 3.0 : 2.0,
+                          width: widget.hasAnswered && widget.isSelected ? 2.5 : 2.0,
                         ),
                   boxShadow: [
                     BoxShadow(
@@ -1766,7 +1995,7 @@ class _GlowingTouchBoxState extends State<_GlowingTouchBox>
   }
 }
 
-/// CustomPainter vẽ viền ánh sáng chạy quanh khung chữ nhật
+/// CustomPainter vẽ viền ánh sáng quét xoay quanh khung chữ nhật
 class _GlowSweepBorderPainter extends CustomPainter {
   final double progress;
   final Color glowColor;

@@ -320,6 +320,26 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
             await prefs.setString('cached_user_avatar_$email', finalPath);
           }
 
+          // 4. Tự động đồng bộ link ảnh đại diện lên Supabase profiles
+          try {
+            final supabase = SupabaseService.instance;
+            if (supabase.hasSession) {
+              final uid = supabase.client.auth.currentUser?.id;
+              if (uid != null && finalPath.isNotEmpty) {
+                await supabase.client
+                    .from(SupabaseConstants.tableProfiles)
+                    .update({
+                      'avatar_url': finalPath,
+                      'updated_at': DateTime.now().toIso8601String(),
+                    })
+                    .eq('id', uid);
+                debugPrint('ProfileDetailScreen: Đã lưu avatar lên Supabase: $finalPath');
+              }
+            }
+          } catch (e) {
+            debugPrint('ProfileDetailScreen: Lỗi lưu avatar lên Supabase: $e');
+          }
+
           setState(() {
             _avatarPath = finalPath;
             _isLoading = false;
@@ -360,7 +380,7 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [

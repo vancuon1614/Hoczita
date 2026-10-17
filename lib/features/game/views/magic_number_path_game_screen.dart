@@ -6,7 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
 import 'dart:math';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/services/supabase_service.dart';
+import '../../../core/services/game_score_sync_service.dart';
 import '../../../core/constants/game_strings.dart';
 import '../../../core/widgets/mini_game_timer.dart';
 import '../../../core/widgets/game_sound_toggle_button.dart';
@@ -465,19 +465,12 @@ class _MagicNumberPathGameScreenState extends ConsumerState<MagicNumberPathGameS
       _isGameOver = true;
     });
 
-    int targetSeconds = _openCellsCount * 2;
-    int stars = 1;
-    if (_secondsElapsed <= targetSeconds) {
-      stars = 3;
-    } else if (_secondsElapsed <= (targetSeconds * 1.5).round()) {
-      stars = 2;
-    }
-
     try {
-      await SupabaseService.instance.saveScore(
-        gameName: 'magic_number_path',
-        stars: stars,
+      await GameScoreSyncService.instance.saveScoreParallel(
+        gameCodeOrName: 'M06',
+        level: '1',
         score: score,
+        stars: 0,
         durationSeconds: _secondsElapsed,
       );
     } catch (e) {
@@ -547,19 +540,11 @@ class _MagicNumberPathGameScreenState extends ConsumerState<MagicNumberPathGameS
   @override
   Widget build(BuildContext context) {
     if (_isGameOver) {
-      int targetSeconds = _openCellsCount * 2;
-      int stars = 1;
-      if (_secondsElapsed <= targetSeconds) {
-        stars = 3;
-      } else if (_secondsElapsed <= (targetSeconds * 1.5).round()) {
-        stars = 2;
-      }
-
       return ResultReportSheet(
         gameType: GameType.zip,
-        starCount: stars,
+        starCount: 0,
         elapsedTime: Duration(seconds: _secondsElapsed),
-        showStars: true,
+        showStars: false,
         gameName: 'magic_number_path',
         gameTitle: 'Magic Number Path',
         score: _score,
@@ -583,6 +568,44 @@ class _MagicNumberPathGameScreenState extends ConsumerState<MagicNumberPathGameS
         child: Column(
           children: [
             _buildAppBar(),
+            // Subheader Row: Replay button on Left, Timer Pill on Right (Standard Layout)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton.icon(
+                    onPressed: _replay,
+                    icon: const Icon(
+                      Icons.refresh_rounded,
+                      size: 15,
+                      color: AppColors.textPrimary,
+                    ),
+                    label: Text(
+                      'Chơi lại',
+                      style: GoogleFonts.baloo2(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      backgroundColor: Colors.grey.shade200,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                  GameCountUpTimer(
+                    elapsedSeconds: _secondsElapsed,
+                    margin: EdgeInsets.zero,
+                  ),
+                ],
+              ),
+            ),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -605,56 +628,27 @@ class _MagicNumberPathGameScreenState extends ConsumerState<MagicNumberPathGameS
 
   Widget _buildAppBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
       child: Row(
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
             onPressed: () => Navigator.pop(context),
           ),
-          TextButton.icon(
-            onPressed: _replay,
-            icon: const Icon(
-              Icons.refresh_rounded,
-              size: 16,
-              color: AppColors.textPrimary,
-            ),
-            label: Text(
-              'Chơi lại',
-              style: GoogleFonts.baloo2(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                side: BorderSide(color: Colors.grey.shade400),
-              ),
-            ),
-          ),
           Expanded(
             child: Center(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  'Đường Số Diệu Kỳ',
-                  style: GoogleFonts.baloo2(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
+              child: Text(
+                'Đường Số Diệu Kỳ',
+                style: GoogleFonts.baloo2(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
                 ),
               ),
             ),
           ),
           const GameSoundToggleButton(),
-          GameCountUpTimer(elapsedSeconds: _secondsElapsed),
-          const SizedBox(width: 4),
+          const SizedBox(width: 8),
         ],
       ),
     );

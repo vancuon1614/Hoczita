@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/constants/supabase_constants.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/services/api_service.dart';
 
@@ -108,6 +109,26 @@ class AuthNotifier extends Notifier<AuthState> {
       final email = userInfo?['email'] ?? '';
       final username =
           userInfo?['name'] ?? userInfo?['username'] ?? email.split('@')[0];
+      final avatar = (userInfo?['avatar'] ?? '').toString().trim();
+
+      // Tự động kiểm tra và đồng bộ avatar từ API NKS lên Supabase nếu có session
+      if (avatar.isNotEmpty && _service.hasSession) {
+        final userId = _service.client.auth.currentUser?.id;
+        if (userId != null) {
+          _service.client
+              .from(SupabaseConstants.tableProfiles)
+              .update({
+                'avatar_url': avatar,
+                'username': username,
+                'updated_at': DateTime.now().toIso8601String(),
+              })
+              .eq('id', userId)
+              .catchError((e) {
+                debugPrint('Lỗi auto-sync avatar lên Supabase: $e');
+              });
+        }
+      }
+
       state = AuthState(
         status: AuthStatus.authenticated,
         email: email.isNotEmpty ? email : 'guest@hoczita.edu.vn',
@@ -193,6 +214,30 @@ class AuthNotifier extends Notifier<AuthState> {
             }
           } catch (syncError) {
             debugPrint('Lỗi đồng bộ Supabase qua Edge Function: $syncError');
+          }
+
+          // Tự động lưu link ảnh avatar từ NKS API lên Supabase profiles
+          final avatarUrl = (userInfo?['avatar'] ?? '').toString().trim();
+          if (avatarUrl.isNotEmpty) {
+            try {
+              final supabase = SupabaseService.instance;
+              if (supabase.hasSession) {
+                final userId = supabase.client.auth.currentUser?.id;
+                if (userId != null) {
+                  await supabase.client
+                      .from(SupabaseConstants.tableProfiles)
+                      .update({
+                        'avatar_url': avatarUrl,
+                        'username': username,
+                        'updated_at': DateTime.now().toIso8601String(),
+                      })
+                      .eq('id', userId);
+                  debugPrint('Đã tự động lưu avatar từ NKS API lên Supabase: $avatarUrl');
+                }
+              }
+            } catch (e) {
+              debugPrint('Lỗi đồng bộ avatar lên Supabase sau đăng nhập: $e');
+            }
           }
 
           return true;

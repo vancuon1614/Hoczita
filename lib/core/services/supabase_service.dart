@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../constants/supabase_constants.dart';
+import '../constants/game_code_registry.dart';
+import 'api_service.dart';
 
 class SupabaseService {
   static final SupabaseService instance = SupabaseService._internal();
@@ -127,8 +129,19 @@ class SupabaseService {
     if (isOfflineDemoMode) {
       return _mockUsername;
     }
+    // NKS cached user info should have highest priority to match authProvider and member submitted
+    final nksInfo = ApiService.instance.cachedUserInfo;
+    if (nksInfo != null) {
+      final nksName = nksInfo['name']?.toString() ?? nksInfo['username']?.toString();
+      if (nksName != null && nksName.trim().isNotEmpty) {
+        return nksName.trim();
+      }
+    }
     // Trong Supabase, username được lưu trong raw_user_meta_data hoặc bảng profiles
-    return client.auth.currentUser?.userMetadata?['username'] ?? currentUserEmail?.split('@')[0];
+    return client.auth.currentUser?.userMetadata?['name'] ??
+        client.auth.currentUser?.userMetadata?['full_name'] ??
+        client.auth.currentUser?.userMetadata?['username'] ??
+        currentUserEmail?.split('@')[0];
   }
 
   // Database Operations - Scores
@@ -184,12 +197,24 @@ class SupabaseService {
     try {
       final userId = client.auth.currentUser?.id;
       if (userId == null) return 0;
+
+      // Tính toán trực tiếp từ game_scores để chuẩn hóa và loại bỏ điểm test cũ (Phương án B)
       final response = await client
-          .from(SupabaseConstants.tableProfiles)
-          .select('total_score')
-          .eq('id', userId)
-          .single();
-      return response['total_score'] as int? ?? 0;
+          .from(SupabaseConstants.tableGameScores)
+          .select('score, game_name')
+          .eq('profile_id', userId);
+
+      int total = 0;
+      for (final r in response) {
+        final g = r['game_name']?.toString() ?? '';
+        final s = r['score'] as int? ?? 0;
+        // Bỏ qua điểm test cũ của Bảng cửu chương (Phương án B)
+        if (_isGameMatch(g, 'multiplication_table') && s >= 300) {
+          continue;
+        }
+        total += s;
+      }
+      return total;
     } catch (e) {
       debugPrint('Get total score error: $e');
       return 0;
@@ -359,7 +384,7 @@ class SupabaseService {
     try {
       final response = await client
           .from(SupabaseConstants.tableProfiles)
-          .select('username, total_score')
+          .select('username, total_score, avatar_url')
           .order('total_score', ascending: false)
           .limit(10);
       return List<Map<String, dynamic>>.from(response);
@@ -541,32 +566,9 @@ class SupabaseService {
     }
 
     try {
-      if (gameName == null && timePeriod == 'all') {
-        final response = await client
-            .from(SupabaseConstants.tableProfiles)
-            .select('username, total_score')
-            .order('total_score', ascending: false)
-            .limit(10);
-        return List<Map<String, dynamic>>.from(response);
-      }
-
       var query = client
           .from('game_scores')
-          .select('score, game_name, completed_at, profiles(username)');
-
-      if (gameName != null) {
-        if (gameName.contains('_easy') || 
-            gameName.contains('_medium') || 
-            gameName.contains('_hard') ||
-            gameName.contains('_expert') ||
-            gameName.contains('_master') ||
-            gameName.contains('_extreme')) {
-          query = query.eq('game_name', gameName);
-        } else {
-          // Lấy chính xác hoặc các biến thể độ khó của game riêng lẻ đó
-          query = query.or('game_name.eq.$gameName,game_name.like.$gameName\\_%');
-        }
-      }
+          .select('score, game_name, completed_at, profiles(username, avatar_url)');
 
       final DateTime now = DateTime.now();
       DateTime? startDate;
@@ -580,15 +582,69 @@ class SupabaseService {
         query = query.gte('completed_at', startDate.toIso8601String());
       }
 
-      final response = await query;
+      final response = await query.order('completed_at', ascending: true);
       final List<dynamic> rows = response as List<dynamic>;
 
-      final Map<String, int> userScores = {};
-      for (final row in rows) {
+      // Khử trùng lặp (deduplication):
+      // Nếu cùng 1 người chơi có các lần lưu cùng điểm số trong vòng 15 giây
+      // (do game screen và sync service cùng lưu đồng thời), chỉ giữ lại 1 bản ghi duy nhất.
+      final Map<String, Map<String, dynamic>> lastSubmissionByUser = {};
+      final List<Map<String, dynamic>> dedupedRows = [];
+
+      for (final raw in rows) {
+        final row = raw as Map<String, dynamic>;
         final profile = row['profiles'] as Map<String, dynamic>?;
         final String username = profile?['username']?.toString() ?? 'Ẩn danh';
         final int score = row['score'] as int? ?? 0;
+        final String rawGameName = row['game_name']?.toString() ?? '';
+
+        // Bỏ qua các bản ghi test cũ của Bảng cửu chương có điểm bất thường (>= 300) theo Phương án B
+        if (_isGameMatch(rawGameName, 'multiplication_table') && score >= 300) {
+          continue;
+        }
+
+        final String? completedAtStr = row['completed_at']?.toString();
+        final DateTime? completedAt = completedAtStr != null ? DateTime.tryParse(completedAtStr) : null;
+
+        if (completedAt != null && lastSubmissionByUser.containsKey(username)) {
+          final last = lastSubmissionByUser[username]!;
+          final lastScore = last['score'] as int;
+          final lastTime = last['time'] as DateTime;
+          final diffSec = completedAt.difference(lastTime).inSeconds.abs();
+
+          if (diffSec <= 15 && score == lastScore) {
+            // Bản ghi trùng lặp trong 15s -> Bỏ qua
+            continue;
+          }
+        }
+
+        if (completedAt != null) {
+          lastSubmissionByUser[username] = {
+            'score': score,
+            'time': completedAt,
+            'game_name': rawGameName,
+          };
+        }
+        dedupedRows.add(row);
+      }
+
+      final Map<String, int> userScores = {};
+      final Map<String, String?> userAvatars = {};
+
+      for (final row in dedupedRows) {
+        final profile = row['profiles'] as Map<String, dynamic>?;
+        final String username = profile?['username']?.toString() ?? 'Ẩn danh';
+        final String? avatarUrl = profile?['avatar_url']?.toString();
+        if (avatarUrl != null && avatarUrl.isNotEmpty) {
+          userAvatars[username] = avatarUrl;
+        }
+        final int score = row['score'] as int? ?? 0;
+        final String rawGameName = row['game_name']?.toString() ?? '';
+
         if (gameName != null) {
+          if (!_isGameMatch(rawGameName, gameName)) {
+            continue;
+          }
           // Xếp hạng game riêng lẻ: lấy điểm cao nhất (high score) của mỗi người chơi trong game đó
           userScores[username] = max(userScores[username] ?? 0, score);
         } else {
@@ -599,10 +655,23 @@ class SupabaseService {
 
       if (userCurrentScore != null && userCurrentScore > 0) {
         final currentName = currentUsername ?? 'Bạn';
+        // Tìm xem người chơi này đã có sẵn tên hoặc alias trong userScores hay chưa
+        String matchedKey = currentName;
+        final emailPrefix = currentUserEmail?.split('@')[0].toLowerCase();
+        for (final k in userScores.keys) {
+          final kLower = k.toLowerCase();
+          if (kLower == currentName.toLowerCase() ||
+              (emailPrefix != null && emailPrefix.isNotEmpty && kLower == emailPrefix)) {
+            matchedKey = k;
+            break;
+          }
+        }
         if (gameName != null) {
-          userScores[currentName] = max(userScores[currentName] ?? 0, userCurrentScore);
+          userScores[matchedKey] = max(userScores[matchedKey] ?? 0, userCurrentScore);
         } else {
-          userScores[currentName] = (userScores[currentName] ?? 0) + userCurrentScore;
+          if ((userScores[matchedKey] ?? 0) < userCurrentScore) {
+            userScores[matchedKey] = userCurrentScore;
+          }
         }
       }
 
@@ -610,15 +679,100 @@ class SupabaseService {
         return {
           'username': entry.key,
           'total_score': entry.value,
+          'avatar_url': userAvatars[entry.key],
         };
       }).toList();
 
       leaderboard.sort((a, b) => (b['total_score'] as int).compareTo(a['total_score'] as int));
+
+      // Bổ sung các tài khoản khác từ bảng profiles hoặc học sinh tiêu biểu để luôn đủ Top 10
+      if (leaderboard.length < 10) {
+        try {
+          final existingNames = leaderboard
+              .map((e) => (e['username'] as String? ?? '').trim().toLowerCase())
+              .toSet();
+
+          final profileRes = await client
+              .from('profiles')
+              .select('username, avatar_url, total_score')
+              .order('total_score', ascending: false)
+              .limit(20);
+
+          final List<dynamic> profileList = profileRes as List<dynamic>;
+          for (final raw in profileList) {
+            final p = raw as Map<String, dynamic>;
+            final String u = (p['username'] as String? ?? '').trim();
+            if (u.isNotEmpty && !existingNames.contains(u.toLowerCase())) {
+              existingNames.add(u.toLowerCase());
+              final int pScore = timePeriod == 'all' ? (p['total_score'] as int? ?? 0) : 0;
+              leaderboard.add({
+                'username': u,
+                'total_score': pScore,
+                'avatar_url': p['avatar_url'],
+              });
+              if (leaderboard.length >= 10) break;
+            }
+          }
+        } catch (e) {
+          debugPrint('Fill remaining leaderboard error: $e');
+        }
+      }
+
+      // Nếu vẫn chưa đủ 10 người (ví dụ offline hoặc tài khoản mới lập), thêm các bạn học sinh mẫu
+      const defaultMockNames = [
+        'Minh Anh', 'Bảo Nam', 'Lan Chi', 'Gia Bách', 
+        'Hải Đăng', 'Khánh An', 'Tuệ Mẫn', 'Đức Khang', 'Bảo Châu', 'Hoàng Long'
+      ];
+      int mockIdx = 0;
+      final existingLower = leaderboard
+          .map((e) => (e['username'] as String? ?? '').trim().toLowerCase())
+          .toSet();
+      while (leaderboard.length < 10 && mockIdx < defaultMockNames.length) {
+        final mockName = defaultMockNames[mockIdx++];
+        if (!existingLower.contains(mockName.toLowerCase())) {
+          existingLower.add(mockName.toLowerCase());
+          leaderboard.add({
+            'username': mockName,
+            'total_score': 0,
+            'avatar_url': null,
+          });
+        }
+      }
+
       return leaderboard.take(10).toList();
     } catch (e) {
       debugPrint('Get filtered leaderboard error: $e');
       return [];
     }
+  }
+
+  bool _isGameMatch(String rawGameName, String filterGame) {
+    final cleanRaw = rawGameName.trim().toLowerCase();
+    final cleanFilter = filterGame.trim().toLowerCase();
+
+    // 1. Trùng khớp chính xác hoặc cùng prefix (ví dụ: multiplication_table vs multiplication_table_mixed)
+    if (cleanRaw == cleanFilter || cleanRaw.startsWith('${cleanFilter}_')) {
+      return true;
+    }
+
+    // 2. Kiểm tra thông qua mã game chuẩn (E01..E06, M01..M06)
+    final filterCode = GameCodeRegistry.getCodeFromInternalName(cleanFilter);
+    final rawCode = GameCodeRegistry.getCodeFromInternalName(cleanRaw);
+
+    if (filterCode.isNotEmpty && rawCode.isNotEmpty && filterCode == rawCode) {
+      // Riêng mã M02: phân biệt rõ giữa multiplication_table (bảng cửu chương) và math_ops (thêm bớt)
+      if (filterCode == 'M02') {
+        if (cleanFilter.startsWith('multiplication_table') && cleanRaw.startsWith('math_ops')) {
+          return false;
+        }
+        if (cleanFilter.startsWith('math_ops') && cleanRaw.startsWith('multiplication_table')) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    return false;
   }
 
   List<Map<String, dynamic>> _getMockLeaderboardForGame({
@@ -634,23 +788,28 @@ class SupabaseService {
         {'username': 'Bảo Nam', 'total_score': 150},
         {'username': 'Lan Chi', 'total_score': 90},
         {'username': 'Gia Bách', 'total_score': 80},
+        {'username': 'Hải Đăng', 'total_score': 75},
+        {'username': 'Khánh An', 'total_score': 65},
+        {'username': 'Tuệ Mẫn', 'total_score': 50},
+        {'username': 'Đức Khang', 'total_score': 45},
+        {'username': 'Bảo Châu', 'total_score': 30},
       ];
     }
 
     final g = gameName.toLowerCase();
-    int s1 = 95, s2 = 85, s3 = 75, s4 = 60;
+    int s1 = 95, s2 = 85, s3 = 75, s4 = 60, s5 = 55, s6 = 48, s7 = 42, s8 = 35, s9 = 28;
     if (g.contains('sudoku')) {
-      s1 = 420; s2 = 360; s3 = 280; s4 = 210;
+      s1 = 420; s2 = 360; s3 = 280; s4 = 210; s5 = 180; s6 = 150; s7 = 120; s8 = 90; s9 = 60;
     } else if (g.contains('crossword')) {
-      s1 = 110; s2 = 95; s3 = 80; s4 = 65;
+      s1 = 110; s2 = 95; s3 = 80; s4 = 65; s5 = 58; s6 = 50; s7 = 45; s8 = 38; s9 = 30;
     } else if (g.contains('word_scramble')) {
-      s1 = 90; s2 = 80; s3 = 70; s4 = 50;
+      s1 = 90; s2 = 80; s3 = 70; s4 = 50; s5 = 45; s6 = 40; s7 = 35; s8 = 30; s9 = 25;
     } else if (g.contains('memory_match')) {
-      s1 = 85; s2 = 75; s3 = 60; s4 = 45;
+      s1 = 85; s2 = 75; s3 = 60; s4 = 45; s5 = 40; s6 = 35; s7 = 30; s8 = 25; s9 = 20;
     } else if (g.contains('magic_number_path')) {
-      s1 = 90; s2 = 80; s3 = 70; s4 = 50;
+      s1 = 90; s2 = 80; s3 = 70; s4 = 50; s5 = 45; s6 = 40; s7 = 35; s8 = 30; s9 = 25;
     } else if (g.contains('magic_words')) {
-      s1 = 95; s2 = 85; s3 = 75; s4 = 60;
+      s1 = 95; s2 = 85; s3 = 75; s4 = 60; s5 = 55; s6 = 48; s7 = 42; s8 = 35; s9 = 28;
     }
 
     return [
@@ -659,6 +818,11 @@ class SupabaseService {
       {'username': 'Bảo Nam', 'total_score': s2},
       {'username': 'Lan Chi', 'total_score': s3},
       {'username': 'Gia Bách', 'total_score': s4},
+      {'username': 'Hải Đăng', 'total_score': s5},
+      {'username': 'Khánh An', 'total_score': s6},
+      {'username': 'Tuệ Mẫn', 'total_score': s7},
+      {'username': 'Đức Khang', 'total_score': s8},
+      {'username': 'Bảo Châu', 'total_score': s9},
     ];
   }
 
@@ -682,6 +846,8 @@ class SupabaseService {
         if (name == myUser ||
             name.startsWith('$myUser ') ||
             name.contains('(Bạn)') ||
+            name.contains('(YOU)') ||
+            name.contains('(You)') ||
             name.toLowerCase().contains(myUser.toLowerCase())) {
           rank = i + 1;
           final s = entry['total_score'] as int? ?? 0;
