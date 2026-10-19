@@ -1,4 +1,7 @@
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "ImageFolder/nks_icon.png"
+  image_path: "ImageFolder/hzt.png"
+  remove_alpha_ios: true
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "ImageFolder/hzt.png"
