@@ -47,6 +47,18 @@ class GameScoreSyncService {
       if (stars > currentStars) {
         await prefs.setInt(keyStars, stars);
       }
+      if (gameCodeOrName.toLowerCase() != cleanCode.toLowerCase()) {
+        final keyGameScore = 'hoczita_best_score_$gameCodeOrName';
+        final int currentSpecificBest = prefs.getInt(keyGameScore) ?? 0;
+        if (score > currentSpecificBest) {
+          await prefs.setInt(keyGameScore, score);
+        }
+        final keyGameStars = 'hoczita_best_stars_$gameCodeOrName';
+        final int currentSpecificStars = prefs.getInt(keyGameStars) ?? 0;
+        if (stars > currentSpecificStars) {
+          await prefs.setInt(keyGameStars, stars);
+        }
+      }
     } catch (e) {
       debugPrint('[GameScoreSync] Lưu local cache error: $e');
     }
@@ -55,7 +67,7 @@ class GameScoreSyncService {
     try {
       // Lưu với mã chuẩn cleanCode (M01..M06, E01..E06)
       await SupabaseService.instance.saveScore(
-        gameName: cleanCode,
+        gameName: gameCodeOrName,
         stars: stars,
         score: score,
         durationSeconds: durationSeconds,
@@ -155,13 +167,30 @@ class GameScoreSyncService {
         final List<Map<String, dynamic>> filteredList = [];
         final Map<String, int> bestScoresPerMember = {};
 
+        final bool isSubGame = gameCodeOrName == 'math_bubbles' ||
+            gameCodeOrName == 'english_bubbles' ||
+            gameCodeOrName == 'multiplication_table' ||
+            (internalGameName != null &&
+                (internalGameName == 'math_bubbles' ||
+                    internalGameName == 'english_bubbles' ||
+                    internalGameName == 'multiplication_table'));
+
         for (final item in apiScores) {
           final itemCode = GameCodeRegistry.getCodeFromInternalName(item.game);
           final g = item.game.trim().toUpperCase();
-          final isMatch = itemCode.toUpperCase() == cleanCode.toUpperCase() ||
-              g == cleanCode.toUpperCase() ||
-              (internalGameName != null && g == internalGameName.toUpperCase()) ||
-              g == gameCodeOrName.toUpperCase();
+          final bool isMatch;
+          if (isSubGame) {
+            isMatch = g == gameCodeOrName.toUpperCase() ||
+                (internalGameName != null && g == internalGameName.toUpperCase());
+          } else {
+            isMatch = itemCode.toUpperCase() == cleanCode.toUpperCase() ||
+                g == cleanCode.toUpperCase() ||
+                (internalGameName != null && g == internalGameName.toUpperCase()) ||
+                g == gameCodeOrName.toUpperCase();
+          }
+
+
+
 
           if (!isMatch) continue;
 
@@ -189,7 +218,11 @@ class GameScoreSyncService {
         int localBest = 0;
         try {
           final prefs = await SharedPreferences.getInstance();
-          localBest = prefs.getInt('hoczita_best_score_$cleanCode') ?? 0;
+          if (isSubGame) {
+            localBest = prefs.getInt('hoczita_best_score_$gameCodeOrName') ?? 0;
+          } else {
+            localBest = prefs.getInt('hoczita_best_score_$cleanCode') ?? 0;
+          }
           if (cleanCode == 'M02' && localBest >= 300) {
             localBest = 0;
             await prefs.remove('hoczita_best_score_$cleanCode');
@@ -246,7 +279,13 @@ class GameScoreSyncService {
     // THỬ 3: Fallback cuối cùng từ Local Cache nếu cả 2 đều không có
     try {
       final prefs = await SharedPreferences.getInstance();
-      final localScore = prefs.getInt('hoczita_best_score_$cleanCode') ?? 0;
+      int localScore = 0;
+      if (gameCodeOrName.toLowerCase() != cleanCode.toLowerCase()) {
+        localScore = prefs.getInt('hoczita_best_score_$gameCodeOrName') ?? 0;
+      }
+      if (localScore <= 0) {
+        localScore = prefs.getInt('hoczita_best_score_$cleanCode') ?? 0;
+      }
       if (localScore > 0) {
         return [
           {

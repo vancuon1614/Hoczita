@@ -6,6 +6,7 @@ import 'core/theme/app_theme.dart';
 import 'core/constants/supabase_constants.dart';
 import 'core/services/supabase_service.dart';
 import 'core/services/api_service.dart';
+import 'core/services/vocab_sync_service.dart';
 import 'core/services/tts_service.dart';
 import 'features/onboarding/views/splash_screen.dart';
 import 'core/widgets/auth_sync_listener.dart';
@@ -15,6 +16,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   await ApiService.instance.init();
+  await VocabSyncService.instance.init();
   await TtsService.instance.initPreferences();
 
   final service = SupabaseService.instance;

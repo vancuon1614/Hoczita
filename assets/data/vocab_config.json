@@ -1,0 +1,1042 @@
+{
+  "version": 1,
+  "last_updated": "2026-10-22",
+  "description": "HocZiTa English Vocabulary Master Configuration",
+  "storage_base_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets",
+  "topics": [
+    {
+      "id": "animal",
+      "title": "Động Vật",
+      "emoji": "🐶",
+      "color": "0xFF3B82F6"
+    },
+    {
+      "id": "fruits",
+      "title": "Hoa Quả",
+      "emoji": "🍎",
+      "color": "0xFF16A34A"
+    },
+    {
+      "id": "vegatable",
+      "title": "Rau Củ",
+      "emoji": "🥕",
+      "color": "0xFF0284C7"
+    },
+    {
+      "id": "Transportation",
+      "title": "Phương Tiện",
+      "emoji": "🚗",
+      "color": "0xFF6366F1"
+    },
+    {
+      "id": "school",
+      "title": "Trường Học",
+      "emoji": "🎒",
+      "color": "0xFFD97706"
+    },
+    {
+      "id": "home",
+      "title": "Gia Đình",
+      "emoji": "🏠",
+      "color": "0xFF059669"
+    },
+    {
+      "id": "nature",
+      "title": "Thiên Nhiên",
+      "emoji": "🌈",
+      "color": "0xFF0284C7"
+    },
+    {
+      "id": "space",
+      "title": "Vũ Trụ",
+      "emoji": "🚀",
+      "color": "0xFF7E22CE"
+    },
+    {
+      "id": "sea",
+      "title": "Đại Dương",
+      "emoji": "🐠",
+      "color": "0xFF0EA5E9"
+    },
+    {
+      "id": "toy",
+      "title": "Đồ Chơi",
+      "emoji": "🧸",
+      "color": "0xFFDB2777"
+    },
+    {
+      "id": "clothing",
+      "title": "Trang Phục",
+      "emoji": "👕",
+      "color": "0xFFEA580C"
+    },
+    {
+      "id": "food",
+      "title": "Món Ăn",
+      "emoji": "🍕",
+      "color": "0xFFF97316"
+    }
+  ],
+  "words": [
+    {
+      "en": "Dog",
+      "vi": "Con chó",
+      "category": "animal",
+      "transcription": "/dɔːɡ/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/animal/Dog.jpg",
+      "example": "The dog is playing happily in the garden."
+    },
+    {
+      "en": "Cat",
+      "vi": "Con mèo",
+      "category": "animal",
+      "transcription": "/kæt/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/animal/Cat.jpg",
+      "example": "The cute cat likes sleeping on the soft sofa."
+    },
+    {
+      "en": "Lion",
+      "vi": "Sư tử",
+      "category": "animal",
+      "transcription": "/ˈlaɪ.ən/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/animal/Lion.jpg",
+      "example": "The lion is the king of the jungle."
+    },
+    {
+      "en": "Elephant",
+      "vi": "Con voi",
+      "category": "animal",
+      "transcription": "/ˈel.ɪ.fənt/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/animal/Elephant.jpg",
+      "example": "The big elephant has very large ears."
+    },
+    {
+      "en": "Monkey",
+      "vi": "Con khỉ",
+      "category": "animal",
+      "transcription": "/ˈmʌŋ.ki/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/animal/Monkey.jpg",
+      "example": "The funny monkey loves yellow bananas."
+    },
+    {
+      "en": "Rabbit",
+      "vi": "Con thỏ",
+      "category": "animal",
+      "transcription": "/ˈræb.ɪt/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/animal/Rabbit.jpg",
+      "example": "The white rabbit is eating crunchy carrots."
+    },
+    {
+      "en": "Bear",
+      "vi": "Con gấu",
+      "category": "animal",
+      "transcription": "/beər/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/animal/Bear.jpg",
+      "example": "The brown bear catches fresh fish in the river."
+    },
+    {
+      "en": "Tiger",
+      "vi": "Con hổ",
+      "category": "animal",
+      "transcription": "/ˈtaɪ.ɡər/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/animal/Tiger.jpg",
+      "example": "The tiger has orange and black stripes."
+    },
+    {
+      "en": "Sheep",
+      "vi": "Con cừu",
+      "category": "animal",
+      "transcription": "/ʃiːp/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/animal/Sheep.jpg",
+      "example": "The sheep gives warm and fluffy wool."
+    },
+    {
+      "en": "Pig",
+      "vi": "Con lợn",
+      "category": "animal",
+      "transcription": "/pɪɡ/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/animal/Pig.jpg",
+      "example": "The pink pig is rolling in the mud."
+    },
+    {
+      "en": "Apple",
+      "vi": "Quả táo",
+      "category": "fruits",
+      "transcription": "/ˈæp.l/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/fruits/Apple.jpg",
+      "example": "I eat a sweet red apple every morning."
+    },
+    {
+      "en": "Banana",
+      "vi": "Quả chuối",
+      "category": "fruits",
+      "transcription": "/bəˈnɑː.nə/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/fruits/Banana.jpg",
+      "example": "Ripe yellow bananas taste very sweet."
+    },
+    {
+      "en": "Orange",
+      "vi": "Quả cam",
+      "category": "fruits",
+      "transcription": "/ˈɒr.ɪndʒ/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/fruits/Orange.jpg",
+      "example": "An orange gives us healthy vitamin C."
+    },
+    {
+      "en": "Watermelon",
+      "vi": "Dưa hấu",
+      "category": "fruits",
+      "transcription": "/ˈwɔː.təˌmel.ən/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/fruits/Watermelon.jpg",
+      "example": "Cold watermelon is refreshing in summer."
+    },
+    {
+      "en": "Strawberry",
+      "vi": "Dâu tây",
+      "category": "fruits",
+      "transcription": "/ˈstrɔː.bər.i/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/fruits/Strawberry.jpg",
+      "example": "Red strawberries make great smoothies."
+    },
+    {
+      "en": "Grape",
+      "vi": "Quả nho",
+      "category": "fruits",
+      "transcription": "/ɡreɪp/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/fruits/Grape.jpg",
+      "example": "She shared a bunch of sweet purple grapes."
+    },
+    {
+      "en": "Mango",
+      "vi": "Quả xoài",
+      "category": "fruits",
+      "transcription": "/ˈmæŋ.ɡəʊ/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/fruits/Mango.jpg",
+      "example": "Yellow mango is tropical and fragrant."
+    },
+    {
+      "en": "Pineapple",
+      "vi": "Quả dứa",
+      "category": "fruits",
+      "transcription": "/ˈpaɪnˌæp.l/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/fruits/Pineapple.jpg",
+      "example": "The golden pineapple has sweet yellow juice."
+    },
+    {
+      "en": "Peach",
+      "vi": "Quả đào",
+      "category": "fruits",
+      "transcription": "/piːtʃ/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/fruits/Peach.jpg",
+      "example": "The peach has soft velvety skin and sweet flavor."
+    },
+    {
+      "en": "Cherry",
+      "vi": "Quả anh đào",
+      "category": "fruits",
+      "transcription": "/ˈtʃer.i/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/fruits/Cherry.jpg",
+      "example": "Two bright red cherries decorate the cupcake."
+    },
+    {
+      "en": "Carrot",
+      "vi": "Củ cà rốt",
+      "category": "vegatable",
+      "transcription": "/ˈkær.ət/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/vegatable/Carrot.jpg",
+      "example": "Carrots are healthy for your eyesight."
+    },
+    {
+      "en": "Tomato",
+      "vi": "Quả cà chua",
+      "category": "vegatable",
+      "transcription": "/təˈmɑː.təʊ/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/vegatable/Tomato.jpg",
+      "example": "Juicy red tomatoes make tasty salad."
+    },
+    {
+      "en": "Potato",
+      "vi": "Củ khoai tây",
+      "category": "vegatable",
+      "transcription": "/pəˈteɪ.təʊ/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/vegatable/Potato.jpg",
+      "example": "Baked potatoes are hot and fluffy inside."
+    },
+    {
+      "en": "Corn",
+      "vi": "Bắp ngô",
+      "category": "vegatable",
+      "transcription": "/kɔːn/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/vegatable/Corn.jpg",
+      "example": "Sweet yellow corn on the cob is delicious."
+    },
+    {
+      "en": "Broccoli",
+      "vi": "Súp lơ xanh",
+      "category": "vegatable",
+      "transcription": "/ˈbrɒk.əl.i/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/vegatable/Broccoli.jpg",
+      "example": "Broccoli looks like miniature green trees."
+    },
+    {
+      "en": "Pumpkin",
+      "vi": "Quả bí ngô",
+      "category": "vegatable",
+      "transcription": "/ˈpʌmp.kɪn/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/vegatable/Pumpkin.jpg",
+      "example": "A big round pumpkin grows in the autumn patch."
+    },
+    {
+      "en": "Onion",
+      "vi": "Củ hành tây",
+      "category": "vegatable",
+      "transcription": "/ˈʌn.jən/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/vegatable/Onion.jpg",
+      "example": "Mom adds sliced onion into the vegetable soup."
+    },
+    {
+      "en": "Cucumber",
+      "vi": "Quả dưa chuột",
+      "category": "vegatable",
+      "transcription": "/ˈkjuː.kʌm.bər/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/vegatable/Cucumber.jpg",
+      "example": "Fresh cucumbers are crunchy and cool."
+    },
+    {
+      "en": "Mushroom",
+      "vi": "Cây nấm",
+      "category": "vegatable",
+      "transcription": "/ˈmʌʃ.ruːm/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/vegatable/Mushroom.jpg",
+      "example": "Small mushrooms sprout beneath the tall forest trees."
+    },
+    {
+      "en": "Pea",
+      "vi": "Hạt đậu Hà Lan",
+      "category": "vegatable",
+      "transcription": "/piː/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/vegatable/Pea.jpg",
+      "example": "Sweet green peas pop out of their pod."
+    },
+    {
+      "en": "Car",
+      "vi": "Ô tô",
+      "category": "Transportation",
+      "transcription": "/kɑːr/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/Transportation/Car.jpg",
+      "example": "Dad drives his blue car to work."
+    },
+    {
+      "en": "Airplane",
+      "vi": "Máy bay",
+      "category": "Transportation",
+      "transcription": "/ˈeə.pleɪn/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/Transportation/Airplane.jpg",
+      "example": "The airplane soars above white clouds."
+    },
+    {
+      "en": "Train",
+      "vi": "Tàu hỏa",
+      "category": "Transportation",
+      "transcription": "/treɪn/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/Transportation/Train.jpg",
+      "example": "The train travels swiftly on the railway track."
+    },
+    {
+      "en": "Bicycle",
+      "vi": "Xe đạp",
+      "category": "Transportation",
+      "transcription": "/ˈbaɪ.sɪ.kl/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/Transportation/Bicycle.jpg",
+      "example": "I ride my bicycle around the neighborhood park."
+    },
+    {
+      "en": "Ship",
+      "vi": "Tàu thủy",
+      "category": "Transportation",
+      "transcription": "/ʃɪp/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/Transportation/Ship.jpg",
+      "example": "A magnificent ship sails across deep blue seas."
+    },
+    {
+      "en": "Helicopter",
+      "vi": "Trực thăng",
+      "category": "Transportation",
+      "transcription": "/ˈhel.ɪˌkɒp.tər/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/Transportation/Helicopter.jpg",
+      "example": "The helicopter lands smoothly on the rooftop."
+    },
+    {
+      "en": "Bus",
+      "vi": "Xe buýt",
+      "category": "Transportation",
+      "transcription": "/bʌs/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/Transportation/Bus.jpg",
+      "example": "Students ride the bright school bus together."
+    },
+    {
+      "en": "Truck",
+      "vi": "Xe tải",
+      "category": "Transportation",
+      "transcription": "/trʌk/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/Transportation/Truck.jpg",
+      "example": "The heavy truck carries building supplies."
+    },
+    {
+      "en": "Rocket",
+      "vi": "Tên lửa",
+      "category": "Transportation",
+      "transcription": "/ˈrɒk.ɪt/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/Transportation/Rocket.jpg",
+      "example": "The mighty rocket shoots up into space."
+    },
+    {
+      "en": "Motorbike",
+      "vi": "Xe máy",
+      "category": "Transportation",
+      "transcription": "/ˈməʊ.tə.baɪk/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/Transportation/Motorbike.jpg",
+      "example": "Wear a protective helmet when riding a motorbike."
+    },
+    {
+      "en": "Book",
+      "vi": "Quyển sách",
+      "category": "school",
+      "transcription": "/bʊk/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/school/Book.jpg",
+      "example": "Open your storybook to read fairy tales."
+    },
+    {
+      "en": "Pen",
+      "vi": "Bút mực",
+      "category": "school",
+      "transcription": "/pen/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/school/Pen.jpg",
+      "example": "I write my homework with a blue pen."
+    },
+    {
+      "en": "Pencil",
+      "vi": "Bút chì",
+      "category": "school",
+      "transcription": "/ˈpen.sl/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/school/Pencil.jpg",
+      "example": "Sketch colorful flowers with your pencil."
+    },
+    {
+      "en": "Backpack",
+      "vi": "Balo",
+      "category": "school",
+      "transcription": "/ˈbæk.pæk/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/school/Backpack.jpg",
+      "example": "Zip your backpack before walking to class."
+    },
+    {
+      "en": "Eraser",
+      "vi": "Cục tẩy",
+      "category": "school",
+      "transcription": "/ɪˈreɪ.zər/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/school/Eraser.jpg",
+      "example": "Use this rubber eraser to fix pencil marks."
+    },
+    {
+      "en": "Ruler",
+      "vi": "Thước kẻ",
+      "category": "school",
+      "transcription": "/ˈruː.lər/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/school/Ruler.jpg",
+      "example": "Use a clear plastic ruler to measure lengths."
+    },
+    {
+      "en": "Scissors",
+      "vi": "Kéo thủ công",
+      "category": "school",
+      "transcription": "/ˈsɪz.əz/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/school/Scissors.jpg",
+      "example": "Carefully cut origami paper with scissors."
+    },
+    {
+      "en": "Globe",
+      "vi": "Quả địa cầu",
+      "category": "school",
+      "transcription": "/ɡləʊb/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/school/Globe.jpg",
+      "example": "Spin the classroom globe to explore the world."
+    },
+    {
+      "en": "Desk",
+      "vi": "Bàn học",
+      "category": "school",
+      "transcription": "/desk/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/school/Desk.jpg",
+      "example": "Keep your study desk neat and orderly."
+    },
+    {
+      "en": "Chair",
+      "vi": "Ghế ngồi",
+      "category": "school",
+      "transcription": "/tʃeər/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/school/Chair.jpg",
+      "example": "Sit nicely on your wooden classroom chair."
+    },
+    {
+      "en": "Sofa",
+      "vi": "Ghế sofa",
+      "category": "home",
+      "transcription": "/ˈsəʊ.fə/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/home/Sofa.jpg",
+      "example": "The living room sofa is warm and comfortable."
+    },
+    {
+      "en": "Bed",
+      "vi": "Giường ngủ",
+      "category": "home",
+      "transcription": "/bed/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/home/Bed.jpg",
+      "example": "Hop into bed early for restful sleep."
+    },
+    {
+      "en": "Table",
+      "vi": "Bàn tròn",
+      "category": "home",
+      "transcription": "/ˈteɪ.bl/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/home/Table.jpg",
+      "example": "We gather around the dining table for breakfast."
+    },
+    {
+      "en": "Lamp",
+      "vi": "Đèn ngủ",
+      "category": "home",
+      "transcription": "/læmp/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/home/Lamp.jpg",
+      "example": "Turn on the reading lamp beside your bed."
+    },
+    {
+      "en": "Clock",
+      "vi": "Đồng hồ",
+      "category": "home",
+      "transcription": "/klɒk/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/home/Clock.jpg",
+      "example": "The wall clock ticks rhythmically in the hallway."
+    },
+    {
+      "en": "Key",
+      "vi": "Chìa khóa",
+      "category": "home",
+      "transcription": "/kiː/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/home/Key.jpg",
+      "example": "Always keep the house key in a safe pocket."
+    },
+    {
+      "en": "Cup",
+      "vi": "Cốc nước",
+      "category": "home",
+      "transcription": "/kʌp/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/home/Cup.jpg",
+      "example": "Drink a clean cup of warm water."
+    },
+    {
+      "en": "Door",
+      "vi": "Cửa ra vào",
+      "category": "home",
+      "transcription": "/dɔːr/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/home/Door.jpg",
+      "example": "Please knock before opening the room door."
+    },
+    {
+      "en": "Window",
+      "vi": "Cửa sổ",
+      "category": "home",
+      "transcription": "/ˈwɪn.dəʊ/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/home/Window.jpg",
+      "example": "Sunshine streams through the glass window."
+    },
+    {
+      "en": "Mirror",
+      "vi": "Cái gương",
+      "category": "home",
+      "transcription": "/ˈmɪr.ər/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/home/Mirror.jpg",
+      "example": "Comb your hair neatly in front of the mirror."
+    },
+    {
+      "en": "Sun",
+      "vi": "Mặt trời",
+      "category": "nature",
+      "transcription": "/sʌn/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/nature/Sun.jpg",
+      "example": "The bright golden sun rises in the east."
+    },
+    {
+      "en": "Moon",
+      "vi": "Mặt trăng",
+      "category": "nature",
+      "transcription": "/muːn/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/nature/Moon.jpg",
+      "example": "The crescent moon glows quietly in the dark sky."
+    },
+    {
+      "en": "Star",
+      "vi": "Ngôi sao",
+      "category": "nature",
+      "transcription": "/stɑːr/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/nature/Star.jpg",
+      "example": "Count the twinkling stars at night."
+    },
+    {
+      "en": "Cloud",
+      "vi": "Đám mây",
+      "category": "nature",
+      "transcription": "/klaʊd/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/nature/Cloud.jpg",
+      "example": "Fluffy white clouds float peacefully in the sky."
+    },
+    {
+      "en": "Rainbow",
+      "vi": "Cầu vồng",
+      "category": "nature",
+      "transcription": "/ˈreɪn.bəʊ/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/nature/Rainbow.jpg",
+      "example": "A stunning colorful rainbow appears after the storm."
+    },
+    {
+      "en": "Tree",
+      "vi": "Cây xanh",
+      "category": "nature",
+      "transcription": "/triː/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/nature/Tree.jpg",
+      "example": "Green leafy trees provide cool summer shade."
+    },
+    {
+      "en": "Flower",
+      "vi": "Bông hoa",
+      "category": "nature",
+      "transcription": "/ˈflaʊ.ər/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/nature/Flower.jpg",
+      "example": "Bees buzz happily around blooming flowers."
+    },
+    {
+      "en": "Rain",
+      "vi": "Mưa",
+      "category": "nature",
+      "transcription": "/reɪn/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/nature/Rain.jpg",
+      "example": "Fresh raindrops water the thirsty plants."
+    },
+    {
+      "en": "Snow",
+      "vi": "Tuyết",
+      "category": "nature",
+      "transcription": "/snəʊ/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/nature/Snow.jpg",
+      "example": "Soft white snow blankets the winter hills."
+    },
+    {
+      "en": "Wind",
+      "vi": "Gió",
+      "category": "nature",
+      "transcription": "/wɪnd/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/nature/Wind.jpg",
+      "example": "The gentle autumn wind whispers through trees."
+    },
+    {
+      "en": "Astronaut",
+      "vi": "Phi hành gia",
+      "category": "space",
+      "transcription": "/ˈæs.trə.nɔːt/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/space/Astronaut.jpg",
+      "example": "The brave astronaut walks weightlessly on the moon."
+    },
+    {
+      "en": "Spaceship",
+      "vi": "Tàu vũ trụ",
+      "category": "space",
+      "transcription": "/ˈspeɪs.ʃɪp/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/space/Spaceship.jpg",
+      "example": "The silver spaceship travels through distant galaxies."
+    },
+    {
+      "en": "Earth",
+      "vi": "Trái Đất",
+      "category": "space",
+      "transcription": "/ɜːθ/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/space/Earth.jpg",
+      "example": "Earth is our precious blue and green planet."
+    },
+    {
+      "en": "Mars",
+      "vi": "Sao Hỏa",
+      "category": "space",
+      "transcription": "/mɑːz/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/space/Mars.jpg",
+      "example": "Mars is widely known as the dusty Red Planet."
+    },
+    {
+      "en": "Rover",
+      "vi": "Xe tự hành vũ trụ",
+      "category": "space",
+      "transcription": "/ˈrəʊ.vər/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/space/Rover.jpg",
+      "example": "The robotic rover explores rugged alien rocks."
+    },
+    {
+      "en": "UFO",
+      "vi": "Đĩa bay",
+      "category": "space",
+      "transcription": "/ˌjuː.efˈəʊ/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/space/UFO.jpg",
+      "example": "The sci-fi story described a glowing UFO in the night sky."
+    },
+    {
+      "en": "Telescope",
+      "vi": "Kính thiên văn",
+      "category": "space",
+      "transcription": "/ˈtel.ɪ.skəʊp/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/space/Telescope.jpg",
+      "example": "Look through the telescope to see planet rings."
+    },
+    {
+      "en": "Satellite",
+      "vi": "Vệ tinh",
+      "category": "space",
+      "transcription": "/ˈsæt.əl.aɪt/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/space/Satellite.jpg",
+      "example": "The orbital satellite sends weather forecast data."
+    },
+    {
+      "en": "Meteor",
+      "vi": "Sao băng",
+      "category": "space",
+      "transcription": "/ˈmiː.ti.ər/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/space/Meteor.jpg",
+      "example": "Make a wish when seeing a glowing meteor."
+    },
+    {
+      "en": "Spacesuit",
+      "vi": "Bộ đồ phi hành",
+      "category": "space",
+      "transcription": "/ˈspeɪs.suːt/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/space/Spacesuit.jpg",
+      "example": "A white spacesuit protects the explorer in vacuum."
+    },
+    {
+      "en": "Fish",
+      "vi": "Con cá",
+      "category": "sea",
+      "transcription": "/fɪʃ/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/sea/Fish.jpg",
+      "example": "Tiny colorful fish swim amongst the coral reef."
+    },
+    {
+      "en": "Shark",
+      "vi": "Cá mập",
+      "category": "sea",
+      "transcription": "/ʃɑːk/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/sea/Shark.jpg",
+      "example": "The swift shark swims gracefully in deep water."
+    },
+    {
+      "en": "Whale",
+      "vi": "Cá voi",
+      "category": "sea",
+      "transcription": "/weɪl/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/sea/Whale.jpg",
+      "example": "The blue whale breaches and blows water high."
+    },
+    {
+      "en": "Dolphin",
+      "vi": "Cá heo",
+      "category": "sea",
+      "transcription": "/ˈdɒl.fɪn/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/sea/Dolphin.jpg",
+      "example": "Friendly dolphins leap playfully above blue waves."
+    },
+    {
+      "en": "Octopus",
+      "vi": "Bạch tuộc",
+      "category": "sea",
+      "transcription": "/ˈɒk.tə.pəs/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/sea/Octopus.jpg",
+      "example": "The clever octopus has eight flexible arms."
+    },
+    {
+      "en": "Crab",
+      "vi": "Con cua",
+      "category": "sea",
+      "transcription": "/kræb/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/sea/Crab.jpg",
+      "example": "The little orange crab scuttles sideways on sand."
+    },
+    {
+      "en": "Starfish",
+      "vi": "Sao biển",
+      "category": "sea",
+      "transcription": "/ˈstɑː.fɪʃ/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/sea/Starfish.jpg",
+      "example": "A five-pointed starfish rests beside the rock pool."
+    },
+    {
+      "en": "Turtle",
+      "vi": "Rùa biển",
+      "category": "sea",
+      "transcription": "/ˈtɜː.tl/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/sea/Turtle.jpg",
+      "example": "The gentle sea turtle glides through warm ocean currents."
+    },
+    {
+      "en": "Seahorse",
+      "vi": "Cá ngựa",
+      "category": "sea",
+      "transcription": "/ˈsiːˌhɔːs/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/sea/Seahorse.jpg",
+      "example": "The tiny seahorse curls its tail around seaweed."
+    },
+    {
+      "en": "Jellyfish",
+      "vi": "Con sứa",
+      "category": "sea",
+      "transcription": "/ˈdʒel.i.fɪʃ/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/sea/Jellyfish.jpg",
+      "example": "Translucent jellyfish drift gently in the current."
+    },
+    {
+      "en": "Soccer",
+      "vi": "Bóng đá",
+      "category": "toy",
+      "transcription": "/ˈsɒk.ər/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/toy/Soccer.jpg",
+      "example": "We kick the soccer ball into the goal net."
+    },
+    {
+      "en": "Basketball",
+      "vi": "Bóng rổ",
+      "category": "toy",
+      "transcription": "/ˈbɑː.skɪt.bɔːl/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/toy/Basketball.jpg",
+      "example": "Bounce the basketball and shoot into the hoop."
+    },
+    {
+      "en": "Kite",
+      "vi": "Cánh diều",
+      "category": "toy",
+      "transcription": "/kaɪt/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/toy/Kite.jpg",
+      "example": "Fly the bright diamond kite on a windy afternoon."
+    },
+    {
+      "en": "Slide",
+      "vi": "Cầu trượt",
+      "category": "toy",
+      "transcription": "/slaɪd/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/toy/Slide.jpg",
+      "example": "Children laugh joyfully sliding down the playground slide."
+    },
+    {
+      "en": "Balloon",
+      "vi": "Bóng bay",
+      "category": "toy",
+      "transcription": "/bəˈluːn/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/toy/Balloon.jpg",
+      "example": "A shiny red balloon floats up into the sky."
+    },
+    {
+      "en": "Doll",
+      "vi": "Búp bê",
+      "category": "toy",
+      "transcription": "/dɒl/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/toy/Doll.jpg",
+      "example": "She lovingly dresses her favorite porcelain doll."
+    },
+    {
+      "en": "Teddy",
+      "vi": "Gấu bông",
+      "category": "toy",
+      "transcription": "/ˈted.i/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/toy/Teddy.jpg",
+      "example": "Hug the cuddly brown teddy bear at bedtime."
+    },
+    {
+      "en": "Robot",
+      "vi": "Rô bốt đồ chơi",
+      "category": "toy",
+      "transcription": "/ˈrəʊ.bɒt/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/toy/Robot.jpg",
+      "example": "The robotic toy can walk and flash neon lights."
+    },
+    {
+      "en": "Yo-yo",
+      "vi": "Đồ chơi yo-yo",
+      "category": "toy",
+      "transcription": "/ˈjəʊ.jəʊ/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/toy/Yo-yo.jpg",
+      "example": "Spin the yo-yo up and down on its thread."
+    },
+    {
+      "en": "Swing",
+      "vi": "Xích đu",
+      "category": "toy",
+      "transcription": "/swɪŋ/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/toy/Swing.jpg",
+      "example": "Swing high into the fresh morning breeze."
+    },
+    {
+      "en": "Shirt",
+      "vi": "Áo thun",
+      "category": "clothing",
+      "transcription": "/ʃɜːt/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/clothing/Shirt.jpg",
+      "example": "He wears a fresh blue cotton shirt."
+    },
+    {
+      "en": "Pants",
+      "vi": "Quần dài",
+      "category": "clothing",
+      "transcription": "/pænts/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/clothing/Pants.jpg",
+      "example": "Put on sturdy dark pants for school."
+    },
+    {
+      "en": "Dress",
+      "vi": "Váy liền",
+      "category": "clothing",
+      "transcription": "/dres/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/clothing/Dress.jpg",
+      "example": "She twirls happily in her yellow summer dress."
+    },
+    {
+      "en": "Hat",
+      "vi": "Mũ",
+      "category": "clothing",
+      "transcription": "/hæt/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/clothing/Hat.jpg",
+      "example": "Wear a bucket hat to shade your face from the sun."
+    },
+    {
+      "en": "Shoes",
+      "vi": "Giày",
+      "category": "clothing",
+      "transcription": "/ʃuːz/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/clothing/Shoes.jpg",
+      "example": "Lace up your comfortable running shoes."
+    },
+    {
+      "en": "Socks",
+      "vi": "Tất/Vớ",
+      "category": "clothing",
+      "transcription": "/sɒks/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/clothing/Socks.jpg",
+      "example": "Striped warm socks keep little feet cosy."
+    },
+    {
+      "en": "Jacket",
+      "vi": "Áo khoác",
+      "category": "clothing",
+      "transcription": "/ˈdʒæk.ɪt/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/clothing/Jacket.jpg",
+      "example": "Zip up your warm winter jacket."
+    },
+    {
+      "en": "Glasses",
+      "vi": "Kính mắt",
+      "category": "clothing",
+      "transcription": "/ˈɡlɑː.sɪz/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/clothing/Glasses.jpg",
+      "example": "He wears round spectacles to read clearly."
+    },
+    {
+      "en": "Scarf",
+      "vi": "Khăn quàng",
+      "category": "clothing",
+      "transcription": "/skɑːf/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/clothing/Scarf.jpg",
+      "example": "Wrap a knitted red wool scarf around your neck."
+    },
+    {
+      "en": "Boots",
+      "vi": "Ủng",
+      "category": "clothing",
+      "transcription": "/buːts/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/clothing/Boots.jpg",
+      "example": "Splash joyfully in rain puddles with yellow boots."
+    },
+    {
+      "en": "Bread",
+      "vi": "Bánh mì",
+      "category": "food",
+      "transcription": "/bred/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/food/Bread.jpg",
+      "example": "Warm oven-baked bread with butter smells wonderful."
+    },
+    {
+      "en": "Milk",
+      "vi": "Sữa",
+      "category": "food",
+      "transcription": "/mɪlk/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/food/Milk.jpg",
+      "example": "Drink a glass of cold fresh milk every morning."
+    },
+    {
+      "en": "Ice cream",
+      "vi": "Kem",
+      "category": "food",
+      "transcription": "/ˈaɪs ˌkriːm/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/food/Ice%20cream.jpg",
+      "example": "Chocolate ice cream on a crispy waffle cone."
+    },
+    {
+      "en": "Lollipop",
+      "vi": "Kẹo mút",
+      "category": "food",
+      "transcription": "/ˈlɒl.i.pɒp/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/food/Lollipop.jpg",
+      "example": "A sweet fruity swirl lollipop on a stick."
+    },
+    {
+      "en": "Cake",
+      "vi": "Bánh ngọt",
+      "category": "food",
+      "transcription": "/keɪk/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/food/Cake.jpg",
+      "example": "Blow out birthday candles on the strawberry cake."
+    },
+    {
+      "en": "Pizza",
+      "vi": "Bánh pizza",
+      "category": "food",
+      "transcription": "/ˈpiːt.sə/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/food/Pizza.jpg",
+      "example": "Hot cheesy pizza with tomato sauce."
+    },
+    {
+      "en": "Egg",
+      "vi": "Quả trứng",
+      "category": "food",
+      "transcription": "/eɡ/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/food/Egg.jpg",
+      "example": "Scrambled eggs with toast is a healthy breakfast."
+    },
+    {
+      "en": "Cheese",
+      "vi": "Phô mai",
+      "category": "food",
+      "transcription": "/tʃiːz/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/food/Cheese.jpg",
+      "example": "Melted yellow cheese stretches over macaroni."
+    },
+    {
+      "en": "Burger",
+      "vi": "Hamburger",
+      "category": "food",
+      "transcription": "/ˈbɜː.ɡər/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/food/Burger.jpg",
+      "example": "A tasty hamburger layered with lettuce and pickles."
+    },
+    {
+      "en": "Juice",
+      "vi": "Nước ép",
+      "category": "food",
+      "transcription": "/dʒuːs/",
+      "image_url": "https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/food/Juice.jpg",
+      "example": "Freshly squeezed sweet orange juice is delicious."
+    }
+  ]
+}

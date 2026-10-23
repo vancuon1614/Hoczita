@@ -25,8 +25,10 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  bool _isSplashPhase = true;
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  Timer? _splashTimer;
   Timer? _autoPlayTimer;
   Timer? _redirectTimer;
 
@@ -54,26 +56,51 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Auto-advance slides every 1 second
-    _autoPlayTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    // Phase 1: Initial Splash Screen for ~1.8 seconds
+    _splashTimer = Timer(const Duration(milliseconds: 1800), () {
+      if (mounted) {
+        setState(() {
+          _isSplashPhase = false;
+        });
+        _startOnboardingTimers();
+      }
+    });
+  }
+
+  void _startOnboardingTimers() {
+    // Auto-advance slides every 1.5 seconds
+    _autoPlayTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) {
       if (_currentPage < _steps.length - 1) {
         _currentPage++;
-        _pageController.animateToPage(
-          _currentPage,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
+        if (_pageController.hasClients) {
+          _pageController.animateToPage(
+            _currentPage,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeInOut,
+          );
+        }
       }
     });
 
-    // Auto-navigate to MainScreen after 3 seconds total
-    _redirectTimer = Timer(const Duration(milliseconds: 3200), () {
+    // Auto-navigate to MainScreen after onboarding finishes
+    _redirectTimer = Timer(const Duration(milliseconds: 5500), () {
       _navigateToMain();
     });
   }
 
+  void _skipSplash() {
+    if (_isSplashPhase) {
+      _splashTimer?.cancel();
+      setState(() {
+        _isSplashPhase = false;
+      });
+      _startOnboardingTimers();
+    }
+  }
+
   @override
   void dispose() {
+    _splashTimer?.cancel();
     _autoPlayTimer?.cancel();
     _redirectTimer?.cancel();
     _pageController.dispose();
@@ -81,8 +108,10 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   void _navigateToMain() {
+    _splashTimer?.cancel();
     _autoPlayTimer?.cancel();
     _redirectTimer?.cancel();
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => const MainScreen(),
@@ -96,7 +125,117 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 500),
+      switchInCurve: Curves.easeInOut,
+      switchOutCurve: Curves.easeInOut,
+      child: _isSplashPhase
+          ? _buildSplashScreen(context)
+          : _buildOnboardingScreen(context),
+    );
+  }
+
+  Widget _buildSplashScreen(BuildContext context) {
     return Scaffold(
+      key: const ValueKey('splash_phase'),
+      backgroundColor: Colors.white,
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _skipSplash,
+        child: Stack(
+          children: [
+            // Soft submerged blue bubbles (pupple)
+            Positioned(
+              top: -60,
+              right: -60,
+              child: Container(
+                width: 280,
+                height: 280,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primaryLight.withValues(alpha: 0.65),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: -60,
+              left: -60,
+              child: Container(
+                width: 250,
+                height: 250,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primaryLight.withValues(alpha: 0.5),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 130,
+              left: 25,
+              child: Container(
+                width: 85,
+                height: 85,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primaryLight.withValues(alpha: 0.45),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 300,
+              right: 20,
+              child: Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primaryLight.withValues(alpha: 0.35),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 150,
+              right: 35,
+              child: Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primaryLight.withValues(alpha: 0.4),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 230,
+              left: 30,
+              child: Container(
+                width: 55,
+                height: 55,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primaryLight.withValues(alpha: 0.3),
+                ),
+              ),
+            ),
+
+            // Centered larger App Icon seamlessly blending into screen bg
+            Center(
+              child: Image.asset(
+                'ImageFolder/hzt.png',
+                width: 170,
+                height: 170,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOnboardingScreen(BuildContext context) {
+    return Scaffold(
+      key: const ValueKey('onboarding_phase'),
       backgroundColor: Colors.white,
       body: Stack(
         children: [
@@ -130,40 +269,18 @@ class _SplashScreenState extends State<SplashScreen> {
           SafeArea(
             child: Column(
               children: [
-                SizedBox(height: 40),
-                // Logo & App Name
+                const SizedBox(height: 40),
+                // Logo & App Name - icon seamlessly blending with screen background
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: const Color(0xFFE2E8F0),
-                          width: 1.2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(15),
-                        child: Image.asset(
-                          'ImageFolder/hzt.png',
-                          width: 52,
-                          height: 52,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
+                    Image.asset(
+                      'ImageFolder/hzt.png',
+                      width: 44,
+                      height: 44,
+                      fit: BoxFit.contain,
                     ),
-                    SizedBox(width: 12),
+                    const SizedBox(width: 12),
                     Text(
                       'HocZiTa',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -204,7 +321,7 @@ class _SplashScreenState extends State<SplashScreen> {
                                 color: step.accentColor,
                               ),
                             ),
-                            SizedBox(height: 50),
+                            const SizedBox(height: 50),
                             Text(
                               step.title,
                               textAlign: TextAlign.center,
@@ -213,7 +330,7 @@ class _SplashScreenState extends State<SplashScreen> {
                                     fontWeight: FontWeight.bold,
                                   ),
                             ),
-                            SizedBox(height: 16),
+                            const SizedBox(height: 16),
                             Text(
                               step.description,
                               textAlign: TextAlign.center,
@@ -248,7 +365,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     ),
                   ),
                 ),
-                SizedBox(height: 40),
+                const SizedBox(height: 40),
 
                 // "Bỏ qua" button
                 Padding(
@@ -261,7 +378,7 @@ class _SplashScreenState extends State<SplashScreen> {
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                       ),
-                      child: Row(
+                      child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text('Bắt đầu học ngay'),
@@ -272,7 +389,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     ),
                   ),
                 ),
-                SizedBox(height: 40),
+                const SizedBox(height: 40),
               ],
             ),
           ),

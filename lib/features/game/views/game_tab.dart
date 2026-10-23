@@ -16,10 +16,11 @@ import 'magic_words_game_screen.dart';
 import 'magic_number_path_game_screen.dart';
 import 'sudoku_lobby_screen.dart';
 import 'multiplication_table_game_screen.dart';
+import 'math_bubbles_game_screen.dart';
+import 'english_bubbles_game_screen.dart';
 import '../../../core/widgets/game_sound_toggle_button.dart';
 import '../../../core/providers/game_interaction_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 
 class GameTab extends ConsumerStatefulWidget {
   const GameTab({super.key});
@@ -44,6 +45,8 @@ class _GameTabState extends ConsumerState<GameTab> {
     'magic_number_path': 0,
     'sudoku_medium': 0,
     'multiplication_table': 0,
+    'math_bubbles': 0,
+    'english_bubbles': 0,
   };
   bool _isLoading = true;
 
@@ -84,6 +87,10 @@ class _GameTabState extends ConsumerState<GameTab> {
             tempStarsMap[code] = localStars;
           }
         }
+        final bubbleStars = prefs.getInt('hoczita_best_stars_math_bubbles') ?? 0;
+        if (bubbleStars > (tempStarsMap['math_bubbles'] ?? 0)) {
+          tempStarsMap['math_bubbles'] = bubbleStars;
+        }
       } catch (_) {}
 
       int getModeStars(String baseName) {
@@ -114,6 +121,26 @@ class _GameTabState extends ConsumerState<GameTab> {
           int maxS = tempStarsMap['M02'] ?? 0;
           for (final k in tempStarsMap.keys) {
             if (k.startsWith('multiplication_table')) {
+              final s = tempStarsMap[k] ?? 0;
+              if (s > maxS) maxS = s;
+            }
+          }
+          return maxS;
+        }(),
+        'math_bubbles': () {
+          int maxS = 0;
+          for (final k in tempStarsMap.keys) {
+            if (k.startsWith('math_bubbles')) {
+              final s = tempStarsMap[k] ?? 0;
+              if (s > maxS) maxS = s;
+            }
+          }
+          return maxS;
+        }(),
+        'english_bubbles': () {
+          int maxS = 0;
+          for (final k in tempStarsMap.keys) {
+            if (k.startsWith('english_bubbles')) {
               final s = tempStarsMap[k] ?? 0;
               if (s > maxS) maxS = s;
             }
@@ -245,99 +272,113 @@ class _GameTabState extends ConsumerState<GameTab> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-          _buildGameCard(
-            context: context,
-            title: 'Flashcard Speed Run',
-            subtitle: 'Choose the correct meaning of the English word within 6 exciting seconds.',
-            icon: Icons.flash_on_rounded,
-            color: Colors.amber,
-            stars: _highestStars['flashcard_speed'] ?? 0,
-            animationType: GameAnimationType.bounce,
-            imagePath: 'ImageFolder/flashcard.gif',
-            onTap: () => _playGame(
-              MultipleChoiceGameScreen(
-                gameName: 'flashcard_speed',
-                gameTitle: 'Flashcard Speed Run',
-                questions: GameContent.getFlashcardQuestions(),
-                timeLimitInSeconds: 6,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildGameCard(
-            context: context,
-            title: 'Memory Match',
-            subtitle: 'Flip 16 cards to match English words with their corresponding pictures and meanings.',
-            icon: Icons.grid_view_rounded,
-            color: Colors.purple,
-            stars: _highestStars['memory_match'] ?? 0,
-            animationType: GameAnimationType.swing,
-            imagePath: 'ImageFolder/memorymatch.gif',
-            onTap: () => _playGame(
-              const MemoryMatchGameScreen(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildGameCard(
-            context: context,
-            title: 'Picture Guess',
-            subtitle: 'Look at the picture and quickly choose the matching English word in 10 seconds.',
-            icon: Icons.image_search_rounded,
-            color: Colors.teal,
-            stars: _highestStars['picture_guess'] ?? 0,
-            animationType: GameAnimationType.pulse,
-            imagePath: 'ImageFolder/pictureguess.gif',
-            onTap: () => _playGame(
-              MultipleChoiceGameScreen(
-                gameName: 'picture_guess',
-                gameTitle: 'Picture Guess',
-                questions: GameContent.getPictureGuessQuestions(),
-                timeLimitInSeconds: 10,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildGameCard(
-            context: context,
-            title: 'English Crossword',
-            subtitle: 'Solve crosswords with English vocabulary and fun interactive clues.',
-            icon: Icons.grid_on_rounded,
-            color: Colors.pink,
-            stars: _highestStars['english_crossword'] ?? 0,
-            animationType: GameAnimationType.swing,
-            imagePath: 'ImageFolder/crossword.gif',
-            onTap: () => _playGame(
-              const EnglishCrosswordGameScreen(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildGameCard(
-            context: context,
-            title: 'Word Scramble',
-            subtitle: 'Rearrange scrambled letters to form the correct English word in 10 seconds.',
-            icon: Icons.shuffle_rounded,
-            color: Colors.deepOrange,
-            stars: _highestStars['word_scramble'] ?? 0,
-            animationType: GameAnimationType.pulse,
-            imagePath: 'ImageFolder/wordscramble.webp',
-            onTap: () => _playGame(
-              const WordScrambleGameScreen(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildGameCard(
-            context: context,
-            title: 'Magic Words',
-            subtitle: 'Find hidden words across the letter grid with 3 levels: Easy, Medium, and Hard.',
-            icon: Icons.font_download_rounded,
-            color: Colors.indigo,
-            stars: _highestStars['magic_words'] ?? 0,
-            animationType: GameAnimationType.pulse,
-            imagePath: 'ImageFolder/magic_word.gif',
-            onTap: () => _playGame(
-              const MagicWordsGameScreen(),
-            ),
-          ),
+                  _buildGameCard(
+                    context: context,
+                    title: 'Flashcard Speed Run',
+                    subtitle: 'Choose the correct meaning of the English word within 6 exciting seconds.',
+                    icon: Icons.flash_on_rounded,
+                    color: Colors.amber,
+                    stars: _highestStars['flashcard_speed'] ?? 0,
+                    animationType: GameAnimationType.bounce,
+                    imagePath: 'ImageFolder/flashcard.gif',
+                    onTap: () => _playGame(
+                      MultipleChoiceGameScreen(
+                        gameName: 'flashcard_speed',
+                        gameTitle: 'Flashcard Speed Run',
+                        questions: GameContent.getFlashcardQuestions(),
+                        timeLimitInSeconds: 6,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildGameCard(
+                    context: context,
+                    title: 'Memory Match',
+                    subtitle: 'Flip 16 cards to match English words with their corresponding pictures and meanings.',
+                    icon: Icons.grid_view_rounded,
+                    color: Colors.purple,
+                    stars: _highestStars['memory_match'] ?? 0,
+                    animationType: GameAnimationType.swing,
+                    imagePath: 'ImageFolder/memorymatch.gif',
+                    onTap: () => _playGame(
+                      const MemoryMatchGameScreen(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildGameCard(
+                    context: context,
+                    title: 'Picture Guess',
+                    subtitle: 'Look at the picture and quickly choose the matching English word in 10 seconds.',
+                    icon: Icons.image_search_rounded,
+                    color: Colors.teal,
+                    stars: _highestStars['picture_guess'] ?? 0,
+                    animationType: GameAnimationType.pulse,
+                    imagePath: 'ImageFolder/pictureguess.gif',
+                    onTap: () => _playGame(
+                      MultipleChoiceGameScreen(
+                        gameName: 'picture_guess',
+                        gameTitle: 'Picture Guess',
+                        questions: GameContent.getPictureGuessQuestions(),
+                        timeLimitInSeconds: 10,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildGameCard(
+                    context: context,
+                    title: 'English Crossword',
+                    subtitle: 'Solve crosswords with English vocabulary and fun interactive clues.',
+                    icon: Icons.grid_on_rounded,
+                    color: Colors.pink,
+                    stars: _highestStars['english_crossword'] ?? 0,
+                    animationType: GameAnimationType.swing,
+                    imagePath: 'ImageFolder/crossword.gif',
+                    onTap: () => _playGame(
+                      const EnglishCrosswordGameScreen(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildGameCard(
+                    context: context,
+                    title: 'Word Scramble',
+                    subtitle: 'Rearrange scrambled letters to form the correct English word in 10 seconds.',
+                    icon: Icons.shuffle_rounded,
+                    color: Colors.deepOrange,
+                    stars: _highestStars['word_scramble'] ?? 0,
+                    animationType: GameAnimationType.pulse,
+                    imagePath: 'ImageFolder/wordscramble.webp',
+                    onTap: () => _playGame(
+                      const WordScrambleGameScreen(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildGameCard(
+                    context: context,
+                    title: 'Magic Words',
+                    subtitle: 'Find hidden words across the letter grid with 3 levels: Easy, Medium, and Hard.',
+                    icon: Icons.font_download_rounded,
+                    color: Colors.indigo,
+                    stars: _highestStars['magic_words'] ?? 0,
+                    animationType: GameAnimationType.pulse,
+                    imagePath: 'ImageFolder/magic_word.gif',
+                    onTap: () => _playGame(
+                      const MagicWordsGameScreen(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildGameCard(
+                    context: context,
+                    title: 'Word Bubbles',
+                    subtitle: 'Read Vietnamese meanings and type English words to pop bubbles in 15 seconds.',
+                    icon: Icons.bubble_chart_rounded,
+                    color: const Color(0xFF0047AB),
+                    stars: _highestStars['english_bubbles'] ?? 0,
+                    animationType: GameAnimationType.bounce,
+                    imagePath: 'ImageFolder/Designer.png',
+                    onTap: () => _playGame(
+                      const EnglishBubblesGameScreen(),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -360,117 +401,131 @@ class _GameTabState extends ConsumerState<GameTab> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-          _buildGameCard(
-            context: context,
-            title: 'Đếm Số Nhanh',
-            subtitle: 'Nhìn các vật thể xuất hiện và đếm nhanh số lượng trong vòng 6 giây.',
-            icon: Icons.filter_9_plus_rounded,
-            color: Colors.orange,
-            stars: _highestStars['counting'] ?? 0,
-            animationType: GameAnimationType.pulse,
-            imagePath: 'ImageFolder/mathcount.gif',
-            onTap: () => _playGame(
-              MultipleChoiceGameScreen(
-                gameName: 'counting',
-                gameTitle: 'Đếm Số Nhanh',
-                questions: GameContent.getCountingQuestions(),
-                timeLimitInSeconds: 6,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildGameCard(
-            context: context,
-            title: 'Tính Nhanh',
-            subtitle: 'Điền kết quả đúng cho phép tính cộng trừ trong phạm vi 100 trong vòng 7 giây.',
-            icon: Icons.train_rounded,
-            color: Colors.blue,
-            stars: _highestStars['math_ops'] ?? 0,
-            animationType: GameAnimationType.bounce,
-            imagePath: 'ImageFolder/thembotvuinhon.gif',
-            onTap: () => _playGame(
-              MultipleChoiceGameScreen(
-                gameName: 'math_ops',
-                gameTitle: 'Tính Nhanh',
-                questions: GameContent.getMathOpsQuestions(),
-                timeLimitInSeconds: 7,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildGameCard(
-            context: context,
-            title: 'So Sánh Trái Phải',
-            subtitle: 'Lựa chọn bên nhiều hơn hoặc ít hơn dựa theo câu đố trong 6 giây.',
-            icon: Icons.compare_arrows_rounded,
-            color: Colors.red,
-            stars: _highestStars['comparison'] ?? 0,
-            animationType: GameAnimationType.swing,
-            imagePath: 'ImageFolder/sosanhtraiphai.gif',
-            onTap: () => _playGame(
-              MultipleChoiceGameScreen(
-                gameName: 'comparison',
-                gameTitle: 'So Sánh Trái Phải',
-                questions: GameContent.getComparisonQuestions(),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildGameCard(
-            context: context,
-            title: 'Ô Chữ Toán Học',
-            subtitle: 'Giải ô chữ bằng các con số sao cho các phép tính ngang dọc đều đúng.',
-            icon: Icons.grid_on_rounded,
-            color: Colors.purple,
-            stars: _highestStars['math_crossword'] ?? 0,
-            animationType: GameAnimationType.swing,
-            imagePath: 'ImageFolder/crossword.gif',
-            onTap: () => _playGame(
-              const MathCrosswordGameScreen(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildGameCard(
-            context: context,
-            title: 'Đường Số Diệu Kỳ',
-            subtitle: 'Kết nối các số theo thứ tự để điền kín tất cả các ô trên bảng.',
-            icon: Icons.timeline_rounded,
-            color: Colors.green,
-            stars: _highestStars['magic_number_path'] ?? 0,
-            animationType: GameAnimationType.pulse,
-            imagePath: 'ImageFolder/number.webp',
-            onTap: () => _playGame(
-              const MagicNumberPathGameScreen(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildGameCard(
-            context: context,
-            title: 'Sudoku Trí Tuệ',
-            subtitle: 'Giải ma trận số 9x9 với 6 cấp độ và chế độ đấu trường trực tuyến.',
-            icon: Icons.grid_4x4_rounded,
-            color: const Color(0xFF1D4ED8),
-            stars: _highestStars['sudoku_medium'] ?? 0,
-            animationType: GameAnimationType.swing,
-            imagePath: 'ImageFolder/sudoku.webp',
-            onTap: () => _playGame(
-              const SudokuLobbyScreen(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildGameCard(
-            context: context,
-            title: 'Bảng Cửu Chương',
-            subtitle: 'Thử thách chạm bóng tính nhanh bảng nhân từ 2 đến 9 kèm giọng đọc sinh động.',
-            icon: Icons.calculate_rounded,
-            color: const Color(0xFF00629D),
-            stars: _highestStars['multiplication_table'] ?? 0,
-            animationType: GameAnimationType.pulse,
-            imagePath: 'ImageFolder/Multiplication.webp',
-            onTap: () => _playGame(
-              const MultiplicationTableGameScreen(),
-            ),
-          ),
+                  _buildGameCard(
+                    context: context,
+                    title: 'Đếm Số Nhanh',
+                    subtitle: 'Nhìn các vật thể xuất hiện và đếm nhanh số lượng trong vòng 6 giây.',
+                    icon: Icons.filter_9_plus_rounded,
+                    color: Colors.orange,
+                    stars: _highestStars['counting'] ?? 0,
+                    animationType: GameAnimationType.pulse,
+                    imagePath: 'ImageFolder/mathcount.gif',
+                    onTap: () => _playGame(
+                      MultipleChoiceGameScreen(
+                        gameName: 'counting',
+                        gameTitle: 'Đếm Số Nhanh',
+                        questions: GameContent.getCountingQuestions(),
+                        timeLimitInSeconds: 6,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildGameCard(
+                    context: context,
+                    title: 'Tính Nhanh',
+                    subtitle: 'Điền kết quả đúng cho phép tính cộng trừ trong phạm vi 100 trong vòng 7 giây.',
+                    icon: Icons.train_rounded,
+                    color: Colors.blue,
+                    stars: _highestStars['math_ops'] ?? 0,
+                    animationType: GameAnimationType.bounce,
+                    imagePath: 'ImageFolder/thembotvuinhon.gif',
+                    onTap: () => _playGame(
+                      MultipleChoiceGameScreen(
+                        gameName: 'math_ops',
+                        gameTitle: 'Tính Nhanh',
+                        questions: GameContent.getMathOpsQuestions(),
+                        timeLimitInSeconds: 7,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildGameCard(
+                    context: context,
+                    title: 'So Sánh Trái Phải',
+                    subtitle: 'Lựa chọn bên nhiều hơn hoặc ít hơn dựa theo câu đố trong 6 giây.',
+                    icon: Icons.compare_arrows_rounded,
+                    color: Colors.red,
+                    stars: _highestStars['comparison'] ?? 0,
+                    animationType: GameAnimationType.swing,
+                    imagePath: 'ImageFolder/sosanhtraiphai.gif',
+                    onTap: () => _playGame(
+                      MultipleChoiceGameScreen(
+                        gameName: 'comparison',
+                        gameTitle: 'So Sánh Trái Phải',
+                        questions: GameContent.getComparisonQuestions(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildGameCard(
+                    context: context,
+                    title: 'Ô Chữ Toán Học',
+                    subtitle: 'Giải ô chữ bằng các con số sao cho các phép tính ngang dọc đều đúng.',
+                    icon: Icons.grid_on_rounded,
+                    color: Colors.purple,
+                    stars: _highestStars['math_crossword'] ?? 0,
+                    animationType: GameAnimationType.swing,
+                    imagePath: 'ImageFolder/crossword.gif',
+                    onTap: () => _playGame(
+                      const MathCrosswordGameScreen(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildGameCard(
+                    context: context,
+                    title: 'Đường Số Diệu Kỳ',
+                    subtitle: 'Kết nối các số theo thứ tự để điền kín tất cả các ô trên bảng.',
+                    icon: Icons.timeline_rounded,
+                    color: Colors.green,
+                    stars: _highestStars['magic_number_path'] ?? 0,
+                    animationType: GameAnimationType.pulse,
+                    imagePath: 'ImageFolder/number.webp',
+                    onTap: () => _playGame(
+                      const MagicNumberPathGameScreen(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildGameCard(
+                    context: context,
+                    title: 'Sudoku Trí Tuệ',
+                    subtitle: 'Giải ma trận số 9x9 với 6 cấp độ và chế độ đấu trường trực tuyến.',
+                    icon: Icons.grid_4x4_rounded,
+                    color: const Color(0xFF1D4ED8),
+                    stars: _highestStars['sudoku_medium'] ?? 0,
+                    animationType: GameAnimationType.swing,
+                    imagePath: 'ImageFolder/sudoku.webp',
+                    onTap: () => _playGame(
+                      const SudokuLobbyScreen(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildGameCard(
+                    context: context,
+                    title: 'Bảng Cửu Chương',
+                    subtitle: 'Thử thách chạm bóng tính nhanh bảng nhân từ 2 đến 9 kèm giọng đọc sinh động.',
+                    icon: Icons.calculate_rounded,
+                    color: const Color(0xFF00629D),
+                    stars: _highestStars['multiplication_table'] ?? 0,
+                    animationType: GameAnimationType.pulse,
+                    imagePath: 'ImageFolder/Multiplication.webp',
+                    onTap: () => _playGame(
+                      const MultiplicationTableGameScreen(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildGameCard(
+                    context: context,
+                    title: 'Bong Bóng Toán Học',
+                    subtitle: 'Nổ bong bóng phép tính trước khi bóng tan vào bầu trời đêm.',
+                    icon: Icons.bubble_chart_rounded,
+                    color: const Color(0xFF1E60D0),
+                    stars: _highestStars['math_bubbles'] ?? 0,
+                    animationType: GameAnimationType.bounce,
+                    imagePath: 'ImageFolder/Multiplication.webp',
+                    onTap: () => _playGame(
+                      const MathBubblesGameScreen(),
+                    ),
+                  ),
                 ],
               ),
             ),

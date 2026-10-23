@@ -1,19 +1,42 @@
 import 'dart:math';
 import '../models/game_question.dart';
+import '../../../core/services/vocab_sync_service.dart';
 
 class VocabItem {
   final String en;
   final String vi;
   final String category;
 
-  const VocabItem(this.en, this.vi, this.category);
+  final String? transcription;
+  final String? example;
+  final String? customImageUrl;
+
+  const VocabItem(
+    this.en,
+    this.vi,
+    this.category, {
+    this.transcription,
+    this.example,
+    this.customImageUrl,
+  });
 }
 
 class GameContent {
   static final Random _random = Random();
 
   // The 120 vocabulary items divided into 12 topics (10 items each)
-  static const List<VocabItem> allVocab = [
+  /// Danh sách từ vựng đồng bộ động từ Cloud (VocabSyncService).
+  /// Tự động fallback về defaultVocab khi offline hoặc chưa đồng bộ.
+  static List<VocabItem> get allVocab {
+    try {
+      final list = VocabSyncService.instance.vocabList;
+      if (list.isNotEmpty) return list;
+    } catch (_) {}
+    return defaultVocab;
+  }
+
+  // The 120 vocabulary items divided into 12 topics (10 items each) as fallback
+  static const List<VocabItem> defaultVocab = [
     // 1. animals
     VocabItem('Dog', 'Con chó', 'animal'),
     VocabItem('Cat', 'Con mèo', 'animal'),
@@ -161,6 +184,9 @@ class GameContent {
 
   // Helper function to build Supabase URL mapping based on user's exact folder and filename casing
   static String getSupabaseImageUrl(VocabItem item) {
+    if (item.customImageUrl != null && item.customImageUrl!.isNotEmpty) {
+      return item.customImageUrl!;
+    }
     // Encodes characters like space to %20, and appends .jpg extension
     final encodedFilename = Uri.encodeComponent('${item.en}.jpg');
     return 'https://sinqzsswmecneliyjfrg.supabase.co/storage/v1/object/public/game-assets/${item.category}/$encodedFilename';

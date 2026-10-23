@@ -43,7 +43,9 @@ class _RandomFlashcardScreenState extends State<RandomFlashcardScreen> {
     // Lọc kho từ theo chủ đề đã chọn
     if (widget.selectedCategory != null) {
       _filteredPool = GameContent.allVocab
-          .where((item) => item.category.toLowerCase() == widget.selectedCategory!.toLowerCase())
+          .where((item) =>
+              item.category.toLowerCase() ==
+              widget.selectedCategory!.toLowerCase())
           .toList();
       if (_filteredPool.isEmpty) {
         _filteredPool = List.from(GameContent.allVocab);
@@ -180,10 +182,9 @@ class _RandomFlashcardScreenState extends State<RandomFlashcardScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 12),
-            // Progress indicator (infinite feel)
+            // Status row
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -253,7 +254,8 @@ class _RandomFlashcardScreenState extends State<RandomFlashcardScreen> {
                       );
                     },
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 16.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8.0, vertical: 16.0),
                       child: FlipCard(
                         direction: FlipDirection.HORIZONTAL,
                         front: _buildCardFront(word),
@@ -275,13 +277,16 @@ class _RandomFlashcardScreenState extends State<RandomFlashcardScreen> {
                     onPressed: _currentIndex > 0 ? _previousCard : null,
                     icon: const Icon(Icons.arrow_circle_left_rounded),
                     iconSize: 52,
-                    color: _currentIndex > 0 ? AppColors.primary : Colors.grey.withValues(alpha: 0.3),
+                    color: _currentIndex > 0
+                        ? AppColors.primary
+                        : Colors.grey.withValues(alpha: 0.3),
                   ),
                   InkWell(
                     borderRadius: BorderRadius.circular(20),
                     onTap: () => TopicSelectionSheet.show(context),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
@@ -296,7 +301,8 @@ class _RandomFlashcardScreenState extends State<RandomFlashcardScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.swap_horiz_rounded, size: 18, color: AppColors.primary),
+                          const Icon(Icons.swap_horiz_rounded,
+                              size: 18, color: AppColors.primary),
                           const SizedBox(width: 6),
                           Text(
                             'Đổi chủ đề',
@@ -426,7 +432,7 @@ class _RandomFlashcardScreenState extends State<RandomFlashcardScreen> {
       ),
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -438,38 +444,67 @@ class _RandomFlashcardScreenState extends State<RandomFlashcardScreen> {
                       item.en,
                       textAlign: TextAlign.center,
                       style: GoogleFonts.baloo2(
-                        fontSize: 48,
+                        fontSize: 44,
                         fontWeight: FontWeight.bold,
                         color: Colors.white.withValues(alpha: 0.95),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   GestureDetector(
                     onTap: () => _speak(item.en),
                     child: GelCandyBadge.blue(
                       icon: const Icon(Icons.volume_up_rounded, color: Colors.white),
-                      size: 46,
+                      size: 44,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              if (item.transcription != null &&
+                  item.transcription!.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  item.transcription!,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.nunito(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withValues(alpha: 0.88),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 18),
               Container(
                 height: 2,
-                width: 80,
+                width: 72,
                 color: Colors.white.withValues(alpha: 0.3),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 18),
               Text(
                 item.vi,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.baloo2(
-                  fontSize: 32,
+                  fontSize: 30,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
               ),
+              if (item.example != null && item.example!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    '“${item.example!}”',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.baloo2(
+                      fontSize: 15,
+                      fontStyle: FontStyle.italic,
+                      color: Colors.white.withValues(alpha: 0.92),
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

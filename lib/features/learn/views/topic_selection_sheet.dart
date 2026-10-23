@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'random_flashcard_screen.dart';
+import '../../game/constants/game_content.dart';
 
 class FlashcardTopicItem {
   final String? category; // null = all
@@ -146,6 +147,15 @@ class TopicSelectionSheet extends StatefulWidget {
 class _TopicSelectionSheetState extends State<TopicSelectionSheet> {
   int? _selectedTopicIndex;
   bool _isNavigating = false;
+
+  int _getTopicCount(FlashcardTopicItem item) {
+    if (item.category == null) return GameContent.allVocab.length;
+    final cat = item.category!.trim().toLowerCase();
+    final count = GameContent.allVocab
+        .where((v) => v.category.trim().toLowerCase() == cat)
+        .length;
+    return count > 0 ? count : item.count;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -344,7 +354,7 @@ class _TopicSelectionSheetState extends State<TopicSelectionSheet> {
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
-                                        '${item.count} thẻ',
+                                        '${_getTopicCount(item)} thẻ',
                                         style: GoogleFonts.baloo2(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w600,

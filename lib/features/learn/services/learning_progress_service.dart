@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../game/constants/game_content.dart';
 
 class LearningProgressService {
   static final LearningProgressService instance = LearningProgressService._internal();
@@ -12,7 +13,13 @@ class LearningProgressService {
   static const String _keyAdvancedViewedCount = 'lp_advanced_viewed_count';
 
   static const int dailyMathTarget = 20;
-  static const int totalBasicVocabCount = 120;
+  static int get totalBasicVocabCount {
+    try {
+      final total = GameContent.allVocab.length;
+      if (total > 0) return total;
+    } catch (_) {}
+    return 120;
+  }
 
   /// Ghi nhận 1 câu toán làm đúng
   Future<void> recordMathCorrect({required String subject}) async {

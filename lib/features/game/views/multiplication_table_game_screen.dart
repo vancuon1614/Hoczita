@@ -1160,12 +1160,12 @@ class _MultiplicationTableGameScreenState
                     width: 42,
                     height: 42,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFEF3C7),
+                      color: const Color(0xFFEFF6FF),
                       shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFFDE68A), width: 1.5),
+                      border: Border.all(color: const Color(0xFFBFDBFE), width: 1.5),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFD97706).withValues(alpha: 0.15),
+                          color: const Color(0xFF2563EB).withValues(alpha: 0.12),
                           blurRadius: 5,
                           offset: const Offset(0, 2),
                         ),
@@ -1207,7 +1207,7 @@ class _MultiplicationTableGameScreenState
                           style: GoogleFonts.baloo2(
                             fontSize: 14.5,
                             fontWeight: FontWeight.w800,
-                            color: const Color(0xFF92400E),
+                            color: const Color(0xFF1E40AF),
                           ),
                         ),
                         Text(
@@ -1242,11 +1242,11 @@ class _MultiplicationTableGameScreenState
             children: List.generate(10, (i) {
               final isDone = i < _currentQuestionIndex;
               final isCurrent = i == _currentQuestionIndex;
-              Color segColor = const Color(0xFFFDE68A);
+              Color segColor = const Color(0xFFDBEAFE);
               if (isDone) {
-                segColor = const Color(0xFF047857); // xanh lá đậm
+                segColor = const Color(0xFF2563EB); // xanh chủ đạo dịu
               } else if (isCurrent) {
-                segColor = const Color(0xFFF59E0B); // cam vàng câu hiện tại
+                segColor = const Color(0xFF60A5FA); // xanh sáng nổi bật câu hiện tại
               }
               return Expanded(
                 child: Container(

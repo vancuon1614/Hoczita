@@ -50,6 +50,7 @@ class GameCodeRegistry {
     }
 
     if (clean.startsWith('multiplication_table')) return mathOperations;
+    if (clean.startsWith('math_bubbles') || clean.startsWith('bong_bong')) return mathOperations;
     if (clean.startsWith('math_ops')) return mathOperations;
     if (clean.startsWith('counting') || clean.startsWith('dem_so')) return mathCounting;
     if (clean.startsWith('comparison') || clean.startsWith('so_sanh')) return mathComparison;
@@ -61,6 +62,7 @@ class GameCodeRegistry {
     if (clean.startsWith('picture_')) return englishPictureGame;
     if (clean.startsWith('english_crossword')) return englishCrossword;
     if (clean.startsWith('word_scramble') || clean.startsWith('scramble')) return englishWordScramble;
+    if (clean.startsWith('english_bubbles') || clean.startsWith('bong_bong_tieng_anh')) return englishWordScramble;
     if (clean.startsWith('magic_words')) return englishMagicWords;
 
     switch (clean) {
@@ -74,6 +76,8 @@ class GameCodeRegistry {
       case 'fast_calc':
       case 'tinh_nhanh':
       case 'multiplication_table':
+      case 'math_bubbles':
+      case 'bong_bong_toan_hoc':
       case 'm02':
         return mathOperations; // M02
 
@@ -129,6 +133,8 @@ class GameCodeRegistry {
 
       case 'word_scramble':
       case 'scramble':
+      case 'english_bubbles':
+      case 'bong_bong_tieng_anh':
       case 'e05':
         return englishWordScramble; // E05
 

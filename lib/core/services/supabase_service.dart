@@ -544,7 +544,7 @@ class SupabaseService {
         final gameScores = _mockScores
             .where((s) {
               final g = s['game_name']?.toString() ?? '';
-              return g == gameName || g.startsWith('${gameName}_');
+              return _isGameMatch(g, gameName);
             })
             .map((s) => s['score'] as int? ?? 0)
             .toList();
@@ -625,6 +625,7 @@ class SupabaseService {
             'game_name': rawGameName,
           };
         }
+
         dedupedRows.add(row);
       }
 
@@ -686,7 +687,9 @@ class SupabaseService {
       leaderboard.sort((a, b) => (b['total_score'] as int).compareTo(a['total_score'] as int));
 
       // Bổ sung các tài khoản khác từ bảng profiles hoặc học sinh tiêu biểu để luôn đủ Top 10
-      if (leaderboard.length < 10) {
+      // Chỉ bổ sung tài khoản từ profiles CHO BẢNG XẾP HẠNG TỔNG (gameName == null)
+      // Đối với BXH game riêng lẻ (gameName != null): chỉ hiển thị người chơi đã thực sự chơi game đó
+      if (gameName == null && leaderboard.length < 10) {
         try {
           final existingNames = leaderboard
               .map((e) => (e['username'] as String? ?? '').trim().toLowerCase())
@@ -727,7 +730,7 @@ class SupabaseService {
       final existingLower = leaderboard
           .map((e) => (e['username'] as String? ?? '').trim().toLowerCase())
           .toSet();
-      while (leaderboard.length < 10 && mockIdx < defaultMockNames.length) {
+      while (gameName == null && leaderboard.length < 10 && mockIdx < defaultMockNames.length) {
         final mockName = defaultMockNames[mockIdx++];
         if (!existingLower.contains(mockName.toLowerCase())) {
           existingLower.add(mockName.toLowerCase());
@@ -755,20 +758,34 @@ class SupabaseService {
       return true;
     }
 
-    // 2. Kiểm tra thông qua mã game chuẩn (E01..E06, M01..M06)
+    // 2. Định nghĩa các nhóm mini-game độc lập (không bao giờ được ăn chéo điểm nhau)
+    bool isMatchBubbleMath(String s) => s.startsWith('math_bubbles') || s.startsWith('bong_bong_toan_hoc');
+    bool isMatchBubbleEng(String s) => s.startsWith('english_bubbles') || s.startsWith('bong_bong_tieng_anh');
+    bool isMatchMultiplication(String s) => s.startsWith('multiplication_table') || s.startsWith('bang_cuu_chuong');
+    bool isMatchMathOps(String s) => s.startsWith('math_ops') || s.startsWith('fast_calc') || s.startsWith('tinh_nhanh');
+    bool isMatchScramble(String s) => s.startsWith('word_scramble') || s.startsWith('scramble');
+
+    if (isMatchBubbleMath(cleanFilter) || isMatchBubbleMath(cleanRaw)) {
+      return isMatchBubbleMath(cleanFilter) && isMatchBubbleMath(cleanRaw);
+    }
+    if (isMatchBubbleEng(cleanFilter) || isMatchBubbleEng(cleanRaw)) {
+      return isMatchBubbleEng(cleanFilter) && isMatchBubbleEng(cleanRaw);
+    }
+    if (isMatchMultiplication(cleanFilter) || isMatchMultiplication(cleanRaw)) {
+      return isMatchMultiplication(cleanFilter) && isMatchMultiplication(cleanRaw);
+    }
+    if (isMatchMathOps(cleanFilter) || isMatchMathOps(cleanRaw)) {
+      return isMatchMathOps(cleanFilter) && isMatchMathOps(cleanRaw);
+    }
+    if (isMatchScramble(cleanFilter) || isMatchScramble(cleanRaw)) {
+      return isMatchScramble(cleanFilter) && isMatchScramble(cleanRaw);
+    }
+
+    // 3. Kiểm tra thông qua mã game chuẩn (E01..E06, M01..M06) cho các game còn lại
     final filterCode = GameCodeRegistry.getCodeFromInternalName(cleanFilter);
     final rawCode = GameCodeRegistry.getCodeFromInternalName(cleanRaw);
 
     if (filterCode.isNotEmpty && rawCode.isNotEmpty && filterCode == rawCode) {
-      // Riêng mã M02: phân biệt rõ giữa multiplication_table (bảng cửu chương) và math_ops (thêm bớt)
-      if (filterCode == 'M02') {
-        if (cleanFilter.startsWith('multiplication_table') && cleanRaw.startsWith('math_ops')) {
-          return false;
-        }
-        if (cleanFilter.startsWith('math_ops') && cleanRaw.startsWith('multiplication_table')) {
-          return false;
-        }
-      }
       return true;
     }
 
@@ -922,6 +939,7 @@ class SupabaseService {
       rethrow;
     }
   }
+
   // --- Daily Check-in ---
   final Set<DateTime> _mockCheckedDates = {};
 

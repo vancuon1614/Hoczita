@@ -952,12 +952,12 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
                     width: 38,
                     height: 38,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFEF3C7),
+                      color: const Color(0xFFEFF6FF),
                       shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFFDE68A), width: 1.5),
+                      border: Border.all(color: const Color(0xFFBFDBFE), width: 1.5),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFD97706).withValues(alpha: 0.15),
+                          color: const Color(0xFF2563EB).withValues(alpha: 0.12),
                           blurRadius: 5,
                           offset: const Offset(0, 2),
                         ),
@@ -998,7 +998,7 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
                           style: GoogleFonts.baloo2(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
-                            color: const Color(0xFF92400E),
+                            color: const Color(0xFF1E40AF),
                           ),
                         ),
                         Text(
@@ -1033,11 +1033,11 @@ class _MemoryMatchGameScreenState extends ConsumerState<MemoryMatchGameScreen> {
             children: List.generate(8, (i) {
               final isDone = i < _matchedPairsCount;
               final isCurrent = i == _matchedPairsCount;
-              Color segColor = const Color(0xFFE2E8F0);
+              Color segColor = const Color(0xFFDBEAFE);
               if (isDone) {
-                segColor = const Color(0xFF16A34A);
+                segColor = const Color(0xFF2563EB); // xanh chủ đạo dịu
               } else if (isCurrent) {
-                segColor = const Color(0xFFF59E0B);
+                segColor = const Color(0xFF60A5FA); // xanh sáng nổi bật câu hiện tại
               }
               return Expanded(
                 child: Container(
